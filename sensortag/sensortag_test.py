@@ -31,7 +31,7 @@ def floatfromhex(h):
 # This algorithm borrowed from 
 # http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#Gatt_Server
 # which most likely took it from the datasheet.  I've not checked it, other
-# than noted that the temperatue values I got seemed reasonable.
+# than noted that the temperature values I got seemed reasonable.
 #
 def calcTmpTarget(objT, ambT):
     m_tmpAmb = ambT/128.0
