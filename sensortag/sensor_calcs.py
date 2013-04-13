@@ -9,7 +9,8 @@
 # than noted that the temperature values I got seemed reasonable.
 #
 
-tosigned = lambda n: float(n-0xffff) if n>0x7fff else float(n)
+tosigned = lambda n: float(n-0x10000) if n>0x7fff else float(n)
+tosignedbyte = lambda n: float(n-0x100) if n>0x7f else float(n)
 
 def calcTmpTarget(objT, ambT):
         
@@ -53,7 +54,7 @@ def calcHum(rawT, rawH):
 # Mangitude tells us it we are at rest, falling, etc.
 
 def calcAccel(rawX, rawY, rawZ):
-    accel = lambda v: v / 64.0  # Range -2G, +2G
+    accel = lambda v: tosignedbyte(v) / 64.0  # Range -2G, +2G
     xyz = [accel(rawX), accel(rawY), accel(rawZ)]
     mag = (xyz[0]**2 + xyz[1]**2 + xyz[2]**2)**0.5
     return (xyz, mag)
