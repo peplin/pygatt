@@ -10,6 +10,7 @@ import pexpect
 import sys
 import time
 from sensor_calcs import *
+import json
 
 def floatfromhex(h):
     t = float.fromhex(h)
@@ -53,8 +54,9 @@ class sensorTag:
             handle = long(float.fromhex(hxstr[0]))
             try:
                 self.cb[handle]([long(float.fromhex(n)) for n in hxstr[2:]])
-            except:
-                print "no callback for %x" % handle
+            except: 
+                print "Error in callback for %x" % handle
+                print sys.argv[1]
             pass
         pass
     
@@ -63,13 +65,22 @@ class sensorTag:
         return
 
 
+data = {}
+datalog = sys.stdout
+
 def tmp006(v):
     objT = (v[1]<<8)+v[0]
     ambT = (v[3]<<8)+v[2]
-    print "T006 %.1f" % calcTmpTarget(objT, ambT)
+    targetT = calcTmpTarget(objT, ambT)
+    data['t006'] = targetT
+    print "T006 %.1f" % targetT
 
 def accel(v):
-    print "ACCL", calcAccel(v[0],v[1],v[2])
+    (xyz,mag) = calcAccel(v[0],v[1],v[2])
+    data['accl'] = xyz
+    print "ACCL", xyz
+    datalog.write(json.dumps(data) + "\n")
+    datalog.flush()
 
 def magnet(v):
     print "MAGN", v
@@ -78,7 +89,13 @@ def gyro(v):
     print "GYRO", v
 
 def main():
+    global datalog
+
     bluetooth_adr = sys.argv[1]
+    if len(sys.argv) > 2:
+        datalog = open(sys.argv[2], 'w')
+
+
     tag = sensorTag(bluetooth_adr)
 
     # enable TMP006 sensor
@@ -92,13 +109,13 @@ def main():
     tag.char_write_cmd(0x2e,0x0100)
 
     # enable magnetometer
-    tag.register_cb(0x40,magnet)
-    tag.char_write_cmd(0x44,0x01)
+    #tag.register_cb(0x40,magnet)
+    #tag.char_write_cmd(0x44,0x01)
     #tag.char_write_cmd(0x41,0x0100)
 
     # enable gyroscope
-    tag.register_cb(0x57,gyro)
-    tag.char_write_cmd(0x5B,0x07)
+    #tag.register_cb(0x57,gyro)
+    #tag.char_write_cmd(0x5B,0x07)
     #tag.char_write_cmd(0x58,0x0100)
 
     tag.notification_loop()
