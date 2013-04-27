@@ -51,7 +51,7 @@ def calcHum(rawT, rawH):
 #
 # Again from http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#Gatt_Server
 # but combining all three values and giving magnitude.
-# Mangitude tells us it we are at rest, falling, etc.
+# Magnitude tells us if we are at rest, falling, etc.
 
 def calcAccel(rawX, rawY, rawZ):
     accel = lambda v: tosignedbyte(v) / 64.0  # Range -2G, +2G
@@ -60,6 +60,17 @@ def calcAccel(rawX, rawY, rawZ):
     return (xyz, mag)
 
 
+#
+# Again from http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#Gatt_Server
+# but combining all three values.
+#
+
+def calcMagn(rawX, rawY, rawZ):
+    magforce = lambda v: (tosigned(v) * 1.0) / (65536.0/2000.0)
+    return [magforce(rawX),magforce(rawY),magforce(rawZ)]
+
+
+class Barometer:
 
 # Ditto.
 # Conversion algorithm for barometer temperature
@@ -72,14 +83,14 @@ def calcAccel(rawX, rawY, rawZ):
 #  c5 - c8: signed 16-bit integers
 #
 
-def calcBarTmp(rawT):
-    c1 = m_barCalib.c1
-    c2 = m_barCalib.c2
-    val = long((c1 * m_raw_temp) * 100)
-    temp = val >> 24
-    val = long(c2 * 100)
-    temp += (val >> 10)
-    return float(temp) / 100.0
+    def calcBarTmp(self, raw_temp):
+        c1 = self.m_barCalib.c1
+        c2 = self.m_barCalib.c2
+        val = long((c1 * raw_temp) * 100)
+        temp = val >> 24
+        val = long(c2 * 100)
+        temp += (val >> 10)
+        return float(temp) / 100.0
 
 
 # Conversion algorithm for barometer pressure (hPa)
@@ -89,44 +100,57 @@ def calcBarTmp(rawT):
 # Offset = (c6 * 2^14) + ((c7 * Tr) / 2^3) + ((c8 * Tr^2) / 2^19)
 # Pa = (Sensitivity * Pr + Offset) / 2^14
 #
-def TcalcBarPress(rawT):
-    Pr = rawT
-    Tr = m_raw_temp
-    c3 = m_barCalib.c3
-    c4 = m_barCalib.c4
-    c5 = m_barCalib.c5
-    c6 = m_barCalib.c6
-    c7 = m_barCalib.c7
-    c8 = m_barCalib.c8
+    def calcBarPress(self,Tr,Pr):
+        c3 = self.m_barCalib.c3
+        c4 = self.m_barCalib.c4
+        c5 = self.m_barCalib.c5
+        c6 = self.m_barCalib.c6
+        c7 = self.m_barCalib.c7
+        c8 = self.m_barCalib.c8
     # Sensitivity
-    s = long(c3)
-    val = long(c4 * Tr)
-    s += (val >> 17)
-    val = long(c5 * Tr * Tr)
-    s += (val >> 34)
+        s = long(c3)
+        val = long(c4 * Tr)
+        s += (val >> 17)
+        val = long(c5 * Tr * Tr)
+        s += (val >> 34)
     # Offset
-    o = long(c6) << 14
-    val = long(c7 * Tr)
-    o += (val >> 3)
-    val = long(c8 * Tr * Tr)
-    o += (val >> 19)
+        o = long(c6) << 14
+        val = long(c7 * Tr)
+        o += (val >> 3)
+        val = long(c8 * Tr * Tr)
+        o += (val >> 19)
     # Pressure (Pa)
-    pres = long((s * Pr) + o) >> 14
-    return float(pres)/100.0
-
-
-class m_barCalib:
-
-    def bld_int(self, lobyte, hibyte):
-        return (lobyte & 0x0FF) + ((hibyte & 0x0FF) << 8)
+        pres = ((s * Pr) + o) >> 14
+        return float(pres)/100.0
     
-    def __init__( self, pData ):
-        self.c1 = self.bld_int(pData[0],pData[1])
-        self.c2 = self.bld_int(pData[2],pData[3])
-        self.c3 = self.bld_int(pData[4],pData[5])
-        self.c4 = self.bld_int(pData[6],pData[7])
-        self.c5 = self.bld_int(pData[8],pData[9])
-        self.c6 = self.bld_int(pData[10],pData[11])
-        self.c7 = self.bld_int(pData[12],pData[13])
-        self.c8 = self.bld_int(pData[14],pData[15])
 
+    class Calib:
+
+        # This works too
+        # i = (hi<<8)+lo        
+        def bld_int(self, lobyte, hibyte):
+            return (lobyte & 0x0FF) + ((hibyte & 0x0FF) << 8)
+        
+        def __init__( self, pData ):
+            self.c1 = self.bld_int(pData[0],pData[1])
+            self.c2 = self.bld_int(pData[2],pData[3])
+            self.c3 = self.bld_int(pData[4],pData[5])
+            self.c4 = self.bld_int(pData[6],pData[7])
+            self.c5 = tosigned(self.bld_int(pData[8],pData[9]))
+            self.c6 = tosigned(self.bld_int(pData[10],pData[11]))
+            self.c7 = tosigned(self.bld_int(pData[12],pData[13]))
+            self.c8 = tosigned(self.bld_int(pData[14],pData[15]))
+            
+
+    def __init__(self, rawCalibration):
+        self.m_barCalib = self.Calib( rawCalibration )
+        return
+
+    def calc(self,  rawT, rawP):
+        self.m_raw_temp = tosigned(rawT)
+        self.m_raw_pres = rawP # N.B.  Unsigned value
+        bar_temp = self.calcBarTmp( self.m_raw_temp )
+        bar_pres = self.calcBarPress( self.m_raw_temp, self.m_raw_pres )
+        return( bar_temp, bar_pres)
+
+        
