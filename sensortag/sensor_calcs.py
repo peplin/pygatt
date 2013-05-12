@@ -8,6 +8,20 @@
 # which most likely took it from the datasheet.  I've not checked it, other
 # than noted that the temperature values I got seemed reasonable.
 #
+#   Copyright 2013 Michael Saunby
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 
 tosigned = lambda n: float(n-0x10000) if n>0x7fff else float(n)
 tosignedbyte = lambda n: float(n-0x100) if n>0x7f else float(n)
