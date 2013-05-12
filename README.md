@@ -18,3 +18,7 @@ I'll post more information on my blog at http://mike.saunby.net
 Note you might need to install a newer version of gatttool for this code to work.  I used the 
 version included in bluez-5.2 - it's in the attrib directory.
 
+May 2012.  I've put this code under the Apache 2.0 licence, if folks want to use it and that 
+doesn't suit let me know.  I have no desire to profit from this code, nor prevent others using
+or profiting if they wish.  Equally you shouldn't expect me to maintain or support it.  It's 
+just stuff, use it as you wish.
