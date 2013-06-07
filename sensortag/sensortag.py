@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# Michael Saunby. April 2013   
-# 
+# Michael Saunby. April 2013
+#
 # Notes.
 # pexpect uses regular expression so characters that have special meaning
 # in regular expressions, e.g. [ and ] must be escaped with a backslash.
@@ -19,8 +19,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-
-
 import pexpect
 import sys
 import time
@@ -35,7 +33,7 @@ def floatfromhex(h):
         pass
     return t
 
-class SensorTag: 
+class SensorTag:
 
     def __init__( self, bluetooth_adr ):
         self.con = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
@@ -46,14 +44,14 @@ class SensorTag:
         self.con.expect('\[CON\].*>')
         self.cb = {}
         return
-    
+
     def char_write_cmd( self, handle, value ):
         # The 0%x for value is VERY naughty!  Fix this!
         cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
         print cmd
         self.con.sendline( cmd )
         return
-    
+
     def char_read_hnd( self, handle ):
         self.con.sendline('char-read-hnd 0x%02x' % handle)
         self.con.expect('descriptor: .*? \r')
@@ -76,26 +74,24 @@ class SensorTag:
             	#try:
 	        if True:
                   self.cb[handle]([long(float.fromhex(n)) for n in hxstr[2:]])
-            	#except: 
+            	#except:
                 #  print "Error in callback for %x" % handle
                 #  print sys.argv[1]
                 pass
             else:
               print "TIMEOUT!!"
         pass
-    
+
     def register_cb( self, handle, fn ):
         self.cb[handle]=fn;
         return
-
-
 
 barometer = None
 datalog = sys.stdout
 
 class SensorCallbacks:
-    data = {}
 
+    data = {}
 
     def __init__(self,addr):
         self.data['addr'] = addr
@@ -112,12 +108,12 @@ class SensorCallbacks:
         self.data['accl'] = xyz
         print "ACCL", xyz
 
-    def humid(self,v):
+    def humidity(self, v):
         rawT = (v[1]<<8)+v[0]
         rawH = (v[3]<<8)+v[2]
-        (temp, hum) = calcHum(rawT,rawH)
-        self.data['humd'] = [temp, hum]
-        print "HUMD", temp, hum
+        (t, rh) = calcHum(rawT, rawH)
+        self.data['humd'] = [t, rh]
+        print "HUMD %.1f" % rh
 
     def baro(self,v):
         global barometer
@@ -155,7 +151,6 @@ def main():
     if len(sys.argv) > 2:
         datalog = open(sys.argv[2], 'w+')
 
-
     while True:
      try:   
       print "[re]starting.."
@@ -173,11 +168,10 @@ def main():
       tag.char_write_cmd(0x31,0x01)
       tag.char_write_cmd(0x2e,0x0100)
 
-      # enable humidity sensor
-      tag.register_cb(0x38,cbs.humid)
+      # enable humidity
+      tag.register_cb(0x38, cbs.humidity)
       tag.char_write_cmd(0x3c,0x01)
       tag.char_write_cmd(0x39,0x0100)
-
 
       # enable magnetometer
       tag.register_cb(0x40,cbs.magnet)
@@ -185,15 +179,14 @@ def main():
       tag.char_write_cmd(0x41,0x0100)
 
       # enable gyroscope
-      #tag.register_cb(0x57,cbs.gyro)
-      #tag.char_write_cmd(0x5b,0x07)
-      #tag.char_write_cmd(0x58,0x0100)
-
+      tag.register_cb(0x57,cbs.gyro)
+      tag.char_write_cmd(0x5b,0x07)
+      tag.char_write_cmd(0x58,0x0100)
 
       # fetch barometer calibration
       tag.char_write_cmd(0x4f,0x02)
       rawcal = tag.char_read_hnd(0x52)
-      barometer = Barometer( rawcal ) 
+      barometer = Barometer( rawcal )
       # enable barometer
       tag.register_cb(0x4b,cbs.baro)
       tag.char_write_cmd(0x4f,0x01)
@@ -202,7 +195,6 @@ def main():
       tag.notification_loop()
      except:
       pass
-     pass
 
 if __name__ == "__main__":
     main()
