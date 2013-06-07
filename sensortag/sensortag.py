@@ -26,6 +26,7 @@ import sys
 import time
 from sensor_calcs import *
 import json
+import select
 
 def floatfromhex(h):
     t = float.fromhex(h)
@@ -38,7 +39,7 @@ class SensorTag:
 
     def __init__( self, bluetooth_adr ):
         self.con = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
-        self.con.expect('\[LE\]>')
+        self.con.expect('\[LE\]>', timeout=600)
         print "Preparing to connect. You might need to press the side button..."
         self.con.sendline('connect')
         # test for success of connect
@@ -111,6 +112,13 @@ class SensorCallbacks:
         self.data['accl'] = xyz
         print "ACCL", xyz
 
+    def humid(self,v):
+        rawT = (v[1]<<8)+v[0]
+        rawH = (v[3]<<8)+v[2]
+        (temp, hum) = calcHum(rawT,rawH)
+        self.data['humd'] = [temp, hum]
+        print "HUMD", temp, hum
+
     def baro(self,v):
         global barometer
         global datalog
@@ -119,8 +127,13 @@ class SensorCallbacks:
         (temp, pres) =  self.data['baro'] = barometer.calc(rawT, rawP)
         print "BARO", temp, pres
         self.data['time'] = long(time.time() * 1000);
-        datalog.write(json.dumps(self.data) + "\n")
-        datalog.flush()
+        # The socket or output file might not be writeable
+        # check with select so we don't block.
+        (re,wr,ex) = select.select([],[datalog],[],0)
+        if len(wr) > 0:
+            datalog.write(json.dumps(self.data) + "\n")
+            datalog.flush()
+            pass
 
     def magnet(self,v):
         x = (v[1]<<8)+v[0]
@@ -144,6 +157,7 @@ def main():
 
 
     while True:
+     try:   
       print "[re]starting.."
 
       tag = SensorTag(bluetooth_adr)
@@ -158,6 +172,12 @@ def main():
       tag.register_cb(0x2d,cbs.accel)
       tag.char_write_cmd(0x31,0x01)
       tag.char_write_cmd(0x2e,0x0100)
+
+      # enable humidity sensor
+      tag.register_cb(0x38,cbs.humid)
+      tag.char_write_cmd(0x3c,0x01)
+      tag.char_write_cmd(0x39,0x0100)
+
 
       # enable magnetometer
       tag.register_cb(0x40,cbs.magnet)
@@ -180,10 +200,10 @@ def main():
       tag.char_write_cmd(0x4c,0x0100)
 
       tag.notification_loop()
+     except:
       pass
-
+     pass
 
 if __name__ == "__main__":
     main()
-
 
