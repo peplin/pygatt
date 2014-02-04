@@ -36,12 +36,15 @@ def floatfromhex(h):
 class SensorTag:
 
     def __init__( self, bluetooth_adr ):
+        print "Preparing to connect. You might need to press the side button..."
+        lescan = pexpect.spawn('sudo hcitool lescan')
+        lescan.expect('SensorTag', timeout=100)
         self.con = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
         self.con.expect('\[LE\]>', timeout=600)
-        print "Preparing to connect. You might need to press the side button..."
         self.con.sendline('connect')
         # test for success of connect
-        self.con.expect('\[CON\].*>')
+        # self.con.expect('\[CON\].*>')
+        self.con.expect('Connection successful')
         self.cb = {}
         return
 
