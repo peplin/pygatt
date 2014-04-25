@@ -55,11 +55,13 @@ def calcTmpTarget(objT, ambT):
 
 bluetooth_adr = sys.argv[1]
 tool = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
-tool.expect('\[LE\]>')
+tool.expect('.*\[LE\]>', timeout=600)
 print "Preparing to connect. You might need to press the side button..."
 tool.sendline('connect')
 # test for success of connect
-tool.expect('\[CON\].*>')
+# tool.expect('\[CON\].*>')
+# Alternative test for success of connect
+tool.expect('Connection successful.*\[LE\]>')
 tool.sendline('char-write-cmd 0x29 01')
 tool.expect('\[LE\]>')
 while True:
