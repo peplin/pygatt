@@ -2,14 +2,11 @@
 from __future__ import print_function
 import pexpect
 import sys
+import threading
 
-def floatfromhex(h):
-    t = float.fromhex(h)
-    if t > float.fromhex('7FFF'):
-        t = -(float.fromhex('FFFF') - t)
-    return t
 
 class BluetoothLeDevice(object):
+    connection_lock = threading.Lock()
 
     def __init__(self, bluetooth_adr):
         print("Preparing to connect.")
@@ -19,59 +16,59 @@ class BluetoothLeDevice(object):
         self.con.expect('\[LE\]>', timeout=1)
         self.con.sendline('connect')
         # test for success of connect
-	self.con.expect('Connection successful.*\[LE\]>')
-        # Earlier versions of gatttool returned a different message.  Use this pattern -
-        #self.con.expect('\[CON\].*>')
-        self.cb = {}
-        return
+        self.con.expect('Connection successful.*\[LE\]>')
+        print("Connected to %s." % bluetooth_adr)
 
     def char_write_cmd(self, handle, value):
-        # The 0%x for value is VERY naughty!  Fix this!
-        cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
-        print(cmd)
-        self.con.sendline(cmd)
-        return
+        with self.connection_lock:
+            # The 0%x for value is VERY naughty!  Fix this!
+            cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
+            print(cmd)
+            self.con.sendline(cmd)
 
     def char_read_uuid(self, uuid):
-        self.con.sendline('char-read-uuid %s' % uuid)
-        self.con.expect('descriptor: .*? \r')
-        after = self.con.after
-        rval = after.split()[1:]
-        return [long(float.fromhex(n)) for n in rval]
+        with self.connection_lock:
+            self.con.sendline('char-read-uuid %s' % uuid)
+            self.con.expect('value: .*? \r')
+            after = self.con.after
+            rval = after.split()[1:]
+            return bytearray([int(x, 16) for x in rval])
 
     def char_read_hnd(self, handle):
-        self.con.sendline('char-read-hnd 0x%02x' % handle)
-        self.con.expect('descriptor: .*? \r')
-        after = self.con.after
-        rval = after.split()[1:]
-        return [long(float.fromhex(n)) for n in rval]
+        with self.connection_lock:
+            self.con.sendline('char-read-hnd 0x%02x' % handle)
+            self.con.expect('descriptor: .*? \r')
+            after = self.con.after
+            rval = after.split()[1:]
+            return [int(n, 16) for n in rval]
 
     # Notification handle = 0x0025 value: 9b ff 54 07
-    def notification_loop(self):
+    def run(self):
         while True:
-	    try:
-              pnum = self.con.expect('Notification handle = .*? \r', timeout=4)
-            except pexpect.TIMEOUT:
-              print("Timed out waiting for a notification")
-              break
-	    if pnum==0:
-                after = self.con.after
-	        hxstr = after.split()[3:]
-            	handle = long(float.fromhex(hxstr[0]))
-            	#try:
-	        if True:
-                  self.cb[handle]([long(float.fromhex(n)) for n in hxstr[2:]])
+            with self.connection_lock:
+                try:
+                    # TODO is pexpect thread safe, e.g. could we be blocked on this
+                     # expect in one thread and do a sendline in another thread?
+                    pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
+
+                    if pnum == 0:
+                        after = self.con.after
+                        hxstr = after.split()[3:]
+                        handle = int(hxstr[0], 16)
+                except pexpect.TIMEOUT:
+                    pass
+
 
     def register_cb(self, handle, fn):
         self.cb[handle]=fn
-        return
 
 def run(bluetooth_address):
     print("starting..")
 
-    device = BluetoothLeDevice(bluetooth_adr)
-
-    device.notification_loop()
+    device = BluetoothLeDevice(bluetooth_address)
+    print("Version is %s" %
+            str(device.char_read_uuid("f1000101-cb53-4c71-9c5f-69887f0ccb74")))
+    device.run()
 
 if __name__ == "__main__":
     run(sys.argv[1])
