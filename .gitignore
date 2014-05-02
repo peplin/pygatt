@@ -1,0 +1,14 @@
+*.pyc
+*.swp
+*.swo
+*.egg
+*.egg-info/
+build/
+dist/
+MANIFEST
+.DS_Store
+.tox
+openxc-*/
+*.json
+env
+*.gpx

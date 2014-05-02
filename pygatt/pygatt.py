@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import pexpect
-import sys
 import subprocess
 import threading
 import re
@@ -11,28 +10,33 @@ def reset_device():
     subprocess.Popen(["sudo", "hciconfig", "hci0", "down"]).wait()
     subprocess.Popen(["sudo", "hciconfig", "hci0", "up"]).wait()
 
-def lescan():
+def lescan(timeout=5):
     reset_device()
     scan = pexpect.spawn("sudo hcitool lescan")
     # TODO don't want to expect anything, just want to take advantage of
     # pexpect's timeout feature
     try:
-        scan.expect("nothing", timeout=5)
+        scan.expect("nothing", timeout=timeout)
     except pexpect.TIMEOUT:
-        addresses = set(re.findall("([\w][\w]\:.{14})", scan.before))
-    print("Discovered devices:")
-    print("\n".join(addresses))
+        devices = []
+        for line in scan.before.split("\r\n"):
+            match = re.match("(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)", line)
+            if match is not None:
+                devices.append({
+                    'address': match.group(1),
+                    'name': match.group(3)
+                })
+    return [device for device in devices]
 
 class BluetoothLeDevice(object):
     connection_lock = threading.Lock()
 
     def __init__(self, mac_address):
-        print("Preparing to connect to %s" + mac_address)
+        print("Preparing to connect to %s" % mac_address)
         reset_device()
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         self.con.sendline('connect')
-        # test for success of connect
         self.con.expect('Connection successful.*\[LE\]>', timeout=5)
         print("Connected to %s." % mac_address)
 
@@ -74,19 +78,3 @@ class BluetoothLeDevice(object):
                         handle = int(hxstr[0], 16)
                 except pexpect.TIMEOUT:
                     pass
-
-
-    def register_cb(self, handle, fn):
-        self.cb[handle]=fn
-
-def run(mac_address):
-    print("starting..")
-
-    lescan()
-    device = BluetoothLeDevice(mac_address)
-    print("Version is %s" %
-            str(device.char_read_uuid("f1000101-cb53-4c71-9c5f-69887f0ccb74")))
-    device.run()
-
-if __name__ == "__main__":
-    run(sys.argv[1])
