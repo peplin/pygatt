@@ -2,21 +2,38 @@
 from __future__ import print_function
 import pexpect
 import sys
+import subprocess
 import threading
+import re
 
+def reset_device():
+    print("Re-initializing Bluetooth controller")
+    subprocess.Popen(["sudo", "hciconfig", "hci0", "down"]).wait()
+    subprocess.Popen(["sudo", "hciconfig", "hci0", "up"]).wait()
+
+def lescan():
+    reset_device()
+    scan = pexpect.spawn("sudo hcitool lescan")
+    # TODO don't want to expect anything, just want to take advantage of
+    # pexpect's timeout feature
+    try:
+        scan.expect("nothing", timeout=5)
+    except pexpect.TIMEOUT:
+        addresses = set(re.findall("([\w][\w]\:.{14})", scan.before))
+    print("Discovered devices:")
+    print("\n".join(addresses))
 
 class BluetoothLeDevice(object):
     connection_lock = threading.Lock()
 
-    def __init__(self, bluetooth_adr):
-        print("Preparing to connect.")
-        lescan = pexpect.spawn('sudo hcitool lescan')
-        lescan.expect(bluetooth_adr.upper(), timeout=5)
-        self.con = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
+    def __init__(self, mac_address):
+        print("Preparing to connect to %s" + mac_address)
+        reset_device()
+        self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         self.con.sendline('connect')
         # test for success of connect
-        self.con.expect('Connection successful.*\[LE\]>')
+        self.con.expect('Connection successful.*\[LE\]>', timeout=5)
         print("Connected to %s." % bluetooth_adr)
 
     def char_write_cmd(self, handle, value):
@@ -62,10 +79,11 @@ class BluetoothLeDevice(object):
     def register_cb(self, handle, fn):
         self.cb[handle]=fn
 
-def run(bluetooth_address):
+def run(mac_address):
     print("starting..")
 
-    device = BluetoothLeDevice(bluetooth_address)
+    lescan()
+    device = BluetoothLeDevice(mac_address)
     print("Version is %s" %
             str(device.char_read_uuid("f1000101-cb53-4c71-9c5f-69887f0ccb74")))
     device.run()
