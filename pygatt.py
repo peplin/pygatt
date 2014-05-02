@@ -34,7 +34,7 @@ class BluetoothLeDevice(object):
         self.con.sendline('connect')
         # test for success of connect
         self.con.expect('Connection successful.*\[LE\]>', timeout=5)
-        print("Connected to %s." % bluetooth_adr)
+        print("Connected to %s." % mac_address)
 
     def char_write_cmd(self, handle, value):
         with self.connection_lock:
