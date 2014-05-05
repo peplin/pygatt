@@ -27,6 +27,8 @@ def lescan(timeout=5):
                 })
     return [device for device in devices]
 
+class BluetoothLeError(Exception): pass
+
 class BluetoothLeDevice(object):
     DEFAULT_TIMEOUT_S = 1
     connection_lock = threading.Lock()
@@ -47,9 +49,15 @@ class BluetoothLeDevice(object):
         """
         if uuid not in self.handles:
             with self.connection_lock:
-                self.con.sendline('char-read-uuid %s' % uuid)
-                self.con.expect('handle: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
-                self.handles[uuid] = self.con.after.split()[1]
+                self.con.sendline('characteristics')
+                try:
+                    self.con.expect(uuid, timeout=5)
+                except pexpect.TIMEOUT:
+                    raise BluetoothLeError(self.con.before)
+                else:
+                    handle_start = self.con.before.rfind("handle: ")
+                    self.handles[uuid] = int(re.match("handle: 0x([a-fA-F0-9]{4})",
+                            self.con.before[handle_start:]).group(1), 16)
         return self.handles.get(uuid)
 
     def char_write_cmd(self, handle, value):
