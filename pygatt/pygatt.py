@@ -99,7 +99,7 @@ class BluetoothLeDevice(object):
 
     def char_write_req(self, handle, value):
         with self.connection_lock:
-            hexstring = ''.join('%02x' % ord(byte) for byte in value)
+            hexstring = ''.join('%02x' % byte for byte in value)
             cmd = 'char-write-req 0x%02x %s' % (handle, hexstring)
             self.con.sendline(cmd)
             self._expect('Characteristic value was written successfully')
