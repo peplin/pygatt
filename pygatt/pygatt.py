@@ -55,9 +55,15 @@ class BluetoothLeDevice(object):
                 except pexpect.TIMEOUT:
                     raise BluetoothLeError(self.con.before)
                 else:
-                    handle_start = self.con.before.rfind("handle: ")
-                    self.handles[uuid] = int(re.match("handle: 0x([a-fA-F0-9]{4})",
-                            self.con.before[handle_start:]).group(1), 16)
+                    # TODO ugh this is sketchy, but then again so is this whole
+                    # "library". The last line of the output will be the one
+                    # matching our uuid (because it was the filter for the call
+                    # to 'expect' above. Take that and pull out the leftmost
+                    # handle value.
+                    #TODO just split on ':'!
+                    matching_line = self.con.before.splitlines(True)[-1]
+                    self.handles[uuid] = int(re.match("\x1b\[Khandle: 0x([a-fA-F0-9]{4})",
+                            matching_line).group(1), 16)
         return self.handles.get(uuid)
 
     def char_write_cmd(self, handle, value):
