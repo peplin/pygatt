@@ -108,19 +108,30 @@ class BluetoothLeDevice(object):
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
             self.con.expect('value: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
-            after = self.con.after
-            rval = after.split()[1:]
+            rval = self.con.after.split()[1:]
             return bytearray([int(x, 16) for x in rval])
 
     def char_read_hnd(self, handle):
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
             self.con.expect('descriptor: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
-            after = self.con.after
-            rval = after.split()[1:]
+            rval = self.con.after.split()[1:]
             return [int(n, 16) for n in rval]
 
-    # Notification handle = 0x0025 value: 9b ff 54 07
+    def subscribe(self, uuid, callback=None):
+        handle = self.get_handle(uuid)
+        # TODO how do we explicitly associate the value and CCC handles?
+        handle += 2
+        # TODO just turning on notifications and indications for now to keep
+        # it simple
+        self.char_write_req(handle, bytearray([0x02, 0x00]))
+
+    def _handle_notification(self, msg):
+        handle, _, value = self.con.after.split()[3:]
+        handle = int(handle, 16)
+        value = bytearray.fromhex(value)
+        print("Received indication on handle 0x%x " % handle)
+
     def run(self):
         while True:
             with self.connection_lock:
@@ -128,10 +139,15 @@ class BluetoothLeDevice(object):
                     # TODO is pexpect thread safe, e.g. could we be blocked on this
                     # expect in one thread and do a sendline in another thread?
                     pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
-
                     if pnum == 0:
-                        after = self.con.after
-                        hxstr = after.split()[3:]
-                        handle = int(hxstr[0], 16)
+                        self._handle_notification(self.con.after)
+                except pexpect.TIMEOUT:
+                    pass
+
+                # TODO DRY
+                try:
+                    pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
+                    if pnum == 0:
+                        self._handle_notification(self.con.after)
                 except pexpect.TIMEOUT:
                     pass
