@@ -66,6 +66,12 @@ class BluetoothLeDevice(object):
             cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
             self.con.sendline(cmd)
 
+    def char_write_req(self, handle, value):
+        with self.connection_lock:
+            hexstring = ''.join('%02x' % ord(byte) for byte in value)
+            cmd = 'char-write-req 0x%02x %s' % (handle, hexstring)
+            self.con.sendline(cmd)
+
     def char_read_uuid(self, uuid):
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
