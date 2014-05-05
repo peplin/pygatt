@@ -5,13 +5,12 @@ import subprocess
 import threading
 import re
 
-def reset_device():
+def reset_bluetooth_controller():
     print("Re-initializing Bluetooth controller")
     subprocess.Popen(["sudo", "hciconfig", "hci0", "down"]).wait()
     subprocess.Popen(["sudo", "hciconfig", "hci0", "up"]).wait()
 
 def lescan(timeout=5):
-    reset_device()
     scan = pexpect.spawn("sudo hcitool lescan")
     # TODO don't want to expect anything, just want to take advantage of
     # pexpect's timeout feature
@@ -29,28 +28,40 @@ def lescan(timeout=5):
     return [device for device in devices]
 
 class BluetoothLeDevice(object):
+    DEFAULT_TIMEOUT_S = 1
     connection_lock = threading.Lock()
+    handles = {}
 
     def __init__(self, mac_address):
-        print("Preparing to connect to %s" % mac_address)
-        reset_device()
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         self.con.sendline('connect')
         self.con.expect('Connection successful.*\[LE\]>', timeout=5)
-        print("Connected to %s." % mac_address)
+
+    def get_handle(self, uuid):
+        """Look up and return the handle for an attribute by its UUID.
+
+        uuid - the UUID of the characteristic.
+
+        Returns None if the UUID was not found.
+        """
+        if uuid not in self.handles:
+            with self.connection_lock:
+                self.con.sendline('char-read-uuid %s' % uuid)
+                self.con.expect('handle: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
+                self.handles[uuid] = self.con.after.split()[1]
+        return self.handles.get(uuid)
 
     def char_write_cmd(self, handle, value):
         with self.connection_lock:
             # The 0%x for value is VERY naughty!  Fix this!
             cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
-            print(cmd)
             self.con.sendline(cmd)
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
-            self.con.expect('value: .*? \r')
+            self.con.expect('value: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
             after = self.con.after
             rval = after.split()[1:]
             return bytearray([int(x, 16) for x in rval])
@@ -58,7 +69,7 @@ class BluetoothLeDevice(object):
     def char_read_hnd(self, handle):
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
-            self.con.expect('descriptor: .*? \r')
+            self.con.expect('descriptor: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
             after = self.con.after
             rval = after.split()[1:]
             return [int(n, 16) for n in rval]
