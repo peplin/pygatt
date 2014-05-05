@@ -66,6 +66,31 @@ class BluetoothLeDevice(object):
                             matching_line).group(1), 16)
         return self.handles.get(uuid)
 
+    def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
+        # TODO problem is we get the indication/notification before the
+        # write completes, and so it's lost. anytime we expect something we
+        # have to expect notification/indication first for a short time.
+        # TODO make sure you ahve the lock or make it a sempaphopre
+        try:
+            # TODO is pexpect thread safe, e.g. could we be blocked on this
+            # expect in one thread and do a sendline in another thread?
+            pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
+            if pnum == 0:
+                self._handle_notification(self.con.after)
+        except pexpect.TIMEOUT:
+            pass
+
+        # TODO DRY
+        try:
+            pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
+            if pnum == 0:
+                self._handle_notification(self.con.after)
+        except pexpect.TIMEOUT:
+            pass
+
+        self.con.expect(expected, timeout)
+
+
     def char_write_cmd(self, handle, value):
         with self.connection_lock:
             # The 0%x for value is VERY naughty!  Fix this!
@@ -77,6 +102,7 @@ class BluetoothLeDevice(object):
             hexstring = ''.join('%02x' % ord(byte) for byte in value)
             cmd = 'char-write-req 0x%02x %s' % (handle, hexstring)
             self.con.sendline(cmd)
+            self._expect('Characteristic value was written successfully')
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
@@ -100,7 +126,7 @@ class BluetoothLeDevice(object):
             with self.connection_lock:
                 try:
                     # TODO is pexpect thread safe, e.g. could we be blocked on this
-                     # expect in one thread and do a sendline in another thread?
+                    # expect in one thread and do a sendline in another thread?
                     pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
 
                     if pnum == 0:
