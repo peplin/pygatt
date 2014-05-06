@@ -31,7 +31,7 @@ class BluetoothLeError(Exception): pass
 
 class BluetoothLeDevice(object):
     DEFAULT_TIMEOUT_S = 1
-    connection_lock = threading.Lock()
+    connection_lock = threading.RLock()
     handles = {}
 
     def __init__(self, mac_address):
