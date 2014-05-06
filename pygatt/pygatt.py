@@ -114,6 +114,7 @@ class BluetoothLeDevice(object):
 
             if wait_for_response:
                 self._expect('Characteristic value was written successfully')
+            print("Sent.")
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
