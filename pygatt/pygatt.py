@@ -4,6 +4,7 @@ import pexpect
 import subprocess
 import threading
 import re
+import string
 
 def reset_bluetooth_controller():
     print("Re-initializing Bluetooth controller")
@@ -140,7 +141,7 @@ class BluetoothLeDevice(object):
         self.char_write_req(handle, bytearray([0x02, 0x00]))
 
     def _handle_notification(self, msg):
-        handle, _, value = self.con.after.split()[3:]
+        handle, _, value = string.split(self.con.after.strip(), maxsplit=5)[3:]
         handle = int(handle, 16)
         value = bytearray.fromhex(value)
         print("Received indication on handle 0x%x " % handle)
