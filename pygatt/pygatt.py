@@ -38,7 +38,10 @@ class BluetoothLeDevice(object):
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         self.con.sendline('connect')
-        self.con.expect('Connection successful.*\[LE\]>', timeout=5)
+        try:
+            self.con.expect('Connection successful.*\[LE\]>', timeout=5)
+        except pexpect.TIMEOUT:
+            raise BluetoothLeError("Unable to connect to device")
 
     def get_handle(self, uuid):
         """Look up and return the handle for an attribute by its UUID.
