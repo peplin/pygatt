@@ -34,6 +34,7 @@ class BluetoothLeDevice(object):
     DEFAULT_TIMEOUT_S = 1
     connection_lock = threading.RLock()
     handles = {}
+    callbacks = {}
 
     def __init__(self, mac_address):
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
@@ -129,6 +130,13 @@ class BluetoothLeDevice(object):
 
     def subscribe(self, uuid, callback=None):
         handle = self.get_handle(uuid)
+        # TODO hard coding 0200, which enables indications. 0100 enables
+        # notifications and 0300 both (supposedly, but that doens't seem to work
+        # for me)
+        if callback is not None:
+            # TODO replacing any exisiting callbacks for now for simplicity
+            self.callbacks[handle] = callback
+
         # TODO how do we explicitly associate the value and CCC handles?
         handle += 2
         self.char_write(handle, bytearray([0x02, 0x00]), wait_for_response=True)
@@ -137,24 +145,20 @@ class BluetoothLeDevice(object):
         handle, _, value = string.split(self.con.after.strip(), maxsplit=5)[3:]
         handle = int(handle, 16)
         value = bytearray.fromhex(value)
-        print("Received indication on handle 0x%x " % handle)
+
+        # TODO more hard coded handles...notificaitons come in on the CCC
+        # level attribute, not the value. is that right or is it a firmware
+        # bug?
+        handle -= 1
+        if handle in self.callbacks:
+            self.callbacks[handle](handle, value)
 
     def run(self):
         while True:
             with self.connection_lock:
-                try:
-                    # TODO is pexpect thread safe, e.g. could we be blocked on this
-                    # expect in one thread and do a sendline in another thread?
-                    pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
-                    if pnum == 0:
-                        self._handle_notification(self.con.after)
-                except pexpect.TIMEOUT:
-                    pass
-
-                # TODO DRY
-                try:
-                    pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
-                    if pnum == 0:
-                        self._handle_notification(self.con.after)
-                except pexpect.TIMEOUT:
-                    pass
+                self._expect_async_notifications(timeout=.1)
+            # TODO need some delay to avoid aggresively grabbing the lock,
+            # blocking out the others. worst case is 1 second delay for async
+            # not received as a part of another request
+            import time
+            time.sleep(1)
