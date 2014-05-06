@@ -64,11 +64,22 @@ class BluetoothLeDevice(object):
                     # matching our uuid (because it was the filter for the call
                     # to 'expect' above. Take that and pull out the leftmost
                     # handle value.
-                    #TODO just split on ':'!
+                    # ...just split on ':'!
                     matching_line = self.con.before.splitlines(True)[-1]
                     self.handles[uuid] = int(re.match("\x1b\[Khandle: 0x([a-fA-F0-9]{4})",
                             matching_line).group(1), 16)
         return self.handles.get(uuid)
+
+    def _expect_async_notifications(self, timeout=DEFAULT_ASYNC_TIMEOUT_S):
+        for key in ['Indication', 'Notification']:
+            try:
+                # TODO is pexpect thread safe, e.g. could we be blocked on this
+                # expect in one thread and do a sendline in another thread?
+                if self.con.expect('%s   handle = .*? \r' % key,
+                        timeout=timeout) == 0:
+                    self._handle_notification(self.con.after)
+            except pexpect.TIMEOUT:
+                pass
 
     def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
         """We may (and often do) get an indication/notification before a
@@ -76,7 +87,7 @@ class BluetoothLeDevice(object):
         that came after it in the output, e.g.:
 
         > char-write-req 0x1 0x2
-        Notificaiton    handle: xxx
+        Notification    handle: xxx
         Write completed successfully.
         >
 
@@ -85,23 +96,7 @@ class BluetoothLeDevice(object):
         """
 
         with self.connection_lock:
-            try:
-                # TODO is pexpect thread safe, e.g. could we be blocked on this
-                # expect in one thread and do a sendline in another thread?
-                pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
-                if pnum == 0:
-                    self._handle_notification(self.con.after)
-            except pexpect.TIMEOUT:
-                pass
-
-            # TODO DRY
-            try:
-                pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
-                if pnum == 0:
-                    self._handle_notification(self.con.after)
-            except pexpect.TIMEOUT:
-                pass
-
+            self._expect_async_notifications()
             self.con.expect(expected, timeout)
 
 
@@ -121,14 +116,14 @@ class BluetoothLeDevice(object):
     def char_read_uuid(self, uuid):
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
-            self.con.expect('value: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
+            self._expect('value: .*? \r')
             rval = self.con.after.split()[1:]
             return bytearray([int(x, 16) for x in rval])
 
     def char_read_hnd(self, handle):
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
-            self.con.expect('descriptor: .*? \r', timeout=self.DEFAULT_TIMEOUT_S)
+            self._expect('descriptor: .*? \r')
             rval = self.con.after.split()[1:]
             return [int(n, 16) for n in rval]
 
