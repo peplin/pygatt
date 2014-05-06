@@ -70,28 +70,38 @@ class BluetoothLeDevice(object):
         return self.handles.get(uuid)
 
     def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
-        # TODO problem is we get the indication/notification before the
-        # write completes, and so it's lost. anytime we expect something we
-        # have to expect notification/indication first for a short time.
-        # TODO make sure you ahve the lock or make it a sempaphopre
-        try:
-            # TODO is pexpect thread safe, e.g. could we be blocked on this
-            # expect in one thread and do a sendline in another thread?
-            pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
-            if pnum == 0:
-                self._handle_notification(self.con.after)
-        except pexpect.TIMEOUT:
-            pass
+        """We may (and often do) get an indication/notification before a
+        write completes, and so it can be lost if we "expect()"'d something
+        that came after it in the output, e.g.:
 
-        # TODO DRY
-        try:
-            pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
-            if pnum == 0:
-                self._handle_notification(self.con.after)
-        except pexpect.TIMEOUT:
-            pass
+        > char-write-req 0x1 0x2
+        Notificaiton    handle: xxx
+        Write completed successfully.
+        >
 
-        self.con.expect(expected, timeout)
+        Anytime we expect something we have to expect noti/indication first for
+        a short time.
+        """
+
+        with self.connection_lock:
+            try:
+                # TODO is pexpect thread safe, e.g. could we be blocked on this
+                # expect in one thread and do a sendline in another thread?
+                pnum = self.con.expect('Notification handle = .*? \r', timeout=.5)
+                if pnum == 0:
+                    self._handle_notification(self.con.after)
+            except pexpect.TIMEOUT:
+                pass
+
+            # TODO DRY
+            try:
+                pnum = self.con.expect('Indication   handle = .*? \r', timeout=.5)
+                if pnum == 0:
+                    self._handle_notification(self.con.after)
+            except pexpect.TIMEOUT:
+                pass
+
+            self.con.expect(expected, timeout)
 
 
     def char_write_cmd(self, handle, value):
