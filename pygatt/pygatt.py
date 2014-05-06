@@ -31,7 +31,8 @@ def lescan(timeout=5):
 class BluetoothLeError(Exception): pass
 
 class BluetoothLeDevice(object):
-    DEFAULT_TIMEOUT_S = 1
+    DEFAULT_TIMEOUT_S = .5
+    DEFAULT_ASYNC_TIMEOUT_S = .5
     connection_lock = threading.RLock()
     handles = {}
     callbacks = {}
