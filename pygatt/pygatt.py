@@ -99,19 +99,19 @@ class BluetoothLeDevice(object):
             self._expect_async_notifications()
             self.con.expect(expected, timeout)
 
-
-    def char_write_cmd(self, handle, value):
-        with self.connection_lock:
-            # The 0%x for value is VERY naughty!  Fix this!
-            cmd = 'char-write-cmd 0x%02x 0%x' % (handle, value)
-            self.con.sendline(cmd)
-
-    def char_write_req(self, handle, value):
+    def char_write(self, handle, value, wait_for_response=False):
         with self.connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
-            cmd = 'char-write-req 0x%02x %s' % (handle, hexstring)
+            if wait_for_response:
+                cmd = 'req'
+            else:
+                cmd = 'cmd'
+            cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
+            print("Sending command: %s" % cmd)
             self.con.sendline(cmd)
-            self._expect('Characteristic value was written successfully')
+
+            if wait_for_response:
+                self._expect('Characteristic value was written successfully')
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
@@ -131,9 +131,7 @@ class BluetoothLeDevice(object):
         handle = self.get_handle(uuid)
         # TODO how do we explicitly associate the value and CCC handles?
         handle += 2
-        # TODO just turning on notifications and indications for now to keep
-        # it simple
-        self.char_write_req(handle, bytearray([0x02, 0x00]))
+        self.char_write(handle, bytearray([0x02, 0x00]), wait_for_response=True)
 
     def _handle_notification(self, msg):
         handle, _, value = string.split(self.con.after.strip(), maxsplit=5)[3:]
