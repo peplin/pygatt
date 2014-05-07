@@ -16,7 +16,7 @@ def lescan(timeout=5):
     # TODO don't want to expect anything, just want to take advantage of
     # pexpect's timeout feature
     try:
-        scan.expect("nothing", timeout=timeout)
+        scan.expect("foooooo", timeout=timeout)
     except pexpect.TIMEOUT:
         devices = []
         for line in scan.before.split("\r\n"):
@@ -72,17 +72,6 @@ class BluetoothLeDevice(object):
                             matching_line).group(1), 16)
         return self.handles.get(uuid)
 
-    def _expect_async_notifications(self, timeout=DEFAULT_ASYNC_TIMEOUT_S):
-        for key in ['Indication', 'Notification']:
-            try:
-                # TODO is pexpect thread safe, e.g. could we be blocked on this
-                # expect in one thread and do a sendline in another thread?
-                if self.con.expect('%s   handle = .*? \r' % key,
-                        timeout=timeout) == 0:
-                    self._handle_notification(self.con.after)
-            except pexpect.TIMEOUT:
-                pass
-
     def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
         """We may (and often do) get an indication/notification before a
         write completes, and so it can be lost if we "expect()"'d something
@@ -98,8 +87,17 @@ class BluetoothLeDevice(object):
         """
 
         with self.connection_lock:
-            self._expect_async_notifications()
-            self.con.expect(expected, timeout)
+            patterns = [
+                expected,
+                'Indication   handle = .*? \r',
+                'Notification   handle = .*? \r',
+            ]
+            while True:
+                matched_pattern_index = self.con.expect(patterns, timeout)
+                if matched_pattern_index == 0:
+                    break
+                elif matched_pattern_index == 0 or matched_pattern_index == 1:
+                    self._handle_notification(self.con.after)
 
     def char_write(self, handle, value, wait_for_response=False):
         with self.connection_lock:
@@ -158,7 +156,10 @@ class BluetoothLeDevice(object):
     def run(self):
         while True:
             with self.connection_lock:
-                self._expect_async_notifications(timeout=.1)
+                try:
+                    self._expect("fooooooo", timeout=.1)
+                except pexpect.TIMEOUT:
+                    pass
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request
