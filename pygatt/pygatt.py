@@ -36,6 +36,7 @@ class BluetoothLeDevice(object):
     connection_lock = threading.RLock()
     handles = {}
     callbacks = {}
+    running = True
 
     def __init__(self, mac_address):
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
@@ -93,11 +94,14 @@ class BluetoothLeDevice(object):
                 'Notification   handle = .*? \r',
             ]
             while True:
-                matched_pattern_index = self.con.expect(patterns, timeout)
-                if matched_pattern_index == 0:
-                    break
-                elif matched_pattern_index == 0 or matched_pattern_index == 1:
-                    self._handle_notification(self.con.after)
+                try:
+                    matched_pattern_index = self.con.expect(patterns, timeout)
+                    if matched_pattern_index == 0:
+                        break
+                    elif matched_pattern_index == 0 or matched_pattern_index == 1:
+                        self._handle_notification(self.con.after)
+                except pexpect.TIMEOUT:
+                    raise BluetoothLeError(self.con.before)
 
     def char_write(self, handle, value, wait_for_response=False):
         with self.connection_lock:
@@ -153,12 +157,15 @@ class BluetoothLeDevice(object):
         if handle in self.callbacks:
             self.callbacks[handle](handle, value)
 
+    def stop(self):
+        self.running = False
+
     def run(self):
-        while True:
+        while self.running:
             with self.connection_lock:
                 try:
                     self._expect("fooooooo", timeout=.1)
-                except pexpect.TIMEOUT:
+                except BluetoothLeError:
                     pass
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
