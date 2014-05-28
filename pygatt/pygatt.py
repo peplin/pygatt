@@ -91,14 +91,14 @@ class BluetoothLeDevice(object):
             patterns = [
                 expected,
                 'Indication   handle = .*? \r',
-                'Notification   handle = .*? \r',
+                'Notification handle = .*? \r',
             ]
             while True:
                 try:
                     matched_pattern_index = self.con.expect(patterns, timeout)
                     if matched_pattern_index == 0:
                         break
-                    elif matched_pattern_index == 0 or matched_pattern_index == 1:
+                    elif matched_pattern_index == 1 or matched_pattern_index == 2:
                         self._handle_notification(self.con.after)
                 except pexpect.TIMEOUT:
                     raise BluetoothLeError(self.con.before)
