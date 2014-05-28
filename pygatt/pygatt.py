@@ -132,18 +132,19 @@ class BluetoothLeDevice(object):
             rval = self.con.after.split()[1:]
             return [int(n, 16) for n in rval]
 
-    def subscribe(self, uuid, callback=None):
+    def subscribe(self, uuid, callback=None, indication=False):
         handle = self.get_handle(uuid)
-        # TODO hard coding 0200, which enables indications. 0100 enables
-        # notifications and 0300 both (supposedly, but that doens't seem to work
-        # for me)
         if callback is not None:
             # TODO replacing any exisiting callbacks for now for simplicity
             self.callbacks[handle] = callback
 
         # TODO how do we explicitly associate the value and CCC handles?
         handle += 2
-        self.char_write(handle, bytearray([0x02, 0x00]), wait_for_response=True)
+        if indication:
+            properties = bytearray([0x02, 0x00])
+        else:
+            properties = bytearray([0x01, 0x00])
+        self.char_write(handle, properties, wait_for_response=True)
 
     def _handle_notification(self, msg):
         handle, _, value = string.split(self.con.after.strip(), maxsplit=5)[3:]
