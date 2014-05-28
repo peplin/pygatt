@@ -172,4 +172,4 @@ class BluetoothLeDevice(object):
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request
             import time
-            time.sleep(1)
+            time.sleep(.001)
