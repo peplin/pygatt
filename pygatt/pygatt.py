@@ -38,9 +38,11 @@ class BluetoothLeDevice(object):
     callbacks = {}
     running = True
 
-    def __init__(self, mac_address):
+    def __init__(self, mac_address, bond=False):
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
+        if bond:
+            self.con.sendline('sec-level high')
         self.con.sendline('connect')
         try:
             self.con.expect('Connection successful.*\[LE\]>', timeout=5)
