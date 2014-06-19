@@ -82,7 +82,7 @@ class BluetoothLeDevice(object):
         that came after it in the output, e.g.:
 
         > char-write-req 0x1 0x2
-        Notification    handle: xxx
+        Notification handle: xxx
         Write completed successfully.
         >
 
@@ -93,8 +93,8 @@ class BluetoothLeDevice(object):
         with self.connection_lock:
             patterns = [
                 expected,
-                'Indication   handle = .*? \r',
                 'Notification handle = .*? \r',
+                'Indication   handle = .*? \r',
             ]
             while True:
                 try:
@@ -137,27 +137,25 @@ class BluetoothLeDevice(object):
 
     def subscribe(self, uuid, callback=None, indication=False):
         handle = self.get_handle(uuid)
+        # TODO how do we explicitly associate the value and CCC handles?
+        handle += 2
         if callback is not None:
             # TODO replacing any exisiting callbacks for now for simplicity
             self.callbacks[handle] = callback
 
-        # TODO how do we explicitly associate the value and CCC handles?
-        handle += 2
         if indication:
             properties = bytearray([0x02, 0x00])
         else:
             properties = bytearray([0x01, 0x00])
-        self.char_write(handle, properties, wait_for_response=True)
+        # TODO notifications are being sent without us subscribing, that's not
+        # right
+        # self.char_write(handle, properties, wait_for_response=True)
 
     def _handle_notification(self, msg):
-        handle, _, value = string.split(self.con.after.strip(), maxsplit=5)[3:]
+        handle, _, value = string.split(msg.strip(), maxsplit=5)[3:]
         handle = int(handle, 16)
         value = bytearray.fromhex(value)
 
-        # TODO more hard coded handles...notificaitons come in on the CCC
-        # level attribute, not the value. is that right or is it a firmware
-        # bug?
-        handle -= 1
         if handle in self.callbacks:
             self.callbacks[handle](handle, value)
 
