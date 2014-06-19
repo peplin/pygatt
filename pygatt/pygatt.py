@@ -4,6 +4,7 @@ import subprocess
 import threading
 import re
 import string
+import thread
 
 def reset_bluetooth_controller():
     print("Re-initializing Bluetooth controller")
@@ -47,6 +48,7 @@ class BluetoothLeDevice(object):
             self.con.expect('Connection successful.*\[LE\]>', timeout=5)
         except pexpect.TIMEOUT:
             raise BluetoothLeError("Unable to connect to device")
+        thread.start_new_thread(self.run, ())
 
     def get_handle(self, uuid):
         """Look up and return the handle for an attribute by its UUID.
