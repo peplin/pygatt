@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+from collections import defaultdict
 import pexpect
 import subprocess
 import threading
@@ -35,7 +37,8 @@ class BluetoothLeDevice(object):
     DEFAULT_ASYNC_TIMEOUT_S = .5
     connection_lock = threading.RLock()
     handles = {}
-    callbacks = {}
+    callbacks = defaultdict(set)
+    subscribed_handlers = {}
     running = True
 
     def __init__(self, mac_address, bond=False):
@@ -141,15 +144,15 @@ class BluetoothLeDevice(object):
         handle += 2
         if callback is not None:
             # TODO replacing any exisiting callbacks for now for simplicity
-            self.callbacks[handle] = callback
+            self.callbacks[handle].add(callback)
 
         if indication:
             properties = bytearray([0x02, 0x00])
         else:
             properties = bytearray([0x01, 0x00])
-        # TODO notifications are being sent without us subscribing, that's not
-        # right
-        # self.char_write(handle, properties, wait_for_response=True)
+        if self.subscribed_handlers.get(handle, None) != properties:
+            self.char_write(handle, properties, wait_for_response=False)
+            self.subscribed_handlers[handle] = properties
 
     def _handle_notification(self, msg):
         handle, _, value = string.split(msg.strip(), maxsplit=5)[3:]
@@ -157,7 +160,8 @@ class BluetoothLeDevice(object):
         value = bytearray.fromhex(value)
 
         if handle in self.callbacks:
-            self.callbacks[handle](handle, value)
+            for callback in self.callbacks[handle]:
+                callback(handle, value)
 
     def stop(self):
         self.running = False
