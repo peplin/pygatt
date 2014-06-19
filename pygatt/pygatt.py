@@ -7,6 +7,7 @@ import threading
 import re
 import string
 import thread
+from threading import Lock
 
 def reset_bluetooth_controller():
     print("Re-initializing Bluetooth controller")
@@ -42,6 +43,7 @@ class BluetoothLeDevice(object):
     running = True
 
     def __init__(self, mac_address, bond=False):
+        self.lock = Lock()
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         if bond:
@@ -142,26 +144,35 @@ class BluetoothLeDevice(object):
         handle = self.get_handle(uuid)
         # TODO how do we explicitly associate the value and CCC handles?
         handle += 2
-        if callback is not None:
-            # TODO replacing any exisiting callbacks for now for simplicity
-            self.callbacks[handle].add(callback)
-
         if indication:
             properties = bytearray([0x02, 0x00])
         else:
             properties = bytearray([0x01, 0x00])
-        if self.subscribed_handlers.get(handle, None) != properties:
-            self.char_write(handle, properties, wait_for_response=False)
-            self.subscribed_handlers[handle] = properties
+
+        try:
+            self.lock.acquire()
+
+            if callback is not None:
+                self.callbacks[handle].add(callback)
+
+            if self.subscribed_handlers.get(handle, None) != properties:
+                self.char_write(handle, properties, wait_for_response=False)
+                self.subscribed_handlers[handle] = properties
+        finally:
+            self.lock.release()
 
     def _handle_notification(self, msg):
         handle, _, value = string.split(msg.strip(), maxsplit=5)[3:]
         handle = int(handle, 16)
         value = bytearray.fromhex(value)
 
-        if handle in self.callbacks:
-            for callback in self.callbacks[handle]:
-                callback(handle, value)
+        try:
+            self.lock.acquire()
+            if handle in self.callbacks:
+                for callback in self.callbacks[handle]:
+                    callback(handle, value)
+        finally:
+            self.lock.release()
 
     def stop(self):
         self.running = False
