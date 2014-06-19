@@ -18,11 +18,11 @@ def lescan(timeout=5):
     try:
         scan.expect("foooooo", timeout=timeout)
     except pexpect.TIMEOUT:
-        devices = []
+        devices = set()
         for line in scan.before.split("\r\n"):
             match = re.match("(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)", line)
             if match is not None:
-                devices.append({
+                devices.add({
                     'address': match.group(1),
                     'name': match.group(3)
                 })
