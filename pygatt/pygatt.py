@@ -141,9 +141,11 @@ class BluetoothLeDevice(object):
             return [int(n, 16) for n in rval]
 
     def subscribe(self, uuid, callback=None, indication=False):
-        handle = self.get_handle(uuid)
-        # TODO how do we explicitly associate the value and CCC handles?
-        handle += 2
+        definition_handle = self.get_handle(uuid)
+        # Expect notifications on the value handle...
+        value_handle = definition_handle + 1
+        # but write to the characteristic config to enable notifications
+        characteristic_config_handle = value_handle + 1
         if indication:
             properties = bytearray([0x02, 0x00])
         else:
@@ -153,11 +155,11 @@ class BluetoothLeDevice(object):
             self.lock.acquire()
 
             if callback is not None:
-                self.callbacks[handle].add(callback)
+                self.callbacks[value_handle].add(callback)
 
-            if self.subscribed_handlers.get(handle, None) != properties:
-                self.char_write(handle, properties, wait_for_response=False)
-                self.subscribed_handlers[handle] = properties
+            if self.subscribed_handlers.get(value_handle, None) != properties:
+                self.char_write(characteristic_config_handle, properties, wait_for_response=False)
+                self.subscribed_handlers[value_handle] = properties
         finally:
             self.lock.release()
 
