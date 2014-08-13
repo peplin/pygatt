@@ -54,9 +54,10 @@ class BluetoothLeDevice(object):
         thread.start_new_thread(self.run, ())
 
     def connect(self, timeout=5.0):
-        self.con.sendline('connect')
         try:
-            self.con.expect('\[CON\]', timeout)
+            with self.connection_lock:
+                self.con.sendline('connect')
+                self.con.expect('\[CON\]', timeout)
         except pexpect.TIMEOUT:
             raise BluetoothLeError("Unable to connect to device")
 
