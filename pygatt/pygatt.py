@@ -42,8 +42,9 @@ class BluetoothLeDevice(object):
     subscribed_handlers = {}
     running = True
 
-    def __init__(self, mac_address, bond=False):
+    def __init__(self, mac_address, bond=False, verbose=False):
         self.lock = Lock()
+        self.verbose = verbose
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         if bond:
@@ -119,12 +120,14 @@ class BluetoothLeDevice(object):
             else:
                 cmd = 'cmd'
             cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
-            print("Sending command: %s" % cmd)
+            if self.verbose:
+                print("Sending command: %s" % cmd)
             self.con.sendline(cmd)
 
             if wait_for_response:
                 self._expect('Characteristic value was written successfully')
-            print("Sent.")
+            if self.verbose:
+                print("Sent.")
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
