@@ -42,18 +42,24 @@ class BluetoothLeDevice(object):
     subscribed_handlers = {}
     running = True
 
-    def __init__(self, mac_address, bond=False):
+    def __init__(self, mac_address, bond=False, connect=True, verbose=False):
         self.lock = Lock()
+        self.verbose = verbose
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         if bond:
             self.con.sendline('sec-level high')
-        self.con.sendline('connect')
+        if connect:
+            self.connect()
+        thread.start_new_thread(self.run, ())
+
+    def connect(self, timeout=5.0):
         try:
-            self.con.expect('Connection successful.*\[LE\]>', timeout=5)
+            with self.connection_lock:
+                self.con.sendline('connect')
+                self.con.expect('\[CON\]', timeout)
         except pexpect.TIMEOUT:
             raise BluetoothLeError("Unable to connect to device")
-        thread.start_new_thread(self.run, ())
 
     def get_handle(self, uuid):
         """Look up and return the handle for an attribute by its UUID.
@@ -77,7 +83,7 @@ class BluetoothLeDevice(object):
                     # handle value.
                     # ...just split on ':'!
                     matching_line = self.con.before.splitlines(True)[-1]
-                    self.handles[uuid] = int(re.match("\x1b\[Khandle: 0x([a-fA-F0-9]{4})",
+                    self.handles[uuid] = int(re.match("handle: 0x([a-fA-F0-9]{4})",
                             matching_line).group(1), 16)
         return self.handles.get(uuid)
 
@@ -119,12 +125,14 @@ class BluetoothLeDevice(object):
             else:
                 cmd = 'cmd'
             cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
-            print("Sending command: %s" % cmd)
+            if self.verbose:
+                print("Sending command: %s" % cmd)
             self.con.sendline(cmd)
 
             if wait_for_response:
                 self._expect('Characteristic value was written successfully')
-            print("Sent.")
+            if self.verbose:
+                print("Sent.")
 
     def char_read_uuid(self, uuid):
         with self.connection_lock:
