@@ -83,8 +83,9 @@ class BluetoothLeDevice(object):
                     # handle value.
                     # ...just split on ':'!
                     matching_line = self.con.before.splitlines(True)[-1]
-                    self.handles[uuid] = int(re.match("\x1b\[Khandle: 0x([a-fA-F0-9]{4})",
-                            matching_line).group(1), 16)
+                    self.handles[uuid] = int(
+                            re.search("handle: 0x([a-fA-F0-9]{4})",
+                                matching_line).group(1), 16)
         return self.handles.get(uuid)
 
     def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
