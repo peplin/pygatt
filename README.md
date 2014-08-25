@@ -9,7 +9,10 @@ use BlueZ directly, but that's a much bigger task.
 ## Dependencies
 
 * Linux
-* BlueZ >= 5.18 (includes gatttool)
+* BlueZ >= 5.5 (includes gatttool with the latest prompt styles).
+    * Tested on 5.18 and 5.21
+    * Ubuntu is stuck on BlueZ 4.x and does not work - you need to build BlueZ
+      from source.
 * Python packages in pip-requirements.txt (installed with `pip install -r pip-requirements.txt`)
 * hcitool configured for passwordless sudo
 
