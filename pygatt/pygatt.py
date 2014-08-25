@@ -48,7 +48,7 @@ class BluetoothLeDevice(object):
         self.con = pexpect.spawn('gatttool -b ' + mac_address + ' --interactive')
         self.con.expect('\[LE\]>', timeout=1)
         if bond:
-            self.con.sendline('sec-level high')
+            self.con.sendline('sec-level medium')
         if connect:
             self.connect()
         thread.start_new_thread(self.run, ())
