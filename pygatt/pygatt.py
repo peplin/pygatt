@@ -21,15 +21,16 @@ def lescan(timeout=5):
     try:
         scan.expect("foooooo", timeout=timeout)
     except pexpect.TIMEOUT:
-        devices = set()
+        devices = {}
         for line in scan.before.split("\r\n"):
             match = re.match("(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)", line)
             if match is not None:
-                devices.add({
+                name = match.group(1)
+                devices[name] = {
                     'address': match.group(1),
                     'name': match.group(3)
-                })
-    return [device for device in devices]
+                }
+    return [device for device in devices.values()]
 
 class BluetoothLeError(Exception): pass
 
