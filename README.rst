@@ -62,7 +62,7 @@ This should print something like:
 
 Author
 ----
-Greg Albrecht mailto:gba@onbeep.com @ampledata
+Greg Albrecht <gba@onbeep.com> https://github.com/ampledata
 
 Derived from the work of several others, see NOTICE.
 
