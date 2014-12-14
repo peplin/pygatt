@@ -6,11 +6,13 @@ fitness trackers, sensors, and anything implementing standard GATT Descriptor be
 
 pygatt wraps BlueZ's `gatttool` command-line utility with a Pythonic API.
 
+
 Motivation
 ----
 
 `gatttool` has an interactive mode but it is difficult to use programatically.
 Ideally we could use BlueZ directly, but that's a much bigger task.
+
 
 Dependencies
 ----
@@ -20,14 +22,20 @@ Dependencies
     * Ubuntu is stuck on BlueZ 4.x and does not work - you need to build BlueZ
       from source.
 
-Example
-----
 
+Installation
+----
+* Install via pip: `$ pip install pygatt`
+
+
+Usage Example
+----
 Connect to a bGeigie Nano using BLEBee and decode sensor data (NMEA-like):
 
 .. code:: python
 
   import pygatt
+
   str_buf = ''
   def print_str_buf(x,y):
       global str_buf
@@ -50,3 +58,25 @@ This should print something like:
 .. parsed-literal::
 
   $BNRDD,2359,2014-12-14T09:46:47Z,32,2,2398,A,3745.6045,N,12229.8638,W,50.40,A,8,87*5B
+
+
+Author
+----
+Greg Albrecht mailto:gba@onbeep.com @ampledata
+
+Derived from the work of several others, see NOTICE.
+
+
+License
+----
+Apache License, Version 2.0. See LICENSE.
+
+
+Copyright
+----
+Copyright 2014 OnBeep, Inc.
+
+
+Source
+----
+https://github.com/ampledata/pygatt
