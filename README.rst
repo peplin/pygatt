@@ -31,3 +31,35 @@ The new code for the `pygatt` project is also licensed under the Apache 2.0
 license.
 
     sudo hcitool lescan
+
+
+Example
+====
+
+Connect to a bGeigie Nano using BLEBee and decode sensor data (NMEA-like):
+
+```
+#!/usr/bin/env python
+
+import pygatt
+
+str_buf = ''
+def print_str_buf(x,y):
+    global str_buf
+    str_y = "%s" % y
+    if str_y == '$':
+        print str_buf
+        sb = str_y
+    else:
+        str_buf = str_buf + str_y
+
+
+pygatt.util.reset_bluetooth_controller()
+bgn = pygatt.pygatt.BluetoothLEDevice('00:07:80:71:D5:89')
+bgn.connect()
+bgn.char_write(32, bytearray([0x03, 0x00]))
+bgn.subscribe('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b', print_str_buf)
+bgn.run()
+
+# $BNRDD,2359,2014-12-14T09:46:47Z,32,2,2398,A,3745.6045,N,12229.8638,W,50.40,A,8,87*5B
+```

@@ -1,0 +1,10 @@
+# Python Distribution Package Requirements for pygatt.
+#
+# Source:: https://github.com/ampledata/pygatt
+# Author:: Greg Albrecht <gba@onbeep.com>
+# Copyright:: Copyright 2014 OnBeep, Inc.
+# License:: Apache License, Version 2.0
+
+
+flake8==2.1.0
+pylint==1.2.1
