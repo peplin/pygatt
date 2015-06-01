@@ -62,7 +62,7 @@ This should print something like:
 
 Author
 ----
-Greg Albrecht <gba@onbeep.com> https://github.com/ampledata
+Greg Albrecht <gba@orionlabs.co> https://github.com/ampledata
 
 Derived from the work of several others, see NOTICE.
 
@@ -74,7 +74,7 @@ Apache License, Version 2.0. See LICENSE.
 
 Copyright
 ----
-Copyright 2014 OnBeep, Inc.
+Copyright 2015 Orion Labs
 
 
 Source

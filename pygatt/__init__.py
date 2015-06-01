@@ -8,8 +8,8 @@ pygatt Python Module.
 ~~~~
 
 
-:author: Greg Albrecht <gba@onbeep.com>
-:copyright: Copyright 2014 OnBeep, Inc.
+:author: Greg Albrecht <gba@orionlabs.co>
+:copyright: Copyright 2015 Orion Labs
 :license: Apache License, Version 2.0
 :source: <https://github.com/ampledata/pygatt>
 

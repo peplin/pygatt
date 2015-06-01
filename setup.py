@@ -8,10 +8,10 @@ Source:: https://github.com/ampledata/aprs
 
 
 __title__ = 'pygatt'
-__version__ = '1.0.0'
-__author__ = 'Greg Albrecht <gba@onbeep.com>'
+__version__ = '1.0.1'
+__author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2014 OnBeep, Inc.'
+__copyright__ = 'Copyright 2015 Orion Labs'
 
 
 import os
@@ -38,7 +38,7 @@ setup(
     version=__version__,
     description='Python GATT Module',
     author='Greg Albrecht',
-    author_email='gba@onbeep.com',
+    author_email='gba@orionlabs.co',
     packages=['pygatt'],
     package_data={'': ['LICENSE', 'NOTICE']},
     license=open('LICENSE').read(),

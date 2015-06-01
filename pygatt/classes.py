@@ -3,9 +3,9 @@
 
 """pygatt Class Definitions"""
 
-__author__ = 'Greg Albrecht <gba@onbeep.com>'
+__author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2014 OnBeep, Inc.'
+__copyright__ = 'Copyright 2015 Orion Labs'
 
 
 import logging
