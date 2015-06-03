@@ -25,8 +25,7 @@ def reset_bluetooth_controller(hci_device='hci0'):
     :param interface: Interface to re-initialize.
     :type interface: str
     """
-    subprocess.Popen(["sudo", "hciconfig", hci_device, "down"]).wait()
-    subprocess.Popen(["sudo", "hciconfig", hci_device, "up"]).wait()
+    subprocess.Popen(["sudo", "hciconfig", hci_device, "reset"]).wait()
 
 
 # TODO(gba): Replace with Fabric.
