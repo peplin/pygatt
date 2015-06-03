@@ -40,6 +40,7 @@ class BluetoothLEDevice(object):
     def __init__(self, mac_address, hci_device='hci0'):
         self.handles = {}
         self.subscribed_handlers = {}
+        self.address = mac_address
 
         self.running = True
 
@@ -50,7 +51,7 @@ class BluetoothLEDevice(object):
         gatttool_cmd = ' '.join([
             'gatttool',
             '-b',
-            mac_address,
+            self.address,
             '-i',
             hci_device,
             '-I'
@@ -90,8 +91,8 @@ class BluetoothLEDevice(object):
                 self.con.sendline('connect')
                 self.con.expect(r'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
-            message = ("Timed out connecting to device after %s seconds." %
-                       timeout)
+            message = ("Timed out connecting to %s after %s seconds."
+                       % (self.address, timeout))
             self.logger.error(message)
             raise pygatt.exceptions.BluetoothLEError(message)
 
