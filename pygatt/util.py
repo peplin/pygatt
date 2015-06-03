@@ -66,10 +66,18 @@ def lescan(timeout=5, use_sudo=True):
                 r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
             if match is not None:
-                name = match.group(1)
-                devices[name] = {
-                    'address': match.group(1),
-                    'name': match.group(3)
-                }
+                address = match.group(3)
+                name = match.group(3)
+                if name == "(unknown)":
+                    name = None
+
+                if address in devices:
+                    if devices[address]['name'] is None:
+                        devices[address]['name'] = name
+                else:
+                    devices[address] = {
+                        'address': address,
+                        'name': name
+                    }
 
     return [device for device in devices.values()]
