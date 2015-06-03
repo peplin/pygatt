@@ -90,8 +90,10 @@ class BluetoothLEDevice(object):
                 self.con.sendline('connect')
                 self.con.expect(r'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
-            raise pygatt.exceptions.BluetoothLEError(
-                "Timed-out connecting to device after %s seconds." % timeout)
+            message = ("Timed out connecting to device after %s seconds." %
+                       timeout)
+            self.logger.error(message)
+            raise pygatt.exceptions.BluetoothLEError(message)
 
     def get_handle(self, uuid):
         """
@@ -107,7 +109,9 @@ class BluetoothLEDevice(object):
                 try:
                     self.con.expect(uuid, timeout=5)
                 except pexpect.TIMEOUT:
-                    raise pygatt.exceptions.BluetoothLEError(self.con.before)
+                    message = "Timed out looking for handler for %s" % uuid
+                    self.logger.error(message)
+                    raise pygatt.exceptions.BluetoothLEError(message)
                 else:
                     # FIXME The last line of the output will be the one
                     #       matching our uuid (because it was the filter
@@ -153,7 +157,8 @@ class BluetoothLEDevice(object):
                           matched_pattern_index == 2):
                         self._handle_notification(self.con.after)
                 except pexpect.TIMEOUT:
-                    raise pygatt.exceptions.BluetoothLEError(self.con.before)
+                    raise pygatt.exceptions.BluetoothLEError(
+                        "Timed out waiting for a notification")
 
     def char_write(self, handle, value, wait_for_response=False):
         """
