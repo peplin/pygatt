@@ -78,7 +78,7 @@ class BluetoothLEDevice(object):
 
     def bond(self):
         """Securely Bonds to the BLE device."""
-        self.logger.info('Bonding.')
+        self.logger.info('Bonding')
         self.con.sendline('sec-level medium')
 
     def connect(self, timeout=pygatt.constants.DEFAULT_CONNECT_TIMEOUT_S):
@@ -157,7 +157,8 @@ class BluetoothLEDevice(object):
                     elif matched_pattern_index in [1, 2]:
                         self._handle_notification(self.con.after)
                     elif matched_pattern_index in [3, 4]:
-                        message = "Unexpectedly disconnected"
+                        message = ("Unexpectedly disconnected - do you "
+                                   "need to clear bonds?")
                         self.logger.error(message)
                         raise pygatt.exceptions.NotConnectedError(message)
                 except pexpect.TIMEOUT:
