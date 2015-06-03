@@ -46,8 +46,8 @@ setup(
     url='https://github.com/ampledata/pygatt',
     install_requires=['pexpect'],
     setup_requires=[
-      'coverage==3.7.1',
-      'nose==1.3.1'
+        'coverage==3.7.1',
+        'nose==1.3.1'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,
