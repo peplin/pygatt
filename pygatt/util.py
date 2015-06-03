@@ -12,8 +12,12 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 
 import re
 import subprocess
-
 import pexpect
+import logging
+
+from .exceptions import BluetoothLEError
+
+logger = logging.getLogger(__name__)
 
 
 # TODO(gba): Replace with Fabric.
@@ -49,16 +53,22 @@ def lescan(timeout=5, use_sudo=True):
     :return: List of BLE devices found.
     :rtype: list
     """
+    cmd = 'hcitool lescan'
     if use_sudo:
-        cmd = 'sudo hcitool lescan'
-    else:
-        cmd = 'hcitool lescan'
+        cmd = 'sudo %s' % cmd
 
+    logger.info("Starting BLE scan")
     scan = pexpect.spawn(cmd)
 
     # "lescan" doesn't exit, so we're forcing a timeout here:
     try:
         scan.expect('foooooo', timeout=timeout)
+    except pexpect.EOF:
+        if "No such device" in scan.before:
+            logger.error("No BLE adapter available")
+        else:
+            logger.error("Unexpected error: %s", exc_info=True)
+        raise BluetoothLEError("Unable to scan")
     except pexpect.TIMEOUT:
         devices = {}
         for line in scan.before.split('\r\n'):
@@ -66,7 +76,8 @@ def lescan(timeout=5, use_sudo=True):
                 r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
             if match is not None:
-                address = match.group(3)
+                logger.debug("Discovered %s", line)
+                address = match.group(1)
                 name = match.group(3)
                 if name == "(unknown)":
                     name = None
@@ -79,5 +90,7 @@ def lescan(timeout=5, use_sudo=True):
                         'address': address,
                         'name': name
                     }
-
-    return [device for device in devices.values()]
+                logger.info("Discovered %s (%s)", devices[address], name)
+        logger.info("Found %d BLE devices", len(devices))
+        return [device for device in devices.values()]
+    return []
