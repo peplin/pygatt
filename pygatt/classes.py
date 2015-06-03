@@ -240,7 +240,6 @@ class BluetoothLEDevice(object):
         else:
             properties = bytearray([0x01, 0x00])
 
-        self.logger.debug(locals())
         try:
             self.lock.acquire()
 
