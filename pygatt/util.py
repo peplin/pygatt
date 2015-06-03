@@ -33,6 +33,15 @@ def lescan(timeout=5, use_sudo=True):
     """
     Performs a BLE scan using hcitool.
 
+    If you don't want to use 'sudo', you must add a few 'capabilities' to your
+    system. If you have libcap installed, run this to enable normal users to
+    perform LE scanning:
+
+        setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+
+    If you do use sudo, the hcitool subprocess becomes more difficult to
+    terminate cleanly, and may leave your Bluetooth adapter in a bad state.
+
     :param timeout: Time (in seconds) to wait for the scan to complete.
     :param use_sudo: Perform scan as superuser.
     :type timeout: int
