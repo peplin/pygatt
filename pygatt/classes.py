@@ -29,7 +29,7 @@ class BluetoothLEDevice(object):
 
     """BluetoothLEDevice Object."""
 
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('pygatt')
     logger.setLevel(pygatt.constants.LOG_LEVEL)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(pygatt.constants.LOG_LEVEL)
