@@ -40,6 +40,7 @@ class BluetoothLEDevice(object):
     def __init__(self, mac_address, hci_device='hci0'):
         self.handles = {}
         self.subscribed_handlers = {}
+        self.subscribed_characteristics = {}
         self.address = mac_address
 
         self.running = True
@@ -183,7 +184,11 @@ class BluetoothLEDevice(object):
             self.con.sendline(cmd)
 
             if wait_for_response:
-                self._expect('Characteristic value was written successfully')
+                try:
+                    self._expect('Characteristic value written successfully')
+                except pygatt.exceptions.BluetoothLEError:
+                    self.logger.error("No response received", exc_info=True)
+                    raise
 
             self.logger.info('Sent cmd=%s', cmd)
 
@@ -231,6 +236,13 @@ class BluetoothLEDevice(object):
         :return:
         :rtype:
         """
+        if (self.subscribed_characteristics.get(uuid, None) ==
+                (callback, indication,)):
+            self.logger.debug(
+                'Already subscribed to uuid=%s with callback=%s and '
+                'indication=%s', uuid, callback, indication)
+            return
+
         self.logger.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
@@ -258,6 +270,7 @@ class BluetoothLEDevice(object):
                     wait_for_response=False
                 )
                 self.subscribed_handlers[value_handle] = properties
+                self.subscribed_characteristics[uuid] = (callback, indication,)
         finally:
             self.lock.release()
 
