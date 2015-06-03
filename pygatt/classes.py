@@ -36,7 +36,6 @@ class BluetoothLEDevice(object):
     formatter = logging.Formatter(pygatt.constants.LOG_FORMAT)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    logger.propagate = False
 
     def __init__(self, mac_address, hci_device='hci0'):
         self.handles = {}
