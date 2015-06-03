@@ -76,21 +76,22 @@ def lescan(timeout=5, use_sudo=True):
                 r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
             if match is not None:
-                logger.debug("Discovered %s", line)
                 address = match.group(1)
                 name = match.group(3)
                 if name == "(unknown)":
                     name = None
 
                 if address in devices:
-                    if devices[address]['name'] is None:
+                    if devices[address]['name'] is None and name is not None:
+                        logger.info("Discovered name of %s as %s",
+                                    address, name)
                         devices[address]['name'] = name
                 else:
+                    logger.info("Discovered %s (%s)", address, name)
                     devices[address] = {
                         'address': address,
                         'name': name
                     }
-                logger.info("Discovered %s (%s)", devices[address], name)
         logger.info("Found %d BLE devices", len(devices))
         return [device for device in devices.values()]
     return []
