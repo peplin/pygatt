@@ -258,13 +258,15 @@ class BluetoothLEDevice(object):
 
     def _handle_notification(self, msg):
         """
-        Handles notification?
+        Receive a notification from the connected device and propagate the value
+        to all registered callbacks.
         """
-        self.logger.debug('Handling notification msg=%s', msg)
-        handle, _, value = string.split(msg.strip(), maxsplit=5)[3:]
-        handle = int(handle, 16)
-        value = bytearray.fromhex(value)
+        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
+        handle = int(hex_handle, 16)
+        value = bytearray.fromhex(hex_value)
 
+        self.logger.info('Received notification on handle=%s, value=%s',
+                         hex_handle, hex_value)
         try:
             self.lock.acquire()
 
