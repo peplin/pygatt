@@ -26,9 +26,6 @@ import pygatt.util
 
 
 class BluetoothLEDevice(object):
-
-    """BluetoothLEDevice Object."""
-
     logger = logging.getLogger('pygatt')
     logger.setLevel(pygatt.constants.LOG_LEVEL)
     console_handler = logging.StreamHandler()
@@ -95,7 +92,7 @@ class BluetoothLEDevice(object):
             message = ("Timed out connecting to %s after %s seconds."
                        % (self.address, timeout))
             self.logger.error(message)
-            raise pygatt.exceptions.BluetoothLEError(message)
+            raise pygatt.exceptions.NotConnectedError(message)
 
     def get_handle(self, uuid):
         """
@@ -149,17 +146,22 @@ class BluetoothLEDevice(object):
                 expected,
                 'Notification handle = .*? \r',
                 'Indication   handle = .*? \r',
+                '.*Invalid file descriptor.*',
+                '.*Disconnected\r',
             ]
             while 1:
                 try:
                     matched_pattern_index = self.con.expect(patterns, timeout)
                     if matched_pattern_index == 0:
                         break
-                    elif (matched_pattern_index == 1 or
-                          matched_pattern_index == 2):
+                    elif matched_pattern_index in [1, 2]:
                         self._handle_notification(self.con.after)
+                    elif matched_pattern_index in [3, 4]:
+                        message = "Unexpectedly disconnected"
+                        self.logger.error(message)
+                        raise pygatt.exceptions.NotConnectedError(message)
                 except pexpect.TIMEOUT:
-                    raise pygatt.exceptions.BluetoothLEError(
+                    raise pygatt.exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
 
     def char_write(self, handle, value, wait_for_response=False):
@@ -186,7 +188,7 @@ class BluetoothLEDevice(object):
             if wait_for_response:
                 try:
                     self._expect('Characteristic value written successfully')
-                except pygatt.exceptions.BluetoothLEError:
+                except pygatt.exceptions.NoResponseError:
                     self.logger.error("No response received", exc_info=True)
                     raise
 
@@ -306,8 +308,10 @@ class BluetoothLEDevice(object):
             with self.connection_lock:
                 try:
                     self._expect("fooooooo", timeout=.1)
-                except pygatt.exceptions.BluetoothLEError:
+                except pygatt.exceptions.NotificationTimeout:
                     pass
+                except pygatt.exceptions.NotConnectedError:
+                    break
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request

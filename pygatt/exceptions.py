@@ -13,3 +13,15 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 class BluetoothLEError(Exception):
     """Exception class for pygatt."""
     pass
+
+
+class NotConnectedError(BluetoothLEError):
+    pass
+
+
+class NotificationTimeout(BluetoothLEError):
+    pass
+
+
+class NoResponseError(BluetoothLEError):
+    pass
