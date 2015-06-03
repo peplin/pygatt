@@ -180,7 +180,7 @@ class BluetoothLEDevice(object):
             if wait_for_response:
                 self._expect('Characteristic value was written successfully')
 
-            self.logger.debug('Sent cmd=%s', cmd)
+            self.logger.info('Sent cmd=%s', cmd)
 
     def char_read_uuid(self, uuid):
         """
