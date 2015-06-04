@@ -290,12 +290,15 @@ class BluetoothLEDevice(object):
             self.lock.release()
 
     def stop(self):
-        """Stops?"""
+        """Stop the backgroud notification handler in preparation for a
+        disconnect.
+        """
         self.logger.info('Stopping')
         self.running = False
 
     def run(self):
-        """Runs...?"""
+        """Run a background thread to listen for notifications.
+        """
         self.logger.info('Running...')
         while self.running:
             with self.connection_lock:
