@@ -111,7 +111,7 @@ class BluetoothLEDevice(object):
                     # printed.
                     self.con.expect(".*> ", timeout=2)
                     self.con.expect(".*> ", timeout=2)
-                    self.con.expect(".*> ", timeout=2)
+                    self.con.expect(".*> ", timeout=5)
                 except pexpect.TIMEOUT:
                     message = "Timed out looking for handler for %s" % uuid
                     self.logger.error(message)
