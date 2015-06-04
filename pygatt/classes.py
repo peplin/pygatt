@@ -102,30 +102,44 @@ class BluetoothLEDevice(object):
         :return: None if the UUID was not found.
         """
         if uuid not in self.handles:
+            self.logger.debug("Looking up handle for characteristic %s", uuid)
             with self.connection_lock:
                 self.con.sendline('characteristics')
                 try:
-                    self.con.expect(uuid, timeout=5)
+                    # We want to read and cache all characteristics at once, so
+                    # wait for the next prompt, indicating all have been
+                    # printed.
+                    self.con.expect(".*> ", timeout=2)
+                    self.con.expect(".*> ", timeout=2)
+                    self.con.expect(".*> ", timeout=2)
                 except pexpect.TIMEOUT:
                     message = "Timed out looking for handler for %s" % uuid
                     self.logger.error(message)
                     raise pygatt.exceptions.BluetoothLEError(message)
                 else:
-                    # FIXME The last line of the output will be the one
-                    #       matching our uuid (because it was the filter
-                    #       for the call to 'expect' above. Take that and
-                    #       pull out the leftmost handle value.
-                    #       ...just split on ':'!
-                    matching_line = self.con.before.splitlines(True)[-1]
-
-                    self.handles[uuid] = int(
-                        re.search(
-                            "handle: 0x([a-fA-F0-9]{4})",
-                            matching_line
-                        ).group(1),
-                        16
-                    )
-        return self.handles.get(uuid)
+                    for line in self.con.after.splitlines(True):
+                        try:
+                            handle = int(
+                                re.search(
+                                    "handle: 0x([a-fA-F0-9]{4})",
+                                    line
+                                ).group(1),
+                                16
+                            )
+                            char_uuid = re.search(
+                                "uuid: (.*)$",
+                                line
+                            ).group(1).strip()
+                            self.handles[char_uuid] = handle
+                            self.logger.debug(
+                                "Found characteristic %s, handle: %d", uuid,
+                                handle)
+                        except AttributeError:
+                            pass
+        handle = self.handles[uuid]
+        self.logger.debug(
+            "Characteristic %s, handle: %d", uuid, handle)
+        return handle
 
     def _expect(self, expected, timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """We may (and often do) get an indication/notification before a
@@ -264,6 +278,7 @@ class BluetoothLEDevice(object):
                     properties,
                     wait_for_response=False
                 )
+                self.logger.debug("Subscribed to uuid=%s", uuid)
             else:
                 self.logger.debug("Already subscribed to uuid=%s", uuid)
         finally:
