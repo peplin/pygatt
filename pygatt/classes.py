@@ -78,6 +78,7 @@ class BluetoothLEDevice(object):
         """Securely Bonds to the BLE device."""
         self.logger.info('Bonding')
         self.con.sendline('sec-level medium')
+        self.con.expect('.*> ', timeout=1)
 
     def connect(self, timeout=pygatt.constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
