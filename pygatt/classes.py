@@ -10,7 +10,6 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 
 import logging
 import logging.handlers
-import re
 import string
 import time
 import thread
@@ -105,38 +104,34 @@ class BluetoothLEDevice(object):
             self.logger.debug("Looking up handle for characteristic %s", uuid)
             with self.connection_lock:
                 self.con.sendline('characteristics')
-                try:
-                    # We want to read and cache all characteristics at once, so
-                    # wait for the next prompt, indicating all have been
-                    # printed.
-                    self.con.expect(".*> ", timeout=2)
-                    self.con.expect(".*> ", timeout=2)
-                    self.con.expect(".*> ", timeout=5)
-                except pexpect.TIMEOUT:
-                    message = "Timed out looking for handler for %s" % uuid
-                    self.logger.error(message)
-                    raise pygatt.exceptions.BluetoothLEError(message)
-                else:
-                    for line in self.con.after.splitlines(True):
+                while True:
+                    try:
+                        self.con.expect(
+                            r"handle: 0x([a-fA-F0-9]{4}), "
+                            "char properties: 0x[a-fA-F0-9]{2}, "
+                            "char value handle: 0x[a-fA-F0-9]{4}, "
+                            "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
+                            timeout=2)
+                    except pexpect.TIMEOUT:
+                        break
+                    except pexpect.EOF:
+                        break
+                    else:
                         try:
-                            handle = int(
-                                re.search(
-                                    "handle: 0x([a-fA-F0-9]{4})",
-                                    line
-                                ).group(1),
-                                16
-                            )
-                            char_uuid = re.search(
-                                "uuid: (.*)$",
-                                line
-                            ).group(1).strip()
+                            handle = int(self.con.match.group(1), 16)
+                            char_uuid = self.con.match.group(2).strip()
                             self.handles[char_uuid] = handle
                             self.logger.debug(
                                 "Found characteristic %s, handle: %d", uuid,
                                 handle)
                         except AttributeError:
                             pass
-        handle = self.handles[uuid]
+        handle = self.handles.get(uuid)
+        if handle is None:
+            message = "No characteristic found matching %s" % uuid
+            self.logger.warn(message)
+            raise pygatt.exceptions.BluetoothLEError(message)
+
         self.logger.debug(
             "Characteristic %s, handle: %d", uuid, handle)
         return handle
@@ -162,7 +157,7 @@ class BluetoothLEDevice(object):
                 '.*Invalid file descriptor.*',
                 '.*Disconnected\r',
             ]
-            while 1:
+            while True:
                 try:
                     matched_pattern_index = self.con.expect(patterns, timeout)
                     if matched_pattern_index == 0:
@@ -321,7 +316,7 @@ class BluetoothLEDevice(object):
                     self._expect("fooooooo", timeout=.1)
                 except pygatt.exceptions.NotificationTimeout:
                     pass
-                except pygatt.exceptions.NotConnectedError:
+                except (pygatt.exceptions.NotConnectedError, pexpect.EOF):
                     break
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
