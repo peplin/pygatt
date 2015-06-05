@@ -33,6 +33,8 @@ class BluetoothLEDevice(object):
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+    GATTTOOL_PROMPT = r".*> "
+
     def __init__(self, mac_address, hci_device='hci0', logfile=None):
         self.handles = {}
         self.subscribed_handlers = {}
@@ -78,7 +80,7 @@ class BluetoothLEDevice(object):
         """Securely Bonds to the BLE device."""
         self.logger.info('Bonding')
         self.con.sendline('sec-level medium')
-        self.con.expect('.*> ', timeout=1)
+        self.con.expect(self.GATTTOOL_PROMPT, timeout=1)
 
     def connect(self, timeout=pygatt.constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
@@ -105,6 +107,7 @@ class BluetoothLEDevice(object):
             self.logger.debug("Looking up handle for characteristic %s", uuid)
             with self.connection_lock:
                 self.con.sendline('characteristics')
+
                 while True:
                     try:
                         self.con.expect(
