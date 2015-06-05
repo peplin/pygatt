@@ -278,6 +278,7 @@ class BluetoothLEDevice(object):
                     wait_for_response=False
                 )
                 self.logger.debug("Subscribed to uuid=%s", uuid)
+                self.subscribed_handlers[value_handle] = properties
             else:
                 self.logger.debug("Already subscribed to uuid=%s", uuid)
         finally:
