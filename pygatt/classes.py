@@ -33,7 +33,7 @@ class BluetoothLEDevice(object):
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    def __init__(self, mac_address, hci_device='hci0'):
+    def __init__(self, mac_address, hci_device='hci0', logfile=None):
         self.handles = {}
         self.subscribed_handlers = {}
         self.address = mac_address
@@ -54,7 +54,7 @@ class BluetoothLEDevice(object):
         ])
 
         self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
-        self.con = pexpect.spawn(gatttool_cmd)
+        self.con = pexpect.spawn(gatttool_cmd, logfile=logfile)
 
         self.con.expect(r'\[LE\]>', timeout=1)
 
