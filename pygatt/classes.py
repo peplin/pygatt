@@ -307,8 +307,6 @@ class BluetoothLEDevice(object):
                     break
                 time.sleep(0.1)
 
-        self.thread.join()
-
     def run(self):
         """Run a background thread to listen for notifications.
         """
