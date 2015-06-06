@@ -12,7 +12,6 @@ import logging
 import logging.handlers
 import string
 import time
-import thread
 import threading
 
 from collections import defaultdict
@@ -62,19 +61,8 @@ class BluetoothLEDevice(object):
 
         self.callbacks = defaultdict(set)
 
-        self.thread = thread.start_new_thread(self.run, ())
-
-    def __del__(self):
-        if self.running:
-            self.stop()
-            self.thread.join()
-
-        if self.con.isalive():
-            self.con.sendline('exit')
-            while 1:
-                if not self.con.isalive():
-                    break
-                time.sleep(0.1)
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
 
     def bond(self):
         """Securely Bonds to the BLE device."""
@@ -169,10 +157,11 @@ class BluetoothLEDevice(object):
                     elif matched_pattern_index in [1, 2]:
                         self._handle_notification(self.con.after)
                     elif matched_pattern_index in [3, 4]:
-                        message = ("Unexpectedly disconnected - do you "
-                                   "need to clear bonds?")
-                        self.logger.error(message)
-                        raise pygatt.exceptions.NotConnectedError(message)
+                        if self.running:
+                            message = ("Unexpectedly disconnected - do you "
+                                       "need to clear bonds?")
+                            self.logger.error(message)
+                        raise pygatt.exceptions.NotConnectedError()
                 except pexpect.TIMEOUT:
                     raise pygatt.exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
@@ -310,6 +299,15 @@ class BluetoothLEDevice(object):
         """
         self.logger.info('Stopping')
         self.running = False
+
+        if self.con.isalive():
+            self.con.sendline('exit')
+            while True:
+                if not self.con.isalive():
+                    break
+                time.sleep(0.1)
+
+        self.thread.join()
 
     def run(self):
         """Run a background thread to listen for notifications.
