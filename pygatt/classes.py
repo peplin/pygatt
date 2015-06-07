@@ -62,6 +62,7 @@ class BluetoothLEDevice(object):
         self.callbacks = defaultdict(set)
 
         self.thread = threading.Thread(target=self.run)
+        self.thread.daemon = True
         self.thread.start()
 
     def bond(self):
