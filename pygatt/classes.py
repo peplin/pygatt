@@ -162,6 +162,7 @@ class BluetoothLEDevice(object):
                             message = ("Unexpectedly disconnected - do you "
                                        "need to clear bonds?")
                             self.logger.error(message)
+                            self.running = False
                         raise pygatt.exceptions.NotConnectedError()
                 except pexpect.TIMEOUT:
                     raise pygatt.exceptions.NotificationTimeout(
