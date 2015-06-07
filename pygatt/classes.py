@@ -322,4 +322,5 @@ class BluetoothLEDevice(object):
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request
-            time.sleep(.001)
+            time.sleep(.01)
+        self.logger.info("Listener thread finished")
