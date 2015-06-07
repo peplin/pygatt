@@ -97,6 +97,7 @@ class BluetoothLEDevice(object):
             with self.connection_lock:
                 self.con.sendline('characteristics')
 
+                timeout = 2
                 while True:
                     try:
                         self.con.expect(
@@ -104,7 +105,7 @@ class BluetoothLEDevice(object):
                             "char properties: 0x[a-fA-F0-9]{2}, "
                             "char value handle: 0x[a-fA-F0-9]{4}, "
                             "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
-                            timeout=2)
+                            timeout=timeout)
                     except pexpect.TIMEOUT:
                         break
                     except pexpect.EOF:
@@ -117,6 +118,11 @@ class BluetoothLEDevice(object):
                             self.logger.debug(
                                 "Found characteristic %s, handle: %d", uuid,
                                 handle)
+
+                            # The characteristics all print at once, so after
+                            # waiting 1-2 seconds for them to all fetch, you can
+                            # load the rest without much delay at all.
+                            timeout = .01
                         except AttributeError:
                             pass
         handle = self.handles.get(uuid)
