@@ -29,6 +29,7 @@ def reset_bluetooth_controller(hci_device='hci0'):
     :param interface: Interface to re-initialize.
     :type interface: str
     """
+    subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()
     subprocess.Popen(["sudo", "hciconfig", hci_device, "reset"]).wait()
 
 
