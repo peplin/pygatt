@@ -65,11 +65,11 @@ def lescan(timeout=5, use_sudo=True):
     try:
         scan.expect('foooooo', timeout=timeout)
     except pexpect.EOF:
+        message = "Unexpected error when scanning"
         if "No such device" in scan.before:
-            logger.error("No BLE adapter available")
-        else:
-            logger.error("Unexpected error: %s", exc_info=True)
-        raise BluetoothLEError("Unable to scan")
+            message = "No BLE adapter found"
+        logger.error(message)
+        raise BluetoothLEError(message)
     except pexpect.TIMEOUT:
         devices = {}
         for line in scan.before.split('\r\n'):
