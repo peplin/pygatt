@@ -12,7 +12,8 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 
 class BluetoothLEError(Exception):
     """Exception class for pygatt."""
-    pass
+    def __repr__(self):
+        return "<%s %s>" % (self.__class__.__name__, self.message)
 
 
 class NotConnectedError(BluetoothLEError):
