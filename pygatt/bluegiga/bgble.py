@@ -41,7 +41,7 @@ class BLED112Backend(object):
     Only supports 1 device connection at a time.
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port):
+    def __init__(self, serial_port, run=True):
         """
         Initialize the BLED112 to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -49,6 +49,7 @@ class BLED112Backend(object):
 
         serial_port -- The name of the serial port that the BLED112 is connected
                        to.
+        run -- Begin reveiving packets immediately.
 
         Locking total order:
         1) self._cond
@@ -56,14 +57,14 @@ class BLED112Backend(object):
         """
         # Initialization
         self._lib = bglib.BGLib()
-        self._ser = serial.Serial(serial_port, timeout=0.25)
         # Note: _ser is not protected by _main_thread_cond
+        self._ser = serial.Serial(serial_port, timeout=0.25)
 
         # Logging
         # FIXME/TODO: remove config/set log level
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
-        logging.basicConfig(filename='example.log', level=logging.DEBUG)
+        self._logger.setLevel(logging.DEBUG)
 
         # Main thread (the one calling commands) waits on this. This also
         # provides mutual exclustion for BLED112Backend's state (except for the
@@ -162,6 +163,10 @@ class BLED112Backend(object):
         self._logger.info("---LOG START---")
         self._logger.info("BLED112Backend on %s", serial_port)
         self._loglock.release()
+
+        # Run the receiver thread
+        if run:
+            self.run()
 
     def bond(self):
         """
@@ -379,6 +384,9 @@ class BLED112Backend(object):
         address -- a bytearray containing the device mac address.
         timeout -- number of seconds to wait before returning if not connected.
         addr_type -- one of the ble_address_type constants.
+
+        Returns True if the connection was completed successfully.
+        Returns False otherwise.
         """
         # Get locks
         self._main_thread_cond.acquire()
@@ -389,7 +397,7 @@ class BLED112Backend(object):
             self._logger.warn("Already connected")
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return False
 
         # Setup connection timeout timer
         self._connect_timeout = False
@@ -423,7 +431,7 @@ class BLED112Backend(object):
                               get_return_message(self._response_return))
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return False
 
         # Start timeout timer
         timer.start()
@@ -440,6 +448,8 @@ class BLED112Backend(object):
         # Drop locks
         self._loglock.release()
         self._main_thread_cond.release()
+
+        return True
 
     def disconnect(self):
         """
