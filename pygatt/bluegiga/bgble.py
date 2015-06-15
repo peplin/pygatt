@@ -1009,7 +1009,6 @@ class BLED112Backend(object):
         if self._expected_attribute_handle != args['atthandle']:
             self.notifications[args['atthandle']].append(
                 bytearray(args['value']))
-            print(args['value'])
         else:
             # Set flags, record info, and notify
             self._attribute_value_received = True

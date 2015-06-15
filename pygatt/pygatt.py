@@ -104,7 +104,6 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    # TODO: wait for response
     def char_write(self, uuid_write, value, wait_for_response=False,
                    num_packets=0, uuid_recv=None):
         """
@@ -127,13 +126,28 @@ class BluetoothLEDevice(object):
 
         # Write to the characteristic
         if self._backend_type == BACKEND['BLED112']:
-            handle = self._get_handle(uuid_write)
-            ret = self._backend.char_write(handle)
+            handle_write = self._get_handle(uuid_write)
+            handle_recv = self._get_handle(uuid_recv)
+            ret = self._backend.char_write(handle_write, value)
             if not ret:  # write failed
                 return False
             if wait_for_response:
-                # TODO
-                pass
+                # Wait for num_packets notifications on the receive
+                #   characteristic
+                while (len(self._backend.notifications[handle_recv]) <
+                       num_packets):
+                    time.sleep(0.25)  # busy wait
+                # Assemble notification values into one bytearray and delete
+                #   notification
+                value_list = []
+                for i in range(0, num_packets):
+                    val = self._backend.notifications[handle_recv][0]
+                    value_list += [b for b in val]
+                    self._backend.notifications[handle_recv].pop(0)
+                # Callback for notifications
+                if uuid_recv in self._callbacks:
+                    for cb in self._callbacks[uuid_recv]:
+                        cb(bytearray(value_list))
             return True
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
@@ -222,6 +236,8 @@ class BluetoothLEDevice(object):
             self._backend.subscribe(self._uuid_bytearray(uuid),
                                     indicate=indication)
             if callback is not None:
+                if uuid not in self._callbacks:
+                    self._callbacks[uuid] = []
                 self._callbacks[uuid].append(callback)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
