@@ -106,6 +106,18 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
+    def exit(self):
+        """
+        Cleans up. Run this when done using the BluetoothLEDevice object.
+        """
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.disconnect()
+            self._backend.stop()
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            raise NotImplementedError("TODO")
+        else:
+            raise NotImplementedError("backend", self._backend_type)
+
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
@@ -125,6 +137,7 @@ class BluetoothLEDevice(object):
         """Run a background thread to listen for notifications.
         """
         if self._backend_type == BACKEND['BLED112']:
+            # Nothing to do
             pass
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
@@ -136,6 +149,7 @@ class BluetoothLEDevice(object):
         disconnect.
         """
         if self._backend_type == BACKEND['BLED112']:
+            # Nothing to do
             pass
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
@@ -146,11 +160,9 @@ class BluetoothLEDevice(object):
         """
         Enables subscription to a Characteristic with ability to call callback.
 
-        :param uuid:
-        :param callback:
-        :param indication:
-        :return:
-        :rtype:
+        uuid --
+        callback --
+        indication --
         """
         if self._backend_type == BACKEND['BLED112']:
             pass
@@ -159,7 +171,7 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-# -----------
+# FIXME going to use these?
     def _expect(self, expected):  # timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """We may (and often do) get an indication/notification before a
         write completes, and so it can be lost if we "expect()"'d something
