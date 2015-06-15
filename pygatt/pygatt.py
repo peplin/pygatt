@@ -1,10 +1,11 @@
 from __future__ import print_function
 
 # from collections import defaultdict
+from binascii import unhexlify
 import logging
 import logging.handlers
 # import string
-# import time
+import time
 
 from bluegiga.bgble import BLED112Backend
 from constants import(
@@ -21,7 +22,8 @@ class BluetoothLEDevice(object):
         """
         Initialize.
 
-        mac_address -- ??????????
+        mac_address -- a string containing the mac address of the BLE device in
+                       the following format: "XX:XX:XX:XX:XX:XX"
         backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
         """
@@ -36,17 +38,16 @@ class BluetoothLEDevice(object):
         self._console_handler.setFormatter(self._formatter)
         self._logger.addHandler(self._console_handler)
 
-        # Select backend
+        # Select backend, store mac address
         if backend == BACKEND['BLED112']:
             self._backend = BLED112Backend('COM7')  # FIXME port name
+            self._mac_address = bytearray(
+                [int(b, 16) for b in mac_address.split(":")])
         elif backend == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
             raise ValueError("backend", backend)
         self._backend_type = backend
-
-        # Store mac_address
-        self._mac_address = mac_address
 
     def bond(self):
         """
@@ -82,10 +83,14 @@ class BluetoothLEDevice(object):
 
         uuid -- UUID of Characteristic to read as a string.
 
-        Returns a bytearray containing the characteristic value
+        Returns a bytearray containing the characteristic value on success.
+        Returns None on failure.
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            handle = self._get_handle(uuid)
+            if handle is None:
+                return None
+            return self._backend.char_read(handle)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
@@ -127,7 +132,13 @@ class BluetoothLEDevice(object):
         Returns None on failure.
         """
         if self._backend_type == BACKEND['BLED112']:
-            return self._backend.get_rssi()
+            # The BLED112 has some strange behavior where it will return 25 for
+            # the RSSI value sometimes... Try a maximum of 3 times.
+            for i in range(0, 3):
+                rssi = self._backend.get_rssi()
+                if rssi != 25:
+                    return rssi
+                time.sleep(0.1)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
@@ -170,6 +181,31 @@ class BluetoothLEDevice(object):
             raise NotImplementedError("TODO")
         else:
             raise NotImplementedError("backend", self._backend_type)
+
+    def _get_handle(self, uuid):
+        """
+        Get the handle associated with the UUID.
+
+        uuid -- a UUID in string format.
+        """
+        uuid = self._uuid_bytearray(uuid)
+        if self._backend_type == BACKEND['BLED112']:
+            return self._backend.get_handle(uuid)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            raise NotImplementedError("TODO")
+        else:
+            raise NotImplementedError("backend", self._backend_type)
+
+    def _uuid_bytearray(self, uuid):
+        """
+        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+        to a bytearray.
+
+        uuid -- the UUID to convert.
+
+        Returns a bytearray containing the UUID.
+        """
+        return unhexlify(uuid.replace("-", ""))
 
 # FIXME going to use these?
     def _expect(self, expected):  # timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
