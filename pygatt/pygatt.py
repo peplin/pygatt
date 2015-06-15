@@ -18,7 +18,7 @@ class BluetoothLEDevice(object):
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, mac_address, backend, logfile=None):
+    def __init__(self, mac_address, backend=BACKEND['GATTTOOL'], logfile=None):
         """
         Initialize.
 
@@ -27,6 +27,13 @@ class BluetoothLEDevice(object):
         backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
         """
+        # Initialize
+        self._backend_type = None
+        self._backend_type
+        self._callbacks = {
+            # uuid_str: func,
+        }
+
         # Set up logging FIXME clean up
         logging.basicConfig(filename='example.log')  # FIXME remove
         self._logger = logging.getLogger(__name__)
@@ -49,6 +56,7 @@ class BluetoothLEDevice(object):
             raise ValueError("backend", backend)
         self._backend_type = backend
 
+    # TODO
     def bond(self):
         """
         Securely Bonds to the BLE device.
@@ -96,13 +104,46 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    def char_write(self, uuid, value, wait_for_response=False):
+    # TODO: wait for response
+    def char_write(self, uuid_write, value, wait_for_response=False,
+                   num_packets=0, uuid_recv=None):
         """
         Writes a value to a given characteristic handle.
 
-        uuid --
-        value --
-        wait_for_response --
+        uuid -- the UUID of the characteristic to write to.
+        value -- the value as a bytearray to write to the characteristic.
+        wait_for_response -- wait for notifications/indications after writing.
+        num_packets -- the number of notification/indication packets to wait
+                       for.
+        uuid_recv -- the UUID for the characteritic that will send the
+                     notification/indication packets.
+
+        Returns True on success.
+        Returns False otherwise.
+        """
+        # Validate arguments
+        if wait_for_response and (num_packets <= 0):
+            raise ValueError("num_packets must be greater than 0")
+
+        # Write to the characteristic
+        if self._backend_type == BACKEND['BLED112']:
+            handle = self._get_handle(uuid_write)
+            ret = self._backend.char_write(handle)
+            if not ret:  # write failed
+                return False
+            if wait_for_response:
+                # TODO
+                pass
+            return True
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            raise NotImplementedError("TODO")
+        else:
+            raise NotImplementedError("backend", self._backend_type)
+
+    # TODO
+    def encrypt(self):
+        """
+        Form an encrypted, but not bonded, connection.
         """
         if self._backend_type == BACKEND['BLED112']:
             pass
@@ -171,12 +212,17 @@ class BluetoothLEDevice(object):
         """
         Enables subscription to a Characteristic with ability to call callback.
 
-        uuid --
-        callback --
-        indication --
+        uuid -- UUID as a string of the characteristic to subscribe to.
+        callback -- function to be called when a notification/indication is
+                    received on this characteristic.
+        indication -- use indications (requires application ACK) rather than
+                      notifications (does not requrie application ACK).
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            self._backend.subscribe(self._uuid_bytearray(uuid),
+                                    indicate=indication)
+            if callback is not None:
+                self._callbacks[uuid].append(callback)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:

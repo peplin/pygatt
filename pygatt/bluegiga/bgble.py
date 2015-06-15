@@ -249,6 +249,9 @@ class BLED112Backend(object):
 
         handle -- the characteristic/descriptor handle to write to.
         value -- a bytearray holding the value to write.
+
+        Returns True on success.
+        Returns False otherwise.
         """
         # Get locks
         self._main_thread_cond.acquire()
@@ -259,7 +262,7 @@ class BLED112Backend(object):
             self._logger.warn("Not connected")
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return False
 
         # Write to characteristic
         value_list = [b for b in value]
@@ -279,7 +282,7 @@ class BLED112Backend(object):
                               get_return_message(self._response_return))
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return False
 
         # Wait for event
         self._loglock.release()  # don't hold loglock while waiting
@@ -291,7 +294,7 @@ class BLED112Backend(object):
             self._logger.warn("attribute_write failed: disconnected")
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return False
         if self._event_return != 0:
             self._logger.warn("attribute_write failed: %s",
                               get_return_message(self._event_return))
@@ -299,6 +302,8 @@ class BLED112Backend(object):
         # Drop locks
         self._loglock.release()
         self._main_thread_cond.release()
+
+        return True
 
     def char_read(self, handle):
         """
