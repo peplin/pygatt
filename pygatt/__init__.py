@@ -17,10 +17,10 @@ pygatt Python Module.
 
 import logging
 
-from .classes import BluetoothLEDevice  # noqa
-from .exceptions import BluetoothLEError  # noqa
+# from .pygatt.classes import BluetoothLEDevice  # noqa
+# from .exceptions import BluetoothLEError  # noqa
 
-import pygatt.util  # noqa
+# import .pygatt.util  # noqa
 
 
 # Set default logging handler to avoid "No handler found" warnings.

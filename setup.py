@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Setup for the APRS Python Module.
 Source:: https://github.com/ampledata/aprs
@@ -44,7 +41,10 @@ setup(
     license=open('LICENSE').read(),
     long_description=open('README.rst').read(),
     url='https://github.com/ampledata/pygatt',
-    install_requires=['pexpect'],
+    extras_require={
+        'BLUEGIGA': ["pyserial"],
+        'GATTTOOL': ["pexpect"],
+    },
     setup_requires=[
         'coverage==3.7.1',
         'nose==1.3.1'
