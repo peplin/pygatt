@@ -9,3 +9,5 @@ nosetests.xml
 pylint.log
 .idea/
 dist/
+# Vim
+*.swp
