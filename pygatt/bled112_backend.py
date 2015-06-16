@@ -5,9 +5,9 @@ import logging
 import serial
 import threading
 
-import bglib
-from error import get_return_message
-from constants import(
+import bled112_bglib
+from bled112_error import get_return_message
+from bled112_constants import(
     ble_address_type, bondable, bonding, connection_status_flag,
     gap_discover_mode, gap_discoverable_mode, gap_connectable_mode,
     gatt_attribute_type_uuid, gatt_characteristic_descriptor_uuid,
@@ -56,7 +56,7 @@ class BLED112Backend(object):
         2) self._loglock
         """
         # Initialization
-        self._lib = bglib.BGLib()
+        self._lib = bled112_bglib.BGLib()
         # Note: _ser is not protected by _main_thread_cond
         self._ser = serial.Serial(serial_port, timeout=0.25)
 

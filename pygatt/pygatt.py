@@ -7,8 +7,8 @@ import logging.handlers
 # import string
 import time
 
-from bluegiga.bgble import BLED112Backend
-from constants import(
+from bled112_backend import BLED112Backend
+from pygatt_constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
 
