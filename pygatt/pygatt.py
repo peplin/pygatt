@@ -2,8 +2,9 @@ from __future__ import print_function
 
 # from collections import defaultdict
 from binascii import unhexlify
-import logging
-import logging.handlers
+from logging import(
+    basicConfig, Formatter, getLogger, StreamHandler
+)
 # import string
 import time
 
@@ -40,15 +41,12 @@ class BluetoothLEDevice(object):
         # TODO: log format
         # Set up logging
         if logfile is not None:
-            logging.basicConfig(filename=logfile)
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(LOG_LEVEL)
-
-        self._console_handler = logging.StreamHandler()
-        self._console_handler.setLevel(LOG_LEVEL)
-        self._formatter = logging.Formatter(LOG_FORMAT)
-        self._console_handler.setFormatter(self._formatter)
-        self._logger.addHandler(self._console_handler)
+            basicConfig(filename=logfile, level=LOG_LEVEL)
+        formatter = Formatter(fmt=LOG_FORMAT)
+        handler = StreamHandler()
+        handler.setFormatter(formatter)
+        self._logger = getLogger(__name__)
+        self._logger.addHandler(handler)
 
         # Select backend, store mac address, optional delete bonds
         if backend == BACKEND['BLED112']:

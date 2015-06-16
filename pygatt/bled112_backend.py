@@ -77,6 +77,7 @@ class BLED112Backend(object):
         # Flags to tell the main thread what to do when woken up from waiting
         self._attribute_value_received = False  # attribute_value event occurred
         self._bonded = False  # device is bonded
+        self._bond_expected = False  # tell bond_status handler to set _bonded
         self._bonding_fail = False  # failed to bond with device
         self._connect_timeout = False  # connection procedure timed-out
         self._connected = False  # device is connected
@@ -184,6 +185,7 @@ class BLED112Backend(object):
             return
 
         # Set to bondable mode
+        self._bond_expected = True
         self._logger.info("set_bondable_mode")
         cmd = self._lib.ble_cmd_sm_set_bondable_mode(bondable['yes'])
         self._lib.send_command(self._ser, cmd)
@@ -1174,7 +1176,7 @@ class BLED112Backend(object):
         Handles the event for the BLED112 reporting connection parameters.
 
         Modifies the _connected, _bonded, _encrypted flags. Modifies
-        _connection_handle and _bond_handle. Notifies _main_thread_cond.
+        _connection_handle. Notifies _main_thread_cond.
 
         sender -- Who fired the event. Should be the BGLib object. This is a
                   product of the event system used in  BGLib.
@@ -1207,10 +1209,6 @@ class BLED112Backend(object):
         if self._connection_status_flag(
                 args['flags'], connection_status_flag['parameters_change']):
             flags += 'parameters_change, '
-        if self._bond_handle != 0xFF:
-            self._bonded = True
-        else:
-            self._bonded = False
 
         # Log
         self._logger.info("_ble_evt_connection_status")
@@ -1261,7 +1259,8 @@ class BLED112Backend(object):
         """
         Handles the event for reporting a stored bond.
 
-        Adds the stored bond to the list of bond handles.
+        Adds the stored bond to the list of bond handles if no _bond_expected.
+        Sets _bonded True if _bond_expected.
 
         sender -- Who fired the event. Should be the BGLib object. This is a
                   product of the event system used in BGLib.
@@ -1273,8 +1272,12 @@ class BLED112Backend(object):
         self._main_thread_cond.acquire()
         self._loglock.acquire()
 
-        # Add to list of stored bonds found
-        self._stored_bonds.append(args['bond'])
+        # Add to list of stored bonds found or set flag
+        if self._bond_expected:
+            self._bond_expected = False
+            self._bonded = True
+        else:
+            self._stored_bonds.append(args['bond'])
 
         # Notify
         self._main_thread_cond.notify()
