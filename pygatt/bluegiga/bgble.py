@@ -61,7 +61,6 @@ class BLED112Backend(object):
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
         # Logging
-        # FIXME/TODO: remove config/set log level
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
         self._logger.setLevel(logging.DEBUG)
@@ -516,7 +515,7 @@ class BLED112Backend(object):
         """
         Disconnect from the device if connected.
 
-        delete_bond -- Delete the bond? (True/False)
+        ??? delete_bond -- Delete the bond? (True/False)
         """
         # Get locks
         self._main_thread_cond.acquire()
@@ -1010,8 +1009,6 @@ class BLED112Backend(object):
         self._locklock.release()
 
     # Event handlers -----------------------------------------------------------
-    # FIXME: asynchronous notifications trigger this. How to handle value and
-    #       callback.
     def _ble_evt_attclient_attribute_value(self, sender, args):
         """
         Handles the BLED112 event for values of characteristics.

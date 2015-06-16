@@ -37,7 +37,8 @@ class BluetoothLEDevice(object):
             # uuid_str: func,
         }
 
-        # Set up logging FIXME clean up
+        # TODO: log format
+        # Set up logging
         if logfile is not None:
             logging.basicConfig(filename=logfile)
         self._logger = logging.getLogger(__name__)
@@ -287,7 +288,7 @@ class BluetoothLEDevice(object):
         a short time.
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            raise NotImplementedError("backend", self._backend_type)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
@@ -299,7 +300,7 @@ class BluetoothLEDevice(object):
         to all registered callbacks.
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            raise NotImplementedError("backend", self._backend_type)
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
