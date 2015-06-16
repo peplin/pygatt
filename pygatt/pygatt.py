@@ -18,7 +18,8 @@ class BluetoothLEDevice(object):
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, mac_address, backend=BACKEND['GATTTOOL'], logfile=None):
+    def __init__(self, mac_address, backend=BACKEND['GATTTOOL'], logfile=None,
+                 delete_backend_bonds=True):
         """
         Initialize.
 
@@ -26,6 +27,8 @@ class BluetoothLEDevice(object):
                        the following format: "XX:XX:XX:XX:XX:XX"
         backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
+        delete_backend_bonds -- delete the bonds stored on the backend so that
+                                bonding does not inadvertently take place.
         """
         # Initialize
         self._backend_type = None
@@ -35,7 +38,8 @@ class BluetoothLEDevice(object):
         }
 
         # Set up logging FIXME clean up
-        logging.basicConfig(filename='example.log')  # FIXME remove
+        if logfile is not None:
+            logging.basicConfig(filename=logfile)
         self._logger = logging.getLogger(__name__)
         self._logger.setLevel(LOG_LEVEL)
 
@@ -45,18 +49,18 @@ class BluetoothLEDevice(object):
         self._console_handler.setFormatter(self._formatter)
         self._logger.addHandler(self._console_handler)
 
-        # Select backend, store mac address
+        # Select backend, store mac address, optional delete bonds
         if backend == BACKEND['BLED112']:
             self._backend = BLED112Backend('COM7')  # FIXME port name
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
+            self._backend.delete_stored_bonds()
         elif backend == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
             raise ValueError("backend", backend)
         self._backend_type = backend
 
-    # TODO
     def bond(self):
         """
         Securely Bonds to the BLE device.

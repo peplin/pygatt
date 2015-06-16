@@ -77,7 +77,6 @@ class BLED112Backend(object):
 
         # Flags to tell the main thread what to do when woken up from waiting
         self._attribute_value_received = False  # attribute_value event occurred
-        self._bond_removed = False  # stored bond has been deleted
         self._bonded = False  # device is bonded
         self._bonding_fail = False  # failed to bond with device
         self._connect_timeout = False  # connection procedure timed-out
@@ -226,7 +225,6 @@ class BLED112Backend(object):
         # Wait for event
         self._loglock.release()
         while (not (self._bonded or self._bonding_fail)) and self._connected:
-            print("wait for event")
             self._main_thread_cond.wait()
         self._loglock.acquire()
         if not self._connected:
@@ -459,6 +457,61 @@ class BLED112Backend(object):
 
         return True
 
+    def delete_stored_bonds(self):
+        """
+        Delete the bonds stored on the BLED112.
+
+        Note: this does not delete the corresponding bond stored on the remote
+              device.
+        """
+        # Get locks
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
+        # Find bonds
+        self._logger.info("get_bonds")
+        self._stored_bonds = []
+        cmd = self._lib.ble_cmd_sm_get_bonds()
+        self._lib.send_command(self._ser, cmd)
+
+        # Wait for response
+        self._loglock.release()  # don't hold loglock while waiting
+        while not self._response_received:
+            self._main_thread_cond.wait()
+        self._response_received = False  # reset the flag
+        if self._num_bonds == 0:  # no bonds
+            self._main_thread_cond.release()
+            return
+
+        # Wait for event
+        while len(self._stored_bonds) < self._num_bonds:
+            self._main_thread_cond.wait()
+
+        # Delete bonds
+        self._loglock.acquire()
+        for b in reversed(self._stored_bonds):
+            self._logger.info("delete_bonding")
+            cmd = self._lib.ble_cmd_sm_delete_bonding(b)
+            self._lib.send_command(self._ser, cmd)
+
+            # Wait for response
+            self._loglock.release()  # don't hold loglock while waiting
+            while not self._response_received:
+                self._main_thread_cond.wait()
+            self._response_received = False  # reset flag
+            self._loglock.acquire()
+            if self._response_return != 0:
+                self._logger.warn("delete_bonding: %s",
+                                  get_return_message(self._response_return))
+                self._loglock.release()
+                self._main_thread_cond.release()
+                return
+
+        # Drop locks
+        self._loglock.release()
+        self._main_thread_cond.release()
+
+    # TODO: delete_bond
     def disconnect(self):
         """
         Disconnect from the device if connected.
@@ -762,38 +815,6 @@ class BLED112Backend(object):
 
         # Drop lock
         self._main_thread_cond.release()
-
-        # Find bonds
-        # with self._loglock:
-        #    self._logger.info("Finding bonds")
-        # cmd = self._lib.ble_cmd_sm_get_bonds()
-        # self._lib.send_command(self._ser, cmd)
-        # self._cond.acquire()
-        # while (self._num_bonds == -1) or\
-        #      (len(self._stored_bonds) < self._num_bonds):
-        #    with self._loglock:
-        #        self._logger.debug("Waiting on bond finding")
-        #    self._cond.wait()
-        # with self._loglock:
-        #    self._logger.debug("Bonds")
-        #    for b in self._stored_bonds:
-        #        self._logger.debug(hex(b))
-        # self._cond.release()
-
-        # Delete bonds
-        # if delete_existing_bonds:
-        #    with self._loglock:
-        #        self._logger.info("Deleting stored bonds")
-        #    for b in reversed(self._stored_bonds):
-        #        cmd = self._lib.ble_cmd_sm_delete_bonding(b)
-        #        self._lib.send_command(self._ser, cmd)
-        #        self._cond.acquire()
-        #        self._bond_removed = False
-        #        while not self._bond_removed:
-        #            with self._loglock:
-        #                self._logger.debug("Waiting on bond removal")
-        #            self._cond.wait()
-        #        self._cond.release()
 
     # TODO: finish this function if needed
     # NOTE: it doesn't make sense for a BluetoothLEDevice to "scan"...
@@ -1259,7 +1280,7 @@ class BLED112Backend(object):
         self._stored_bonds.append(args['bond'])
 
         # Notify
-        self._main_thread_cond.nofity()
+        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_evt_sm_bond_status")
@@ -1616,7 +1637,6 @@ class BLED112Backend(object):
         self._loglock.release()
         self._main_thread_cond.release()
 
-    # FIXME: bond remove
     def _ble_rsp_sm_delete_bonding(self, sender, args):
         """
         Handles the response for the deletion of a stored bond.
@@ -1635,7 +1655,6 @@ class BLED112Backend(object):
         # Remove bond
         if args['result'] == 0:
             self._stored_bonds.pop()
-        self._bond_removed = True
 
         # Set flags, notify
         self._response_received = True
@@ -1702,7 +1721,6 @@ class BLED112Backend(object):
         # Set flags, notify
         self._num_bonds = args['bonds']
         self._response_received = True
-        self._response_return = args['result']
         self._main_thread_cond.notify()
 
         # Log
