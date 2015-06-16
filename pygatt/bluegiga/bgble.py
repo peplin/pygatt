@@ -224,8 +224,11 @@ class BLED112Backend(object):
             return
 
         # Wait for event
-        while not (self._bonded or self._bonding_fail) and self._connected:
+        self._loglock.release()
+        while (not (self._bonded or self._bonding_fail)) and self._connected:
+            print("wait for event")
             self._main_thread_cond.wait()
+        self._loglock.acquire()
         if not self._connected:
             self._logger.warn("encrypt_start failed: disconnected")
             self._loglock.release()

@@ -62,7 +62,7 @@ class BluetoothLEDevice(object):
         Securely Bonds to the BLE device.
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            self._backend.bond()
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
