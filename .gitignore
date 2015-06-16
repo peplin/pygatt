@@ -11,3 +11,5 @@ pylint.log
 dist/
 # Vim
 *.swp
+# Log files
+*.log
