@@ -154,13 +154,12 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    # TODO
     def encrypt(self):
         """
         Form an encrypted, but not bonded, connection.
         """
         if self._backend_type == BACKEND['BLED112']:
-            pass
+            self._backend.encrypt()
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:
