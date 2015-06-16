@@ -13,3 +13,5 @@ dist/
 *.swp
 # Log files
 *.log
+# test file
+pygatt/bluegiga/test.py
