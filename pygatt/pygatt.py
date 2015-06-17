@@ -18,7 +18,7 @@ class BluetoothLEDevice(object):
     BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
     """
     def __init__(self, mac_address, backend=BACKEND['GATTTOOL'], logfile=None,
-                 delete_backend_bonds=True):
+                 serial_port=None, delete_backend_bonds=True):
         """
         Initialize.
 
@@ -26,6 +26,7 @@ class BluetoothLEDevice(object):
                        the following format: "XX:XX:XX:XX:XX:XX"
         backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
+        serial_port -- the serial port to which the BLED112 is connected.
         delete_backend_bonds -- delete the bonds stored on the backend so that
                                 bonding does not inadvertently take place.
         """
@@ -51,8 +52,9 @@ class BluetoothLEDevice(object):
         # Select backend, store mac address, optional delete bonds
         if backend == BACKEND['BLED112']:
             self._logger.info("pygatt[BLED112]")
-            # FIXME: port name
-            self._backend = BLED112Backend('COM7', loghandler=handler,
+            if serial_port is None:
+                raise ValueError("serial_port %s", serial_port)
+            self._backend = BLED112Backend(serial_port, loghandler=handler,
                                            loglevel=LOG_LEVEL)
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
