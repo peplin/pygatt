@@ -41,7 +41,7 @@ class BLED112Backend(object):
     Only supports 1 device connection at a time.
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True):
+    def __init__(self, serial_port, run=True, loghandler=None, loglevel=None):
         """
         Initialize the BLED112 to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -49,7 +49,9 @@ class BLED112Backend(object):
 
         serial_port -- The name of the serial port that the BLED112 is connected
                        to.
-        run -- Begin reveiving packets immediately.
+        run -- begin reveiving packets immediately.
+        loghandler -- logging.handler object to use for the logger.
+        loglevel -- log level for this module's logger.
 
         Locking total order:
         1) self._cond
@@ -60,10 +62,19 @@ class BLED112Backend(object):
         # Note: _ser is not protected by _main_thread_cond
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
-        # Logging
+        # Set up logging
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(logging.DEBUG)
+        if loglevel is None:
+            loglevel = logging.DEBUG
+        self._logger.setLevel(loglevel)
+        if loghandler is None:
+            loghandler = logging.StreamHandler()  # prints to stderr
+            formatter = logging.Formatter(
+                '%(asctime)s %(name)s %(levelname)s - %(message)s')
+            loghandler.setLevel(loglevel)
+            loghandler.setFormatter(formatter)
+        self._logger.addHandler(loghandler)
 
         # Main thread (the one calling commands) waits on this. This also
         # provides mutual exclustion for BLED112Backend's state (except for the
@@ -159,7 +170,6 @@ class BLED112Backend(object):
 
         # Start logging
         self._loglock.acquire()
-        self._logger.info("---LOG START---")
         self._logger.info("BLED112Backend on %s", serial_port)
         self._loglock.release()
 

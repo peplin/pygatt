@@ -2,9 +2,7 @@ from __future__ import print_function
 
 # from collections import defaultdict
 from binascii import unhexlify
-from logging import(
-    basicConfig, Formatter, getLogger, StreamHandler
-)
+import logging
 # import string
 import time
 
@@ -38,19 +36,24 @@ class BluetoothLEDevice(object):
             # uuid_str: func,
         }
 
-        # TODO: log format
         # Set up logging
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(LOG_LEVEL)
         if logfile is not None:
-            basicConfig(filename=logfile, level=LOG_LEVEL)
-        formatter = Formatter(fmt=LOG_FORMAT)
-        handler = StreamHandler()
+            handler = logging.FileHandler(logfile)
+        else:  # print to stderr
+            handler = logging.StreamHandler()
+        formatter = logging.Formatter(fmt=LOG_FORMAT)
+        handler.setLevel(LOG_LEVEL)
         handler.setFormatter(formatter)
-        self._logger = getLogger(__name__)
         self._logger.addHandler(handler)
 
         # Select backend, store mac address, optional delete bonds
         if backend == BACKEND['BLED112']:
-            self._backend = BLED112Backend('COM7')  # FIXME port name
+            self._logger.info("pygatt[BLED112]")
+            # FIXME: port name
+            self._backend = BLED112Backend('COM7', loghandler=handler,
+                                           loglevel=LOG_LEVEL)
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
             self._backend.delete_stored_bonds()
@@ -64,6 +67,7 @@ class BluetoothLEDevice(object):
         """
         Securely Bonds to the BLE device.
         """
+        self._logger.info("bond")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.bond()
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -81,6 +85,7 @@ class BluetoothLEDevice(object):
         Returns True if the connection was made successfully.
         Returns False otherwise.
         """
+        self._logger.info("connect")
         if self._backend_type == BACKEND['BLED112']:
             return self._backend.connect(self._mac_address, timeout=timeout)
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -97,6 +102,7 @@ class BluetoothLEDevice(object):
         Returns a bytearray containing the characteristic value on success.
         Returns None on failure.
         """
+        self._logger.info("char_read %s", uuid)
         if self._backend_type == BACKEND['BLED112']:
             handle = self._get_handle(uuid)
             if handle is None:
@@ -123,6 +129,7 @@ class BluetoothLEDevice(object):
         Returns True on success.
         Returns False otherwise.
         """
+        self._logger.info("char_write %s", uuid_write)
         # Validate arguments
         if wait_for_response and (num_packets <= 0):
             raise ValueError("num_packets must be greater than 0")
@@ -161,6 +168,7 @@ class BluetoothLEDevice(object):
         """
         Form an encrypted, but not bonded, connection.
         """
+        self._logger.info("encrypt")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.encrypt()
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -172,6 +180,7 @@ class BluetoothLEDevice(object):
         """
         Cleans up. Run this when done using the BluetoothLEDevice object.
         """
+        self._logger.info("exit")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.disconnect()
             self._backend.stop()
@@ -188,6 +197,7 @@ class BluetoothLEDevice(object):
         Returns the RSSI value on success.
         Returns None on failure.
         """
+        self._logger.info("get_rssi")
         if self._backend_type == BACKEND['BLED112']:
             # The BLED112 has some strange behavior where it will return 25 for
             # the RSSI value sometimes... Try a maximum of 3 times.
@@ -202,8 +212,10 @@ class BluetoothLEDevice(object):
             raise NotImplementedError("backend", self._backend_type)
 
     def run(self):
-        """Run a background thread to listen for notifications.
         """
+        Run a background thread to listen for notifications.
+        """
+        self._logger.info("run")
         if self._backend_type == BACKEND['BLED112']:
             # Nothing to do
             pass
@@ -213,9 +225,10 @@ class BluetoothLEDevice(object):
             raise NotImplementedError("backend", self._backend_type)
 
     def stop(self):
-        """Stop the backgroud notification handler in preparation for a
-        disconnect.
         """
+        Stop the backgroud notification handler in preparation for a disconnect.
+        """
+        self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
             # Nothing to do
             pass
@@ -234,6 +247,8 @@ class BluetoothLEDevice(object):
         indication -- use indications (requires application ACK) rather than
                       notifications (does not requrie application ACK).
         """
+        self._logger.info("subscribe to %s with callback %s. indicate = %d",
+                          uuid, callback.__name__, indication)
         if self._backend_type == BACKEND['BLED112']:
             self._backend.subscribe(self._uuid_bytearray(uuid),
                                     indicate=indication)
@@ -252,6 +267,7 @@ class BluetoothLEDevice(object):
 
         uuid -- a UUID in string format.
         """
+        self._logger.info("_get_handle %s", uuid)
         uuid = self._uuid_bytearray(uuid)
         if self._backend_type == BACKEND['BLED112']:
             return self._backend.get_handle(uuid)
@@ -269,6 +285,7 @@ class BluetoothLEDevice(object):
 
         Returns a bytearray containing the UUID.
         """
+        self._logger.info("_uuid_bytearray %s", uuid)
         return unhexlify(uuid.replace("-", ""))
 
 # FIXME going to use these?
