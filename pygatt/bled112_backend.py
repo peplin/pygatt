@@ -58,11 +58,6 @@ class BLED112Backend(object):
         1) self._cond
         2) self._loglock
         """
-        # Initialization
-        self._lib = bled112_bglib.BGLib()
-        # Note: _ser is not protected by _main_thread_cond
-        self._ser = serial.Serial(serial_port, timeout=0.25)
-
         # Set up logging
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
@@ -74,6 +69,12 @@ class BLED112Backend(object):
             loghandler.setLevel(loglevel)
             loghandler.setFormatter(formatter)
         self._logger.addHandler(loghandler)
+
+        # Initialization
+        self._lib = bled112_bglib.BGLib(loghandler=loghandler,
+                                        loglevel=loglevel)
+        # Note: _ser is not protected by _main_thread_cond
+        self._ser = serial.Serial(serial_port, timeout=0.25)
 
         # Main thread (the one calling commands) waits on this. This also
         # provides mutual exclustion for BLED112Backend's state (except for the
