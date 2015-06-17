@@ -3,6 +3,7 @@ from __future__ import print_function
 from binascii import hexlify
 import logging
 import serial
+import time
 import threading
 
 import bled112_bglib
@@ -11,13 +12,14 @@ from bled112_constants import(
     ble_address_type, bondable, bonding, connection_status_flag,
     gap_discover_mode, gap_discoverable_mode, gap_connectable_mode,
     gatt_attribute_type_uuid, gatt_characteristic_descriptor_uuid,
-    gatt_characteristic_type_uuid, gatt_service_uuid
+    gatt_characteristic_type_uuid, gatt_service_uuid, scan_response_data_type,
+    scan_response_packet_type
 )
 
 
 class Characteristic(object):
     """
-    GATT characteristic. For internal use within BluetoothLEDevice.
+    GATT characteristic. For internal use within BLED112Backend.
     """
     def __init__(self, name, handle):
         """
@@ -33,6 +35,17 @@ class Characteristic(object):
         Add a characteristic descriptor to the dictionary of descriptors.
         """
         self.descriptors[uuid] = handle
+
+
+class AdvertisingAndScanInfo(object):
+    """
+    Holds the advertising and scan response packet data from a device at a given
+    address.
+    """
+    def __init__(self):
+        self.packet_data = {
+            # scan_response_packet_type[xxx]: data_dictionary,
+        }
 
 
 class BLED112Backend(object):
@@ -113,6 +126,10 @@ class BLED112Backend(object):
             # handle: [value_bytearray0, ...]
         }
         self._stored_bonds = []  # bond handles stored on the BLED112
+        self.devices_discovered = {
+            # 'address': AdvertisingAndScanInfo,
+            # Note: address formatted like "01:23:45:67:89:AB"
+        }
 
         # Register response handlers. Note: the packets of any response not
         # registered here will go undetected.
@@ -128,9 +145,8 @@ class BLED112Backend(object):
             self._ble_rsp_connection_get_rssi
         self._lib.ble_rsp_gap_connect_direct +=\
             self._ble_rsp_gap_connect_direct
-        # FIXME: gap_discover needed?
-        # self._lib.ble_rsp_gap_discover +=\
-        #    self._ble_rsp_gap_discover
+        self._lib.ble_rsp_gap_discover +=\
+            self._ble_rsp_gap_discover
         self._lib.ble_rsp_gap_end_procedure +=\
             self._ble_rsp_gap_end_procedure
         self._lib.ble_rsp_gap_set_mode +=\
@@ -158,11 +174,8 @@ class BLED112Backend(object):
             self._ble_evt_connection_status
         self._lib.ble_evt_connection_disconnected +=\
             self._ble_evt_connection_disconnected
-        # FIXME: next 3 events needed?
-        # self._lib.ble_evt_connection_feature_ind += self._generic_handler
-        # self._lib.ble_evt_connection_version_ind += self._generic_handler
-        # self._lib.ble_evt_gap_scan_response +=\
-        #    self._ble_evt_gap_scan_response
+        self._lib.ble_evt_gap_scan_response +=\
+            self._ble_evt_gap_scan_response
         self._lib.ble_evt_sm_bond_status +=\
             self._ble_evt_sm_bond_status
         self._lib.ble_evt_sm_bonding_fail +=\
@@ -206,12 +219,6 @@ class BLED112Backend(object):
             self._main_thread_cond.wait()
         self._response_received = False  # reset the flag
         self._loglock.acquire()
-        if self._response_return != 0:
-            self._logger.warn("set_bondable_mode failed: %s",
-                              get_return_message(self._response_return))
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
 
         # Begin encryption and bonding
         self._bonding_fail = False
@@ -522,12 +529,9 @@ class BLED112Backend(object):
         self._loglock.release()
         self._main_thread_cond.release()
 
-    # TODO: delete_bond
     def disconnect(self):
         """
         Disconnect from the device if connected.
-
-        ??? delete_bond -- Delete the bond? (True/False)
         """
         # Get locks
         self._main_thread_cond.acquire()
@@ -827,8 +831,6 @@ class BLED112Backend(object):
         # Drop lock
         self._main_thread_cond.release()
 
-    # TODO: finish this function if needed
-    # NOTE: it doesn't make sense for a BluetoothLEDevice to "scan"...
     def scan(self, scan_interval=75, scan_window=50, active=True,
              scan_time=1000, discover_mode=gap_discover_mode['generic']):
         """
@@ -841,34 +843,83 @@ class BLED112Backend(object):
         scan_time -- the number of miliseconds this scan should last.
         discover_mode -- one of the gap_discover_mode constants.
         """
-        raise NotImplementedError("scan")  # FIXME: remove
+        # Get locks
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
         # Set scan parameters
-        # with self._loglock:
-        #    self._logger.info("Set scan parameters")
-        # if active:
-        #    active = 0x01
-        # else:
-        #    active = 0x00
+        self._logger.info("set_scan_parameters")
+        if active:
+            active = 0x01
+        else:
+            active = 0x00
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
-        # cmd = self._lib.ble_cmd_gap_set_scan_parameters(
-        #    scan_interval, scan_window, active
-        # )
-        # self._lib.send_command(self._ser, cmd)
+        cmd = self._lib.ble_cmd_gap_set_scan_parameters(
+            scan_interval, scan_window, active
+        )
+        self._lib.send_command(self._ser, cmd)
+
+        # Wait for response
+        self._loglock.release()  # don't hold loglock while waiting
+        while not self._response_received:
+            self._main_thread_cond.wait()
+        self._response_received = False
+        self._loglock.acquire()
+        if self._response_return != 0:
+            self._logger.warn("set_scan_parameters failed: %s",
+                              get_return_message(self._response_return))
+            self._loglock.release()
+            self._main_thread_cond.release()
+            return
+
         # Begin scanning
-        # with self._loglock:
-        #    self._logger.info("Begin scanning")
-        # cmd = self._lib.ble_cmd_gap_discover(discover_mode)
-        # self._lib.send_command(self._ser, cmd)
+        self._logger.info("gap_discover_mode")
+        cmd = self._lib.ble_cmd_gap_discover(discover_mode)
+        self._lib.send_command(self._ser, cmd)
+
+        # Wait for response
+        self._loglock.release()  # don't hold loglock while waiting
+        while not self._response_received:
+            self._main_thread_cond.wait()
+        self._response_received = False
+        self._loglock.acquire()
+        if self._response_return != 0:
+            self._logger.warn("gap_discover failed: %s",
+                              get_return_message(self._response_return))
+            self._loglock.release()
+            self._main_thread_cond.release()
+            return
+
         # Wait for scan_time
-        # with self._loglock:
-        #    self._logger.debug("Wait for %d ms", scan_time)
-        # time.sleep(scan_time/1000)
+        self._logger.debug("Wait for %d ms", scan_time)
+        self._loglock.release()
+        self._main_thread_cond.release()
+        time.sleep(scan_time/1000)
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
         # Stop scanning
-        # with self._loglock:
-        #    self._logger.info("Stop scanning")
-        # cmd = self._lib.ble_cmd_gap_end_procedure()
-        # self._lib.send_command(self._ser, cmd)
+        self._logger.info("gap_end_procedure")
+        cmd = self._lib.ble_cmd_gap_end_procedure()
+        self._lib.send_command(self._ser, cmd)
+
+        # Wait for response
+        self._loglock.release()  # don't hold loglock while waiting
+        while not self._response_received:
+            self._main_thread_cond.wait()
+        self._response_received = False
+        self._loglock.acquire()
+        if self._response_return != 0:
+            self._logger.warn("gap_end_procedure failed: %s",
+                              get_return_message(self._response_return))
+            self._loglock.release()
+            self._main_thread_cond.release()
+            return
+
+        # Drop locks
+        self._loglock.release()
+        self._main_thread_cond.release()
 
     def stop(self):
         """
@@ -999,6 +1050,53 @@ class BLED112Backend(object):
         self._connect_timeout = True
         self._main_thread_cond.notify()
         self._main_thread_cond.release()
+
+    def _scan_rsp_data(self, data):
+        """
+        Parse scan response data.
+        Note: the data will come in a format like the following:
+        [data_length, data_type, data..., data_length, data_type, data...]
+
+        data -- the args['data'] list from _ble_evt_scan_response.
+
+        Returns a dictionary containing the parsed data in pairs of
+        'field_name': value.
+        """
+        # Result stored here
+        data_dict = {
+            # 'name': value,
+        }
+        bytes_left_in_field = 0
+        field_name = None
+        field_value = []
+        # Iterate over data bytes to put in field
+        for b in data:
+            if bytes_left_in_field == 0:
+                # New field
+                bytes_left_in_field = b
+                field_value = []
+            else:
+                field_value.append(b)
+                bytes_left_in_field -= 1
+                if bytes_left_in_field == 0:
+                    # End of field
+                    field_name = scan_response_data_type[field_value[0]]
+                    field_value = field_value[1:]
+                    # Field type specific formats
+                    if field_name == 'complete_local_name' or\
+                            field_name == 'shortened_local_name':
+                        dev_name = bytearray(field_value).decode("utf-8")
+                        data_dict[field_name] = dev_name
+                    elif field_name ==\
+                            'complete_list_128-bit_service_class_uuids':
+                        data_dict[field_name] = []
+                        for i in range(0, len(field_value)/16):  # 16 bytes
+                            service_uuid = '0x'+hexlify(bytearray(list(reversed(
+                                field_value[i*16:i*16+16]))))
+                            data_dict[field_name].append(service_uuid)
+                    else:
+                        data_dict[field_name] = bytearray(field_value)
+        return data_dict
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, sender, args):
@@ -1245,7 +1343,6 @@ class BLED112Backend(object):
         self._loglock.release()
         self._main_thread_cond.release()
 
-    # FIXME: Are we using this?
     def _ble_evt_gap_scan_response(self, sender, args):
         """
         Handles the event for reporting the contents of an advertising or scan
@@ -1257,13 +1354,38 @@ class BLED112Backend(object):
         args -- dictionary containing the RSSI value ('rssi'), packet type
                 ('packet_type'), address of packet sender ('sender'), address
                 type ('address_type'), existing bond handle ('bond'), and
-                scan resonse data array ('data')
+                scan resonse data list ('data')
         """
+        # Get locks
+        self._main_thread_cond.acquire()
         self._loglock.acquire()
+
+        # Parse packet
+        packet_type = scan_response_packet_type[args['packet_type']]
+        address = ":".join([hex(b)[2:] for b in args['sender']])
+        address_type = "unknown"
+        for name, value in ble_address_type.iteritems():
+            if value == args['address_type']:
+                address_type = name
+                break
+        data_dict = self._scan_rsp_data(args['data'])
+
+        # Store device information
+        if address not in self.devices_discovered:
+            self.devices_discovered[address] = AdvertisingAndScanInfo()
+        self.devices_discovered[address].packet_data[packet_type] = data_dict
+
+        # Log
         self._logger.info("_ble_evt_gap_scan_response")
-        # for key in args:
-        #    print(key, " = ", args[key])
+        self._logger.debug("rssi = %d dBm", args['rssi'])
+        self._logger.debug("packet type = %s", packet_type)
+        self._logger.info("sender address = %s", address)
+        self._logger.debug("address type = %s", address_type)
+        self._logger.debug("data %s", str(data_dict))
+
+        # Drop locks
         self._loglock.release()
+        self._main_thread_cond.release()
 
     def _ble_evt_sm_bond_status(self, sender, args):
         """
@@ -1527,7 +1649,6 @@ class BLED112Backend(object):
         self._loglock.release()
         self._main_thread_cond.release()
 
-    # FIXME: is this being used?
     def _ble_rsp_gap_discover(self, sender, args):
         """
         Handles the response for the start of the GAP device discovery

@@ -58,7 +58,8 @@ class BluetoothLEDevice(object):
                                            loglevel=LOG_LEVEL)
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
-            self._backend.delete_stored_bonds()
+            if delete_backend_bonds:
+                self._backend.delete_stored_bonds()
         elif backend == BACKEND['GATTTOOL']:
             raise NotImplementedError("TODO")
         else:

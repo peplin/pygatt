@@ -36,6 +36,48 @@ connection_status_flag = {
     'completed': 0x04,
     'parameters_change': 0x08,
 }
+scan_response_packet_type = {
+    0x00: 'connectable_advertisement_packet',
+    0x02: 'non-connectable_advertisement_packet',
+    0x04: 'scan_response_packet',
+    0x06: 'discoverable_advertisement_packet',
+}
+scan_response_data_type = {
+    0x01: 'flags',
+    0x02: 'incomplete_list_16-bit_service_class_uuids',
+    0x03: 'complete_list_16-bit_service_class_uuids',
+    0x04: 'incomplete_list_32-bit_service_class_uuids',
+    0x05: 'complete_list_32-bit_service_class_uuids',
+    0x06: 'incomplete_list_128-bit_service_class_uuids',
+    0x07: 'complete_list_128-bit_service_class_uuids',
+    0x08: 'shortened_local_name',
+    0x09: 'complete_local_name',
+    0x0A: 'tx_power_level',
+    0x0D: 'class_of_device',
+    0x0E: 'simple_pairing_hash_c/c-192',
+    0x0F: 'simple_pairing_randomizer_r/r-192',
+    0x10: 'device_id/security_manager_tk_value',
+    0x11: 'security_manager_out_of_band_flags',
+    0x12: 'slave_connection_interval_range',
+    0x14: 'list_of_16-bit_service_solicitation_uuids',
+    0x1F: 'list_of_32-bit_service_solicitation_uuids',
+    0x15: 'list_of_128-bit_service_solicitation_uuids',
+    0x16: 'service_data/service_data-16-bit_uuid',
+    0x20: 'service_data-32-bit_uuid',
+    0x21: 'service_data-128-bit_uuid',
+    0x22: 'LE_secure_connections_confirmation_value',
+    0x23: 'LE_secure_connections_random_value',
+    0x17: 'public_target_address',
+    0x18: 'random_target_address',
+    0x19: 'appearance',
+    0x1A: 'advertising_interval',
+    0x1B: 'LE_bluetooth_device_address',
+    0x1C: 'LE_role',
+    0x1D: 'simple_pairing_hash_c-256',
+    0x1E: 'simple_pairing_randomizer_r-256',
+    0x3D: '3D_information_data',
+    0xFF: 'manufacturer_specific_data',
+}
 
 # GATT
 gatt_service_uuid = {
