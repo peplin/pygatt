@@ -41,7 +41,8 @@ class BLED112Backend(object):
     Only supports 1 device connection at a time.
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True, loghandler=None, loglevel=None):
+    def __init__(self, serial_port, run=True, loghandler=None,
+                 loglevel=logging.DEBUG):
         """
         Initialize the BLED112 to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -65,8 +66,6 @@ class BLED112Backend(object):
         # Set up logging
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
-        if loglevel is None:
-            loglevel = logging.DEBUG
         self._logger.setLevel(loglevel)
         if loghandler is None:
             loghandler = logging.StreamHandler()  # prints to stderr
