@@ -1,12 +1,11 @@
 from __future__ import print_function
 
-# from collections import defaultdict
 from binascii import unhexlify
 import logging
-# import string
 import time
 
 from bled112_backend import BLED112Backend
+from gatttool_classes import GATTToolBackend
 from pygatt_constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
@@ -26,9 +25,11 @@ class BluetoothLEDevice(object):
                        the following format: "XX:XX:XX:XX:XX:XX"
         backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
-        serial_port -- the serial port to which the BLED112 is connected.
-        delete_backend_bonds -- delete the bonds stored on the backend so that
-                                bonding does not inadvertently take place.
+        serial_port -- (BLED112 only) the serial port to which the BLED112 is
+                       connected.
+        delete_backend_bonds -- (BLED112 only) delete the bonds stored on the
+                                backend so that bonding does not inadvertently
+                                take place.
         """
         # Initialize
         self._backend_type = None
@@ -61,7 +62,9 @@ class BluetoothLEDevice(object):
             if delete_backend_bonds:
                 self._backend.delete_stored_bonds()
         elif backend == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._logger.info("pygatt[GATTTOOL]")
+            # TODO: hci_device, how to pass logfile
+            self._backend = GATTToolBackend(mac_address, hci_device='hci1')
         else:
             raise ValueError("backend", backend)
         self._backend_type = backend
@@ -74,7 +77,7 @@ class BluetoothLEDevice(object):
         if self._backend_type == BACKEND['BLED112']:
             self._backend.bond()
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.bond()
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -92,7 +95,8 @@ class BluetoothLEDevice(object):
         if self._backend_type == BACKEND['BLED112']:
             return self._backend.connect(self._mac_address, timeout=timeout)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.connect(timeout=timeout)
+            return True
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -112,7 +116,7 @@ class BluetoothLEDevice(object):
                 return None
             return self._backend.char_read(handle)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.char_read_uuid(uuid)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -124,10 +128,10 @@ class BluetoothLEDevice(object):
         uuid -- the UUID of the characteristic to write to.
         value -- the value as a bytearray to write to the characteristic.
         wait_for_response -- wait for notifications/indications after writing.
-        num_packets -- the number of notification/indication packets to wait
-                       for.
-        uuid_recv -- the UUID for the characteritic that will send the
-                     notification/indication packets.
+        num_packets -- (BLED112 only) the number of notification/indication BLE
+                       packets to wait for.
+        uuid_recv -- (BLED112 only) the UUID for the characteritic that will
+                     send the notification/indication packets.
 
         Returns True on success.
         Returns False otherwise.
@@ -165,7 +169,9 @@ class BluetoothLEDevice(object):
                         cb(bytearray(value_list))
             return True
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            handle = self._backend.get_handle(uuid_write)
+            self._backend.char_write(handle, value,
+                                     wait_for_response=wait_for_response)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -177,27 +183,28 @@ class BluetoothLEDevice(object):
         if self._backend_type == BACKEND['BLED112']:
             self._backend.encrypt()
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("pygatt[GATTOOL].encrypt")
         else:
             raise NotImplementedError("backend", self._backend_type)
 
     def exit(self):
         """
-        Cleans up. Run this when done using the BluetoothLEDevice object.
+        Cleans up. Run this when done using the BluetoothLEDevice object with
+        the BLED112 backend (BLED112 only).
         """
         self._logger.info("exit")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.disconnect()
             self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            pass
         else:
             raise NotImplementedError("backend", self._backend_type)
 
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
-        device.
+        device (BLED112 only).
 
         Returns the RSSI value on success.
         Returns None on failure.
@@ -212,33 +219,34 @@ class BluetoothLEDevice(object):
                     return rssi
                 time.sleep(0.1)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("pygatt[GATTOOL].get_rssi")
         else:
             raise NotImplementedError("backend", self._backend_type)
 
     def run(self):
         """
-        Run a background thread to listen for notifications.
+        Run a background thread to listen for notifications (GATTTOOL only).
         """
         self._logger.info("run")
         if self._backend_type == BACKEND['BLED112']:
             # Nothing to do
             pass
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.run()
         else:
             raise NotImplementedError("backend", self._backend_type)
 
     def stop(self):
         """
-        Stop the backgroud notification handler in preparation for a disconnect.
+        Stop the backgroud notification handler in preparation for a disconnect
+        (GATTTOOL only).
         """
         self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
             # Nothing to do
             pass
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.stop()
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -262,7 +270,8 @@ class BluetoothLEDevice(object):
                     self._callbacks[uuid] = []
                 self._callbacks[uuid].append(callback)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            self._backend.subscribe(uuid, callback=callback,
+                                    indication=indication)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -277,7 +286,7 @@ class BluetoothLEDevice(object):
         if self._backend_type == BACKEND['BLED112']:
             return self._backend.get_handle(uuid)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
+            return self._backend.get_handle(uuid)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -292,36 +301,3 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("_uuid_bytearray %s", uuid)
         return unhexlify(uuid.replace("-", ""))
-
-# FIXME going to use these?
-    def _expect(self, expected):  # timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
-        """We may (and often do) get an indication/notification before a
-        write completes, and so it can be lost if we "expect()"'d something
-        that came after it in the output, e.g.:
-
-        > char-write-req 0x1 0x2
-        Notification handle: xxx
-        Write completed successfully.
-        >
-
-        Anytime we expect something we have to expect noti/indication first for
-        a short time.
-        """
-        if self._backend_type == BACKEND['BLED112']:
-            raise NotImplementedError("backend", self._backend_type)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
-        else:
-            raise NotImplementedError("backend", self._backend_type)
-
-    def _handle_notification(self, msg):
-        """
-        Receive a notification from the connected device and propagate the value
-        to all registered callbacks.
-        """
-        if self._backend_type == BACKEND['BLED112']:
-            raise NotImplementedError("backend", self._backend_type)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("TODO")
-        else:
-            raise NotImplementedError("backend", self._backend_type)
