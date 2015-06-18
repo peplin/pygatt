@@ -122,11 +122,11 @@ class BLED112Backend(object):
         self._characteristics_cached = False  # characteristics already found
         self._current_characteristic = None  # used in char/descriptor discovery
         self._num_bonds = 0  # number of bonds stored on the BLED112
-        self.notifications = {  # stores notification packet contents
+        self._notifications = {  # stores notification packet contents
             # handle: [value_bytearray0, ...]
         }
         self._stored_bonds = []  # bond handles stored on the BLED112
-        self.devices_discovered = {
+        self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
@@ -628,6 +628,28 @@ class BLED112Backend(object):
         self._loglock.release()
         self._main_thread_cond.release()
 
+    def get_devices_discovered(self):
+        """
+        Get self._devices_discovered in a thread-safe way.
+        A scan() should be run prior to accessing this data.
+
+        Returns the self._devices_discovered dictionary.
+        """
+        # get locks
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
+        # Log
+        self._logger.info("get_devices_discovered")
+
+        devs = self._devices_discovered
+
+        # Drop locks
+        self._loglock.release()
+        self._main_thread_cond.release()
+
+        return devs
+
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
         Get the handle for a characteristic or descriptor.
@@ -642,7 +664,7 @@ class BLED112Backend(object):
         Returns an integer containing the handle on success.
         Returns None on failure.
         """
-        # Get locks
+        # get locks
         self._main_thread_cond.acquire()
         self._loglock.acquire()
 
@@ -727,6 +749,27 @@ class BLED112Backend(object):
         self._main_thread_cond.release()
         return desc_handle
 
+    def get_notifications(self):
+        """
+        Get self._notifications in a thread-safe way.
+
+        Returns the self._notifications dictionary.
+        """
+        # get locks
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
+        # Log
+        self._logger.info("get_notifications")
+
+        notifications = self._notifications
+
+        # Drop locks
+        self._loglock.release()
+        self._main_thread_cond.release()
+
+        return notifications
+
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the device.
@@ -762,6 +805,34 @@ class BLED112Backend(object):
         self._main_thread_cond.release()
 
         return rssi_value
+
+    def remove_notification(self, handle, position):
+        """
+        Remove a notification from self._notifications in a thread-safe way.
+
+        handle -- the handle from which to remove the notification.
+        position -- the index of the element in the notifiaction list to remove.
+        """
+        # get locks
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
+
+        # Log
+        self._logger.info("remove_notification %d from handle %02x", position,
+                          handle)
+        self._loglock.release()
+
+        # Remove
+        if handle not in self._notifications:
+            self._main_thread_cond.release()
+            return
+        if position > (len(self._notifications[handle])-1):
+            self._main_thread_cond.release()
+            return
+        self._notifications[handle].pop(position)
+
+        # Drop lock
+        self._main_thread_cond.release()
 
     def run(self):
         """
@@ -1138,7 +1209,7 @@ class BLED112Backend(object):
 
         # Check if notification packet
         if self._expected_attribute_handle != args['atthandle']:
-            self.notifications[args['atthandle']].append(
+            self._notifications[args['atthandle']].append(
                 bytearray(args['value']))
         else:
             # Set flags, record info, and notify
@@ -1203,7 +1274,7 @@ class BLED112Backend(object):
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[hexlify(uuid)] = new_char
-            self.notifications[new_char.handle] = []
+            self._notifications[new_char.handle] = []
 
         # Drop locks
         self._loglock.release()
@@ -1371,9 +1442,9 @@ class BLED112Backend(object):
         data_dict = self._scan_rsp_data(args['data'])
 
         # Store device information
-        if address not in self.devices_discovered:
-            self.devices_discovered[address] = AdvertisingAndScanInfo()
-        self.devices_discovered[address].packet_data[packet_type] = data_dict
+        if address not in self._devices_discovered:
+            self._devices_discovered[address] = AdvertisingAndScanInfo()
+        self._devices_discovered[address].packet_data[packet_type] = data_dict
 
         # Log
         self._logger.info("_ble_evt_gap_scan_response")

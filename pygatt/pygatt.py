@@ -147,16 +147,18 @@ class BluetoothLEDevice(object):
             if wait_for_response:
                 # Wait for num_packets notifications on the receive
                 #   characteristic
-                while (len(self._backend.notifications[handle_recv]) <
+                notifications = self._backend.get_notifications()
+                while (len(notifications[handle_recv]) <
                        num_packets):
                     time.sleep(0.25)  # busy wait
+                    notifications = self._backend.get_notifications()
                 # Assemble notification values into one bytearray and delete
                 #   notification
                 value_list = []
                 for i in range(0, num_packets):
-                    val = self._backend.notifications[handle_recv][0]
+                    val = notifications[handle_recv][0]
                     value_list += [b for b in val]
-                    self._backend.notifications[handle_recv].pop(0)
+                    self._backend.remove_notification(handle_recv, 0)
                 # Callback for notifications
                 if uuid_recv in self._callbacks:
                     for cb in self._callbacks[uuid_recv]:
