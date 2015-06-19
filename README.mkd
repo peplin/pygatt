@@ -69,7 +69,7 @@ device = pygatt.pygatt.BluetoothLEDevice('01:23:45:67:89:ab',
     backend=pygatt.pygatt_constants.BACKEND['BLED112'],
     serial_port='/dev/ttyACM0')
 device.connect()
-value_bytearray = device.read_char('01234567-0123-0123-01234-0123456789ab')
+value_bytearray = device.char_read('01234567-0123-0123-01234-0123456789ab')
 print([hex(b) for b value_bytearray])
 device.exit()
 ```
