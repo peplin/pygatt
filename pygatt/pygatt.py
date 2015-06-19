@@ -116,7 +116,7 @@ class BluetoothLEDevice(object):
                 return None
             return self._backend.char_read(handle)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            self._backend.char_read_uuid(uuid)
+            return self._backend.char_read_uuid(uuid)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
