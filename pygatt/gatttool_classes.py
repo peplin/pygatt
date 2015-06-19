@@ -221,8 +221,8 @@ class GATTToolBackend(object):
         Reads a Characteristic by Handle.
         :param handle: Handle of Characteristic to read.
         :type handle: str
-        :return:
-        :rtype:
+        :return: bytearray of result
+        :rtype: bytearray
         """
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
@@ -230,7 +230,7 @@ class GATTToolBackend(object):
 
             rval = self.con.after.split()[1:]
 
-            return [int(n, 16) for n in rval]
+            return bytearray([int(n, 16) for n in rval])
 
     def subscribe(self, uuid, callback=None, indication=False):
         """
