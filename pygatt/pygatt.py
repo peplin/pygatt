@@ -121,7 +121,7 @@ class BluetoothLEDevice(object):
             raise NotImplementedError("backend", self._backend_type)
 
     def char_write(self, uuid_write, value, wait_for_response=False,
-                   num_packets=0, uuid_recv=None):
+                   num_packets=1, uuid_recv=None):
         """
         Writes a value to a given characteristic handle.
 
@@ -137,12 +137,10 @@ class BluetoothLEDevice(object):
         Returns False otherwise.
         """
         self._logger.info("char_write %s", uuid_write)
-        # Validate arguments
-        if wait_for_response and (num_packets <= 0):
-            raise ValueError("num_packets must be greater than 0")
-
         # Write to the characteristic
         if self._backend_type == BACKEND['BLED112']:
+            if wait_for_response and (num_packets <= 0):
+                raise ValueError("num_packets must be greater than 0")
             handle_write = self._get_handle(uuid_write)
             handle_recv = self._get_handle(uuid_recv)
             ret = self._backend.char_write(handle_write, value)
