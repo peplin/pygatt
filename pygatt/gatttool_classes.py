@@ -1,5 +1,4 @@
 import logging
-import logging.handlers
 import string
 import time
 import threading
@@ -13,7 +12,7 @@ import pygatt_exceptions
 # import gatttool_util
 
 
-"""pygatt Class Definitions"""
+"""MODIFIED pygatt Class Definitions"""
 
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
@@ -21,65 +20,85 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 
 
 class GATTToolBackend(object):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(pygatt_constants.LOG_LEVEL)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(pygatt_constants.LOG_LEVEL)
-    formatter = logging.Formatter(pygatt_constants.LOG_FORMAT)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    """
+    Backend to pygatt that uses gatttool/bluez on the linux command line.
+    """
+    _GATTTOOL_PROMPT = r".*> "
 
-    GATTTOOL_PROMPT = r".*> "
+    def __init__(self, mac_address, hci_device='hci0', loghandler=None,
+                 loglevel=logging.DEBUG, gatttool_logfile=None):
+        """
+        Initialize.
 
-    def __init__(self, mac_address, hci_device='hci0', logfile=None):
-        self.handles = {}
-        self.subscribed_handlers = {}
-        self.address = mac_address
+        mac_address -- the mac address of the BLE device to connect to in the
+                       following format: "XX:XX:XX:XX:XX:XX"
+        hci_device -- the hci_device to use with GATTTool.
+        loghandler -- logging.handler object to use for the logger.
+        loglevel -- log level for this module's logger.
+        """
+        # Set up logging
+        self._loglock = threading.Lock()
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(loglevel)
+        if loghandler is None:
+            loghandler = logging.StreamHandler()  # prints to stderr
+            formatter = logging.Formatter(
+                '%(asctime)s %(name)s %(levelname)s - %(message)s')
+            loghandler.setLevel(loglevel)
+            loghandler.setFormatter(formatter)
+        self._logger.addHandler(loghandler)
 
-        self.running = True
+        # Internal state
+        self._address = mac_address
+        self._handles = {}
+        self._subscribed_handlers = {}
+        self._lock = threading.Lock()
+        self._connection_lock = threading.RLock()
+        self._running = True
+        self._callbacks = defaultdict(set)
+        self._thread = None  # background notification receiving thread
+        self._con = None  # gatttool interactive session
 
-        self.lock = threading.Lock()
-
-        self.connection_lock = threading.RLock()
-
+        # Start gatttool interactive session for device
         gatttool_cmd = ' '.join([
             'gatttool',
             '-b',
-            self.address,
+            self._address,
             '-i',
             hci_device,
             '-I'
         ])
+        self._logger.debug('gatttool_cmd=%s', gatttool_cmd)
+        if gatttool_logfile is None:
+            self._con = pexpect.spawn(gatttool_cmd)
+        else:
+            self._con = pexpect.spawn(gatttool_cmd, logfile=gatttool_logfile)
+        # Wait for response
+        self._con.expect(r'\[LE\]>', timeout=1)
 
-        self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
-        self.con = pexpect.spawn(gatttool_cmd, logfile=logfile)
-
-        self.con.expect(r'\[LE\]>', timeout=1)
-
-        self.callbacks = defaultdict(set)
-
-        self.thread = threading.Thread(target=self.run)
-        self.thread.daemon = True
-        self.thread.start()
+        # Start the notification receiving thread
+        self._thread = threading.Thread(target=self.run)
+        self._thread.daemon = True
+        self._thread.start()
 
     def bond(self):
         """Securely Bonds to the BLE device."""
-        self.logger.info('Bonding')
-        self.con.sendline('sec-level medium')
-        self.con.expect(self.GATTTOOL_PROMPT, timeout=1)
+        self._logger.info('Bonding')
+        self._con.sendline('sec-level medium')
+        self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
 
     def connect(self,
                 timeout=pygatt_constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
-        self.logger.info('Connecting with timeout=%s', timeout)
+        self._logger.info('Connecting with timeout=%s', timeout)
         try:
-            with self.connection_lock:
-                self.con.sendline('connect')
-                self.con.expect(r'Connection successful.*\[LE\]>', timeout)
+            with self._connection_lock:
+                self._con.sendline('connect')
+                self._con.expect(r'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."
-                       % (self.address, timeout))
-            self.logger.error(message)
+                       % (self._address, timeout))
+            self._logger.error(message)
             raise pygatt_exceptions.NotConnectedError(message)
 
     def get_handle(self, uuid):
@@ -89,15 +108,15 @@ class GATTToolBackend(object):
         :type uuid: str
         :return: None if the UUID was not found.
         """
-        if uuid not in self.handles:
-            self.logger.debug("Looking up handle for characteristic %s", uuid)
-            with self.connection_lock:
-                self.con.sendline('characteristics')
+        if uuid not in self._handles:
+            self._logger.debug("Looking up handle for characteristic %s", uuid)
+            with self._connection_lock:
+                self._con.sendline('characteristics')
 
                 timeout = 2
                 while True:
                     try:
-                        self.con.expect(
+                        self._con.expect(
                             r"handle: 0x([a-fA-F0-9]{4}), "
                             "char properties: 0x[a-fA-F0-9]{2}, "
                             "char value handle: 0x[a-fA-F0-9]{4}, "
@@ -109,10 +128,10 @@ class GATTToolBackend(object):
                         break
                     else:
                         try:
-                            handle = int(self.con.match.group(1), 16)
-                            char_uuid = self.con.match.group(2).strip()
-                            self.handles[char_uuid] = handle
-                            self.logger.debug(
+                            handle = int(self._con.match.group(1), 16)
+                            char_uuid = self._con.match.group(2).strip()
+                            self._handles[char_uuid] = handle
+                            self._logger.debug(
                                 "Found characteristic %s, handle: %d", uuid,
                                 handle)
 
@@ -122,13 +141,13 @@ class GATTToolBackend(object):
                             timeout = .01
                         except AttributeError:
                             pass
-        handle = self.handles.get(uuid)
+        handle = self._handles.get(uuid)
         if handle is None:
             message = "No characteristic found matching %s" % uuid
-            self.logger.warn(message)
+            self._logger.warn(message)
             raise pygatt_exceptions.BluetoothLEError(message)
 
-        self.logger.debug(
+        self._logger.debug(
             "Characteristic %s, handle: %d", uuid, handle)
         return handle
 
@@ -145,7 +164,7 @@ class GATTToolBackend(object):
         Anytime we expect something we have to expect noti/indication first for
         a short time.
         """
-        with self.connection_lock:
+        with self._connection_lock:
             patterns = [
                 expected,
                 'Notification handle = .*? \r',
@@ -155,17 +174,17 @@ class GATTToolBackend(object):
             ]
             while True:
                 try:
-                    matched_pattern_index = self.con.expect(patterns, timeout)
+                    matched_pattern_index = self._con.expect(patterns, timeout)
                     if matched_pattern_index == 0:
                         break
                     elif matched_pattern_index in [1, 2]:
-                        self._handle_notification(self.con.after)
+                        self._handle_notification(self._con.after)
                     elif matched_pattern_index in [3, 4]:
-                        if self.running:
+                        if self._running:
                             message = ("Unexpectedly disconnected - do you "
                                        "need to clear bonds?")
-                            self.logger.error(message)
-                            self.running = False
+                            self._logger.error(message)
+                            self._running = False
                         raise pygatt_exceptions.NotConnectedError()
                 except pexpect.TIMEOUT:
                     raise pygatt_exceptions.NotificationTimeout(
@@ -178,7 +197,7 @@ class GATTToolBackend(object):
         :param value:
         :param wait_for_response:
         """
-        with self.connection_lock:
+        with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
 
             if wait_for_response:
@@ -188,17 +207,17 @@ class GATTToolBackend(object):
 
             cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
 
-            self.logger.debug('Sending cmd=%s', cmd)
-            self.con.sendline(cmd)
+            self._logger.debug('Sending cmd=%s', cmd)
+            self._con.sendline(cmd)
 
             if wait_for_response:
                 try:
                     self._expect('Characteristic value written successfully')
                 except pygatt_exceptions.NoResponseError:
-                    self.logger.error("No response received", exc_info=True)
+                    self._logger.error("No response received", exc_info=True)
                     raise
 
-            self.logger.info('Sent cmd=%s', cmd)
+            self._logger.info('Sent cmd=%s', cmd)
 
     def char_read_uuid(self, uuid):
         """
@@ -208,11 +227,11 @@ class GATTToolBackend(object):
         :return: bytearray of result.
         :rtype: bytearray
         """
-        with self.connection_lock:
-            self.con.sendline('char-read-uuid %s' % uuid)
+        with self._connection_lock:
+            self._con.sendline('char-read-uuid %s' % uuid)
             self._expect('value: .*? \r')
 
-            rval = self.con.after.split()[1:]
+            rval = self._con.after.split()[1:]
 
             return bytearray([int(x, 16) for x in rval])
 
@@ -224,11 +243,11 @@ class GATTToolBackend(object):
         :return: bytearray of result
         :rtype: bytearray
         """
-        with self.connection_lock:
-            self.con.sendline('char-read-hnd 0x%02x' % handle)
+        with self._connection_lock:
+            self._con.sendline('char-read-hnd 0x%02x' % handle)
             self._expect('descriptor: .*?\r')
 
-            rval = self.con.after.split()[1:]
+            rval = self._con.after.split()[1:]
 
             return bytearray([int(n, 16) for n in rval])
 
@@ -241,7 +260,7 @@ class GATTToolBackend(object):
         :return:
         :rtype:
         """
-        self.logger.info(
+        self._logger.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
         definition_handle = self.get_handle(uuid)
@@ -256,23 +275,23 @@ class GATTToolBackend(object):
             properties = bytearray([0x01, 0x00])
 
         try:
-            self.lock.acquire()
+            self._lock.acquire()
 
             if callback is not None:
-                self.callbacks[value_handle].add(callback)
+                self._callbacks[value_handle].add(callback)
 
-            if self.subscribed_handlers.get(value_handle, None) != properties:
+            if self._subscribed_handlers.get(value_handle, None) != properties:
                 self.char_write(
                     characteristic_config_handle,
                     properties,
                     wait_for_response=False
                 )
-                self.logger.debug("Subscribed to uuid=%s", uuid)
-                self.subscribed_handlers[value_handle] = properties
+                self._logger.debug("Subscribed to uuid=%s", uuid)
+                self._subscribed_handlers[value_handle] = properties
             else:
-                self.logger.debug("Already subscribed to uuid=%s", uuid)
+                self._logger.debug("Already subscribed to uuid=%s", uuid)
         finally:
-            self.lock.release()
+            self._lock.release()
 
     def _handle_notification(self, msg):
         """
@@ -283,40 +302,40 @@ class GATTToolBackend(object):
         handle = int(hex_handle, 16)
         value = bytearray.fromhex(hex_value)
 
-        self.logger.info('Received notification on handle=%s, value=%s',
-                         hex_handle, hex_value)
+        self._logger.info('Received notification on handle=%s, value=%s',
+                          hex_handle, hex_value)
         try:
-            self.lock.acquire()
+            self._lock.acquire()
 
-            if handle in self.callbacks:
-                for callback in self.callbacks[handle]:
+            if handle in self._callbacks:
+                for callback in self._callbacks[handle]:
                     callback(handle, value)
         finally:
-            self.lock.release()
+            self._lock.release()
 
     def stop(self):
         """
         Stop the backgroud notification handler in preparation for a
         disconnect.
         """
-        self.logger.info('Stopping')
-        self.running = False
+        self._logger.info('Stopping')
+        self._running = False
 
-        if self.con.isalive():
-            self.con.sendline('exit')
+        if self._con.isalive():
+            self._con.sendline('exit')
             while True:
-                if not self.con.isalive():
+                if not self._con.isalive():
                     break
                 time.sleep(0.1)
-            self.con.close()
+            self._con.close()
 
     def run(self):
         """
         Run a background thread to listen for notifications.
         """
-        self.logger.info('Running...')
-        while self.running:
-            with self.connection_lock:
+        self._logger.info('Running...')
+        while self._running:
+            with self._connection_lock:
                 try:
                     self._expect("fooooooo", timeout=.1)
                 except pygatt_exceptions.NotificationTimeout:
@@ -327,4 +346,4 @@ class GATTToolBackend(object):
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request
             time.sleep(.01)
-        self.logger.info("Listener thread finished")
+        self._logger.info("Listener thread finished")
