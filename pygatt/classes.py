@@ -4,9 +4,8 @@ from binascii import unhexlify
 import logging
 import time
 
-from bled112_backend import BLED112Backend
 from gatttool_classes import GATTToolBackend
-from pygatt_constants import(
+from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
 
@@ -16,24 +15,18 @@ class BluetoothLEDevice(object):
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, mac_address, backend=BACKEND['GATTTOOL'], logfile=None,
-                 serial_port=None, delete_backend_bonds=True):
+    def __init__(self, mac_address, logfile=None, bled112=None):
         """
         Initialize.
 
         mac_address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
-        backend -- backend to use. One of pygatt.constants.backend.
         logfile -- the file in which to write the logs.
-        serial_port -- (BLED112 only) the serial port to which the BLED112 is
-                       connected.
-        delete_backend_bonds -- (BLED112 only) delete the bonds stored on the
-                                backend so that bonding does not inadvertently
-                                take place.
+        bled112 -- (BLED112 only) the BLED112_backend object to use.
         """
         # Initialize
+        self._backend = None
         self._backend_type = None
-        self._backend_type
         self._callbacks = {
             # uuid_str: func,
         }
@@ -51,23 +44,17 @@ class BluetoothLEDevice(object):
         self._logger.addHandler(handler)
 
         # Select backend, store mac address, optional delete bonds
-        if backend == BACKEND['BLED112']:
+        if bled112 is not None:
             self._logger.info("pygatt[BLED112]")
-            if serial_port is None:
-                raise ValueError("serial_port %s", serial_port)
-            self._backend = BLED112Backend(serial_port, loghandler=handler,
-                                           loglevel=LOG_LEVEL)
+            self._backend = bled112
+            self._backend_type = BACKEND['BLED112']
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
-            if delete_backend_bonds:
-                self._backend.delete_stored_bonds()
-        elif backend == BACKEND['GATTTOOL']:
+        else:
             self._logger.info("pygatt[GATTTOOL]")
             # TODO: hci_device, how to pass logfile
             self._backend = GATTToolBackend(mac_address, hci_device='hci1')
-        else:
-            raise ValueError("backend", backend)
-        self._backend_type = backend
+            self._backend_type = BACKEND['GATTTOOL']
 
     def bond(self):
         """

@@ -15,6 +15,7 @@ from bled112_constants import(
     gatt_characteristic_type_uuid, gatt_service_uuid, scan_response_data_type,
     scan_response_packet_type
 )
+from constants import LOG_FORMAT, LOG_LEVEL
 
 
 class Characteristic(object):
@@ -43,6 +44,8 @@ class AdvertisingAndScanInfo(object):
     address.
     """
     def __init__(self):
+        self.name = ""
+        self.address = ""
         self.packet_data = {
             # scan_response_packet_type[xxx]: data_dictionary,
         }
@@ -54,8 +57,7 @@ class BLED112Backend(object):
     Only supports 1 device connection at a time.
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True, loghandler=None,
-                 loglevel=logging.DEBUG):
+    def __init__(self, serial_port, run=True, logfile=None):
         """
         Initialize the BLED112 to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -64,8 +66,7 @@ class BLED112Backend(object):
         serial_port -- The name of the serial port that the BLED112 is connected
                        to.
         run -- begin reveiving packets immediately.
-        loghandler -- logging.handler object to use for the logger.
-        loglevel -- log level for this module's logger.
+        logfile -- the file to log to.
 
         Locking total order:
         1) self._cond
@@ -74,18 +75,19 @@ class BLED112Backend(object):
         # Set up logging
         self._loglock = threading.Lock()
         self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(loglevel)
-        if loghandler is None:
-            loghandler = logging.StreamHandler()  # prints to stderr
-            formatter = logging.Formatter(
-                '%(asctime)s %(name)s %(levelname)s - %(message)s')
-            loghandler.setLevel(loglevel)
-            loghandler.setFormatter(formatter)
-        self._logger.addHandler(loghandler)
+        self._logger.setLevel(LOG_LEVEL)
+        if logfile is not None:
+            handler = logging.FileHandler(logfile)
+        else:  # print to stderr
+            handler = logging.StreamHandler()
+        formatter = logging.Formatter(fmt=LOG_FORMAT)
+        handler.setLevel(LOG_LEVEL)
+        handler.setFormatter(formatter)
+        self._logger.addHandler(handler)
 
         # Initialization
-        self._lib = bled112_bglib.BGLib(loghandler=loghandler,
-                                        loglevel=loglevel)
+        self._lib = bled112_bglib.BGLib(loghandler=handler,
+                                        loglevel=LOG_LEVEL)
         # Note: _ser is not protected by _main_thread_cond
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
@@ -1130,8 +1132,8 @@ class BLED112Backend(object):
 
         data -- the args['data'] list from _ble_evt_scan_response.
 
-        Returns a dictionary containing the parsed data in pairs of
-        'field_name': value.
+        Returns a name and a dictionary containing the parsed data in pairs of
+        field_name': value.
         """
         # Result stored here
         data_dict = {
@@ -1141,6 +1143,7 @@ class BLED112Backend(object):
         field_name = None
         field_value = []
         # Iterate over data bytes to put in field
+        dev_name = ""
         for b in data:
             if bytes_left_in_field == 0:
                 # New field
@@ -1167,7 +1170,7 @@ class BLED112Backend(object):
                             data_dict[field_name].append(service_uuid)
                     else:
                         data_dict[field_name] = bytearray(field_value)
-        return data_dict
+        return dev_name, data_dict
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, sender, args):
@@ -1439,12 +1442,19 @@ class BLED112Backend(object):
             if value == args['address_type']:
                 address_type = name
                 break
-        data_dict = self._scan_rsp_data(args['data'])
+        name, data_dict = self._scan_rsp_data(args['data'])
 
         # Store device information
         if address not in self._devices_discovered:
             self._devices_discovered[address] = AdvertisingAndScanInfo()
-        self._devices_discovered[address].packet_data[packet_type] = data_dict
+        dev = self._devices_discovered[address]
+        if dev.name == "":
+            dev.name = name
+        if dev.address == "":
+            dev.address = address
+        if (packet_type not in dev.packet_data) or\
+                len(dev.packet_data[packet_type]) < len(data_dict):
+            dev.packet_data[packet_type] = data_dict
 
         # Log
         self._logger.info("_ble_evt_gap_scan_response")

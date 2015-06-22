@@ -7,9 +7,8 @@ from collections import defaultdict
 
 import pexpect
 
-import pygatt_constants
-import pygatt_exceptions
-# import gatttool_util
+import constants
+import exceptions
 
 
 """MODIFIED pygatt Class Definitions"""
@@ -88,7 +87,7 @@ class GATTToolBackend(object):
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
 
     def connect(self,
-                timeout=pygatt_constants.DEFAULT_CONNECT_TIMEOUT_S):
+                timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
         self._logger.info('Connecting with timeout=%s', timeout)
         try:
@@ -99,7 +98,7 @@ class GATTToolBackend(object):
             message = ("Timed out connecting to %s after %s seconds."
                        % (self._address, timeout))
             self._logger.error(message)
-            raise pygatt_exceptions.NotConnectedError(message)
+            raise exceptions.NotConnectedError(message)
 
     def get_handle(self, uuid):
         """
@@ -145,14 +144,14 @@ class GATTToolBackend(object):
         if handle is None:
             message = "No characteristic found matching %s" % uuid
             self._logger.warn(message)
-            raise pygatt_exceptions.BluetoothLEError(message)
+            raise exceptions.BluetoothLEError(message)
 
         self._logger.debug(
             "Characteristic %s, handle: %d", uuid, handle)
         return handle
 
     def _expect(self, expected,
-                timeout=pygatt_constants.DEFAULT_TIMEOUT_S):
+                timeout=constants.DEFAULT_TIMEOUT_S):
         """
         We may (and often do) get an indication/notification before a
         write completes, and so it can be lost if we "expect()"'d something
@@ -185,9 +184,9 @@ class GATTToolBackend(object):
                                        "need to clear bonds?")
                             self._logger.error(message)
                             self._running = False
-                        raise pygatt_exceptions.NotConnectedError()
+                        raise exceptions.NotConnectedError()
                 except pexpect.TIMEOUT:
-                    raise pygatt_exceptions.NotificationTimeout(
+                    raise exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
 
     def char_write(self, handle, value, wait_for_response=False):
@@ -213,7 +212,7 @@ class GATTToolBackend(object):
             if wait_for_response:
                 try:
                     self._expect('Characteristic value written successfully')
-                except pygatt_exceptions.NoResponseError:
+                except exceptions.NoResponseError:
                     self._logger.error("No response received", exc_info=True)
                     raise
 
@@ -338,9 +337,9 @@ class GATTToolBackend(object):
             with self._connection_lock:
                 try:
                     self._expect("fooooooo", timeout=.1)
-                except pygatt_exceptions.NotificationTimeout:
+                except exceptions.NotificationTimeout:
                     pass
-                except (pygatt_exceptions.NotConnectedError, pexpect.EOF):
+                except (exceptions.NotConnectedError, pexpect.EOF):
                     break
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
