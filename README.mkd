@@ -29,55 +29,6 @@ Ideally we could use BlueZ directly, but that's a much bigger task.
 * Install via pip: `$ pip install pygatt`
 
 
-##Usage Examples
-Connect to a bGeigie Nano using BLEBee and decode sensor data (NMEA-like). This example uses the gatttool backend:
-
-```python
-import pygatt
-
-
-str_buf = ''
-def print_str_buf(x,y):
-    global str_buf
-    str_y = "%s" % y
-    if str_y == '$':
-        print str_buf
-        sb = str_y
-    else:
-        str_buf = str_buf + str_y
-
-pygatt.gattool_util.reset_bluetooth_controller()
-bgn = pygatt.pygatt.BluetoothLEDevice(
-    '00:07:80:71:D5:89',
-    backend=pygatt.pygatt_constants.BACKEND['GATTTOOL'])
-bgn.connect()
-bgn.char_write('INSERT_UUID_HERE', bytearray([0x03, 0x00]))
-bgn.subscribe('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b', print_str_buf)
-bgn.stop()
-```
-This should print something like:
-```python
-$BNRDD,2359,2014-12-14T09:46:47Z,32,2,2398,A,3745.6045,N,12229.8638,W,50.40,A,8,87*5B
-```
-The following example uses the BLED112 backend to read a characteristic value from a hypothetical device.
-
-```python
-import pygatt
-
-
-device = pygatt.pygatt.BluetoothLEDevice('01:23:45:67:89:ab',
-    backend=pygatt.pygatt_constants.BACKEND['BLED112'],
-    serial_port='/dev/ttyACM0')
-device.connect()
-value_bytearray = device.char_read('01234567-0123-0123-01234-0123456789ab')
-print([hex(b) for b value_bytearray])
-device.exit()
-```
-This would print something like:
-```python
-['0xfe', '0xdc', '0xba', '0x98']
-```
-
 ##Author
 Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
 
