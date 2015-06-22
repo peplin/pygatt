@@ -176,20 +176,6 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    def exit(self):
-        """
-        Cleans up. Run this when done using the BluetoothLEDevice object with
-        the BLED112 backend (BLED112 only).
-        """
-        self._logger.info("exit")
-        if self._backend_type == BACKEND['BLED112']:
-            self._backend.disconnect()
-            self._backend.stop()
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            pass
-        else:
-            raise NotImplementedError("backend", self._backend_type)
-
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
@@ -214,12 +200,12 @@ class BluetoothLEDevice(object):
 
     def run(self):
         """
-        Run a background thread to listen for notifications (GATTTOOL only).
+        Run a background thread to listen for notifications (GATTTOOL only) or
+        run the receiver background thread (BLED112 only).
         """
         self._logger.info("run")
         if self._backend_type == BACKEND['BLED112']:
-            # Nothing to do
-            pass
+            self._backend.run()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.run()
         else:
@@ -228,12 +214,13 @@ class BluetoothLEDevice(object):
     def stop(self):
         """
         Stop the backgroud notification handler in preparation for a disconnect
-        (GATTTOOL only).
+        (GATTTOOL only) or disconnect and stop the receiver thread (BLED112
+        only).
         """
         self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
-            # Nothing to do
-            pass
+            self._backend.disconnect()
+            self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.stop()
         else:

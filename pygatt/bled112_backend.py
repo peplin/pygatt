@@ -845,8 +845,13 @@ class BLED112Backend(object):
         """
         # Setup and run recvr thread
         self._main_thread_cond.acquire()
-        self._recvr_stop = False
+        skip = True
+        if self._recvr_stop:
+            self._recvr_stop = False
+            skip = False
         self._main_thread_cond.release()
+        if skip:
+            return
         self._recvr_thread = threading.Thread(target=self._recvr)
         self._recvr_thread.start()
 

@@ -4,28 +4,26 @@ The pygatt module can be used to communicate with Bluetooth Low Energy devices u
 ## BluetoothLEDevice
 An instance of this class represents a Bluetooth Low Energy device. Instantiate with the following arguments:
 * mac_address -- mac address of device formated like 'XX:XX:XX:XX:XX:XX'
-* backend -- (optional, default is GATTTOOL) backend module to use. One of pygatt.constants.BACKEND
 * logfile -- the file in which to write the logs.
-* serial_port -- (BLED112 only) the serial port to which the BLED112 is connected.
-* delete_backend_bonds -- (BLED112 only) delete the bonds stored on the backend so that bonding does not inadvertently take place.
+* hci_device -- (GATTTOOL only) the hci_device for gattool to use.
+* bled112 -- (BLED112 only) BLED111Backend object to use.
 
 For example:
 ```python
 import pygatt
 
-
-my_ble_device = pygatt.BluetoothLEDevice(
-    '01:23:45:67:89:ab', backend=pygatt.pygatt_constants.BACKEND['BLED112'],
-    logfile='example.log', serial_port='/dev/ttyACM0')
+dongle = pygatt.bled112_backend.BLED112Backend('/dev/ttyAMC0', logfile='example.log')
+my_ble_device = pygatt.classes.BluetoothLEDevice(
+    '01:23:45:67:89:ab', logfile='example.log', bled112=dongle)
 ```
 
 ### Connect to a device
 Connect to the BLE device.
-* timeout -- the length of time to try to establish a connection before returning.
+* timeout -- number of seconds to try to establish a connection.
 
 For example:
 ```python
-my_ble_device.bond()
+my_ble_device.connect(timeout=5)
 ```
 ### Bond with the device
 Create a new bond or use an existing bond with the device and make the current connection bonded and encrypted.
@@ -74,7 +72,7 @@ rssi_value = my_ble_device.get_rssi()
 ```
 
 ### Run the background receiver thread
-Run a background thread to listen for notifications (GATTTOOL only).
+Run a background thread to listen for notifications (GATTTOOL only) or run the receiver background thread (BLED112 only). 
 
 For example:
 ```python
@@ -82,8 +80,7 @@ my_ble_device.run()
 ```
 
 ### Stop the background receiver thread 
-Stop the background thread when done using the BLE device (GATTTOOL only).
-
+Stop the backgroud notification handler in preparation for a disconnect (GATTTOOL only) or disconnect and stop the receiver thread (BLED112 only).
 For example:
 ```python
 my_ble_device.stop()
@@ -95,32 +92,34 @@ Enable subscription to a Characteristic with ability to call callback.
 * callback -- function to be called when a notification/indication is received on this characteristic.
 * indication -- use indications (requires application ACK) rather than notifications (does not requrie application ACK).
 
-## Util (GATTTOOL only)
+## Utilities
 Util provide functionality of the Bluetooth controller.
 
 ### Reset the Bluetooth controller
-Re-initializses Bluetooth Controller Interface by bringing down and up the interface.
-* hci_device -- Interface to re-initialize.
+Re-initializses Bluetooth Controller Interface by either bringing down and up the interface (GATTOOL only) or disconnecting and deleting stored bonds (BLED112 only).
+* hci_device -- Interface to re-initialize (GATTTOOL only).
+* bled112 -- BLED112Backend object to use (BLED112 only).
 
 For example:
 ```python
-import pygatt.gatttool_util
+import pygatt
 
-
-pygatt.gatttool_util.reset_bluetooth_controller()
+dongle = pygatt.bled112_backend.BLED112Backend('/dev/ttyAMC0', logfile='example.log')
+pygatt.gatttool_util.reset_bluetooth_controller(bled112=dongle)
 ```
 
 ### Scan for devices
-Performs a BLE scan using hcitool. If you don't want to use 'sudo', you must add a few 'capabilities' to your system. If you have libcap installed, run this to enable normal users to perform LE scanning: setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
-If you do use sudo, the hcitool subprocess becomes more difficult to terminate cleanly, and may leave your Bluetooth adapter in a bad state.
+Perform a BLE scan. When using GATTTOOL, if you don't want to use 'sudo', you must add a few 'capabilities' to your system. If you have libcap installed, run this to enable normal users to perform LE scanning: setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`. If you do use sudo, the hcitool subprocess becomes more difficult to terminate cleanly, and may leave your Bluetooth adapter in a bad state
 * timeout -- Time (in seconds) to wait for the scan to complete.
-* use_sudo -- Perform scan as superuser.
+* use_sudo -- Perform scan as superuser (GATTTOOL onlyu).
+* bled112 -- BLED112Backend object to use (BLED112 only).
 Returns a list of BLE devices found.
 
 For example:
 ```python
-import pygatt.gatttool_util
+import pygatt
 
 
-devices = pygatt.gatttool_util.lescan()
+dongle = pygatt.bled112_backend.BLED112Backend('/dev/ttyAMC0', logfile='example.log')
+devices = pygatt.gatttool_util.lescan(bled112=dongle)
 ```

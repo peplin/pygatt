@@ -18,23 +18,24 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 logger = logging.getLogger(__name__)
 
 
-def reset_bluetooth_controller(hci_device='hci0', backend=None):
+def reset_bluetooth_controller(hci_device='hci0', bled112=None):
     """
     Re-initializses Bluetooth Controller Interface.
     This is accomplished by bringing down and up the interface.
 
     interface -- Interface to re-initialize.
-    backend -- (BLED112 only) BLED112Backend object to use.
+    bled112 -- (BLED112 only) BLED112Backend object to use.
     """
-    if backend is None:  # GATTTOOL
+    if bled112 is None:  # GATTTOOL
         # TODO(gba): Replace with Fabric.
         subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()
         subprocess.Popen(["sudo", "hciconfig", hci_device, "reset"]).wait()
     else:  # BLED112Backend object
-        backend.delete_stored_bonds()
+        bled112.disconnect()
+        bled112.delete_stored_bonds()
 
 
-def lescan(timeout=5, use_sudo=True, backend=None):
+def lescan(timeout=5, use_sudo=True, bled112=None):
     """
     Performs a BLE scan.
 
@@ -47,11 +48,11 @@ def lescan(timeout=5, use_sudo=True, backend=None):
 
     timeout -- Time (in seconds) to wait for the scan to complete.
     use_sudo -- (GATTTOOL only) Perform scan as superuser.
-    backend -- (BLED112 only) BLED112Backend object to use.
+    bled112 -- (BLED112 only) BLED112Backend object to use.
 
     Returns a list of BLE devices found.
     """
-    if backend is None:  # GATTTOOL
+    if bled112 is None:  # GATTTOOL
         # TODO(gba): Replace with Fabric.
         cmd = 'hcitool lescan'
         if use_sudo:
@@ -96,8 +97,8 @@ def lescan(timeout=5, use_sudo=True, backend=None):
             return [device for device in devices.values()]
         return []
     else:  # BLED112
-        backend.scan(scan_time=timeout*1000)
-        devs_dict = backend.get_devices_discovered()
+        bled112.scan(scan_time=timeout*1000)
+        devs_dict = bled112.get_devices_discovered()
         devices = []
         for address, info in devs_dict.iteritems():
             devices.append([address, info.name])
