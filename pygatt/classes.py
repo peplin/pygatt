@@ -15,13 +15,15 @@ class BluetoothLEDevice(object):
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, mac_address, logfile=None, bled112=None):
+    def __init__(self, mac_address, logfile=None, hci_device='hci0',
+                 bled112=None):
         """
         Initialize.
 
         mac_address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
         logfile -- the file in which to write the logs.
+        hci_device -- (GATTTOOL only) the hci_device for gattool to use.
         bled112 -- (BLED112 only) the BLED112_backend object to use.
         """
         # Initialize
@@ -52,8 +54,10 @@ class BluetoothLEDevice(object):
                 [int(b, 16) for b in mac_address.split(":")])
         else:
             self._logger.info("pygatt[GATTTOOL]")
-            # TODO: hci_device, how to pass logfile
-            self._backend = GATTToolBackend(mac_address, hci_device='hci1')
+            # TODO: how to pass pexpect logfile
+            self._backend = GATTToolBackend(mac_address, hci_device=hci_device,
+                                            loglevel=LOG_LEVEL,
+                                            loghandler=handler)
             self._backend_type = BACKEND['GATTTOOL']
 
     def bond(self):
