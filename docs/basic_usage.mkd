@@ -1,0 +1,126 @@
+# Basic pygatt Usage
+The pygatt module can be used to communicate with Bluetooth Low Energy devices using either gatttool/BlueZ (Linux only) or the Bluegiga BLED1112 dongle (cross-platform).
+
+## BluetoothLEDevice
+An instance of this class represents a Bluetooth Low Energy device. Instantiate with the following arguments:
+* mac_address -- mac address of device formated like 'XX:XX:XX:XX:XX:XX'
+* backend -- (optional, default is GATTTOOL) backend module to use. One of pygatt.constants.BACKEND
+* logfile -- the file in which to write the logs.
+* serial_port -- (BLED112 only) the serial port to which the BLED112 is connected.
+* delete_backend_bonds -- (BLED112 only) delete the bonds stored on the backend so that bonding does not inadvertently take place.
+
+For example:
+```python
+import pygatt
+
+
+my_ble_device = pygatt.BluetoothLEDevice(
+    '01:23:45:67:89:ab', backend=pygatt.pygatt_constants.BACKEND['BLED112'],
+    logfile='example.log', serial_port='/dev/ttyACM0')
+```
+
+### Connect to a device
+Connect to the BLE device.
+* timeout -- the length of time to try to establish a connection before returning.
+
+For example:
+```python
+my_ble_device.bond()
+```
+### Bond with the device
+Create a new bond or use an existing bond with the device and make the current connection bonded and encrypted.
+
+For example:
+```python
+my_ble_device.bond()
+```
+
+### Read a characteristic value
+Reads a characteristic from the BLE device by UUID.
+* uuid -- UUID of Characteristic formatted like 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'.
+* Returns a bytearray containing the characteristic value on success. Returns None on failure.
+
+For example:
+```python
+my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
+```
+
+### Write a value to a characteristic
+Writes a value to a given characteristic handle.
+* uuid -- the UUID of the characteristic to write to.
+* value -- the value as a bytearray to write to the characteristic.
+* wait_for_response -- wait for notifications/indications after writing.
+* num_packets -- (BLED112 only) the number of notification/indication BLE packets to wait for.
+* uuid_recv -- (BLED112 only) the UUID for the characteritic that will send the notification/indication packets.
+
+For example:
+```python
+my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b', bytearray([0x00, 0xFF]))
+```
+### Form an encrypted connection (no bond)
+Encrypt the connection, but do not bond, with the device.
+
+For example:
+```python
+my_ble_device.encrypt()
+```
+
+### Get the connection RSSI
+Get the receiver signal strength indicator (RSSI) of the connection (BLED112 only). Returns the RSSI value in dBm on success. Returns None on failure.
+
+For example:
+```python
+rssi_value = my_ble_device.get_rssi()
+```
+
+### Run the background receiver thread
+Run a background thread to listen for notifications (GATTTOOL only).
+
+For example:
+```python
+my_ble_device.run()
+```
+
+### Stop the background receiver thread 
+Stop the background thread when done using the BLE device (GATTTOOL only).
+
+For example:
+```python
+my_ble_device.stop()
+```
+
+### Subscribe for charactertistic notifications or indications
+Enable subscription to a Characteristic with ability to call callback.
+* uuid -- UUID as a string of the characteristic to subscribe to.
+* callback -- function to be called when a notification/indication is received on this characteristic.
+* indication -- use indications (requires application ACK) rather than notifications (does not requrie application ACK).
+
+## Util (GATTTOOL only)
+Util provide functionality of the Bluetooth controller.
+
+### Reset the Bluetooth controller
+Re-initializses Bluetooth Controller Interface by bringing down and up the interface.
+* hci_device -- Interface to re-initialize.
+
+For example:
+```python
+import pygatt.gatttool_util
+
+
+pygatt.gatttool_util.reset_bluetooth_controller()
+```
+
+### Scan for devices
+Performs a BLE scan using hcitool. If you don't want to use 'sudo', you must add a few 'capabilities' to your system. If you have libcap installed, run this to enable normal users to perform LE scanning: setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+If you do use sudo, the hcitool subprocess becomes more difficult to terminate cleanly, and may leave your Bluetooth adapter in a bad state.
+* timeout -- Time (in seconds) to wait for the scan to complete.
+* use_sudo -- Perform scan as superuser.
+Returns a list of BLE devices found.
+
+For example:
+```python
+import pygatt.gatttool_util
+
+
+devices = pygatt.gatttool_util.lescan()
+```
