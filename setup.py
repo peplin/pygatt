@@ -39,7 +39,7 @@ setup(
     packages=['pygatt'],
     package_data={'': ['LICENSE', 'NOTICE']},
     license=open('LICENSE').read(),
-    long_description=open('README.rst').read(),
+    long_description=open('README.mkd').read(),
     url='https://github.com/ampledata/pygatt',
     extras_require={
         'BLUEGIGA': ["pyserial"],
