@@ -379,7 +379,7 @@ class BLED112Backend(object):
             self._logger.warn("read_by_handle failed: disconnected")
             self._loglock.release()
             self._main_thread_cond.release()
-            return
+            return None
         if self._attribute_value_received:
             self._attribute_value_received = False  # reset the flag
             value = self._attribute_value
@@ -470,6 +470,9 @@ class BLED112Backend(object):
             self._connect_timeout = False
             if not self._connected:
                 self._logger.warn("Connect timeout")
+                self._loglock.release()
+                self._main_thread_cond.release()
+                return False
 
         # Drop locks
         self._loglock.release()

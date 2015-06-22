@@ -4,10 +4,11 @@ from binascii import unhexlify
 import logging
 import time
 
-from gatttool_classes import GATTToolBackend
 from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
+from exceptions import NotConnectedError
+from gatttool_classes import GATTToolBackend
 
 
 class BluetoothLEDevice(object):
@@ -79,15 +80,14 @@ class BluetoothLEDevice(object):
         timeout -- the length of time to try to establish a connection before
                    returning.
 
-        Returns True if the connection was made successfully.
-        Returns False otherwise.
         """
         self._logger.info("connect")
         if self._backend_type == BACKEND['BLED112']:
-            return self._backend.connect(self._mac_address, timeout=timeout)
+            ret = self._backend.connect(self._mac_address, timeout=timeout)
+            if not ret:
+                raise NotConnectedError("Connect failed")
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.connect(timeout=timeout)
-            return True
         else:
             raise NotImplementedError("backend", self._backend_type)
 
@@ -98,14 +98,16 @@ class BluetoothLEDevice(object):
         uuid -- UUID of Characteristic to read as a string.
 
         Returns a bytearray containing the characteristic value on success.
-        Returns None on failure.
         """
         self._logger.info("char_read %s", uuid)
         if self._backend_type == BACKEND['BLED112']:
             handle = self._get_handle(uuid)
             if handle is None:
-                return None
-            return self._backend.char_read(handle)
+                raise ValueError("invalid UUID")
+            ret = self._backend.char_read(handle)
+            if ret is None:
+                raise Exception("read failed")
+            return ret
         elif self._backend_type == BACKEND['GATTTOOL']:
             return self._backend.char_read_uuid(uuid)
         else:
@@ -124,8 +126,6 @@ class BluetoothLEDevice(object):
         uuid_recv -- (BLED112 only) the UUID for the characteritic that will
                      send the notification/indication packets.
 
-        Returns True on success.
-        Returns False otherwise.
         """
         self._logger.info("char_write %s", uuid_write)
         # Write to the characteristic
@@ -136,7 +136,7 @@ class BluetoothLEDevice(object):
             handle_recv = self._get_handle(uuid_recv)
             ret = self._backend.char_write(handle_write, value)
             if not ret:  # write failed
-                return False
+                raise Exception("write failed")
             if wait_for_response:
                 # Wait for num_packets notifications on the receive
                 #   characteristic
@@ -156,7 +156,6 @@ class BluetoothLEDevice(object):
                 if uuid_recv in self._callbacks:
                     for cb in self._callbacks[uuid_recv]:
                         cb(bytearray(value_list))
-            return True
         elif self._backend_type == BACKEND['GATTTOOL']:
             handle = self._backend.get_handle(uuid_write)
             self._backend.char_write(handle, value,
@@ -193,6 +192,7 @@ class BluetoothLEDevice(object):
                 if rssi != 25:
                     return rssi
                 time.sleep(0.1)
+            return Exception("get rssi failed")
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("pygatt[GATTOOL].get_rssi")
         else:
