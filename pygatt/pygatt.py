@@ -204,7 +204,7 @@ class BluetoothLEDevice(object):
         Get the receiver signal strength indicator (RSSI) value from the BLE
         device (BLED112 only).
 
-        Returns the RSSI value on success.
+        Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
         self._logger.info("get_rssi")
