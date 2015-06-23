@@ -30,9 +30,7 @@ class BluetoothLEDevice(object):
         # Initialize
         self._backend = None
         self._backend_type = None
-        self._callbacks = {
-            # uuid_str: func,
-        }
+        self._callbacks = {}  # Holds pairs of 'uuid_string', function_object
 
         # Set up logging
         self._logger = logging.getLogger(__name__)
