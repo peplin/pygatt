@@ -26,7 +26,11 @@ Ideally we could use BlueZ directly, but that's a much bigger task.
 
 
 ## Installation
+With BLED112 backend:
 * Install via pip: `$ pip install pygatt`
+
+With BLED112 backend + GATTTOOL backend:
+* Install via pip: `$ pip install pygatt[GATTTOOL]
 
 
 ##Author

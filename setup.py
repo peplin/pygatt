@@ -34,15 +34,17 @@ setup(
     name='pygatt',
     version=__version__,
     description='Python GATT Module',
-    author='Greg Albrecht',
+    author='Greg Albrecht <gba@orionlabs.co',
     author_email='gba@orionlabs.co',
     packages=['pygatt'],
     package_data={'': ['LICENSE', 'NOTICE']},
     license=open('LICENSE').read(),
     long_description=open('README.mkd').read(),
     url='https://github.com/ampledata/pygatt',
+    install_requires=[
+        'pyserial'
+    ],
     extras_require={
-        'BLUEGIGA': ["pyserial"],
         'GATTTOOL': ["pexpect"],
     },
     setup_requires=[
