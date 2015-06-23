@@ -7,7 +7,7 @@ import time
 from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
-from exceptions import NotConnectedError
+from exceptions import NoResponseError, NotConnectedError
 from gatttool_classes import GATTToolBackend
 
 
@@ -114,7 +114,7 @@ class BluetoothLEDevice(object):
             raise NotImplementedError("backend", self._backend_type)
 
     def char_write(self, uuid_write, value, wait_for_response=False,
-                   num_packets=1, uuid_recv=None):
+                   num_packets=1, uuid_recv=None, bled112_timeout=5):
         """
         Writes a value to a given characteristic handle.
 
@@ -125,7 +125,8 @@ class BluetoothLEDevice(object):
                        packets to wait for.
         uuid_recv -- (BLED112 only) the UUID for the characteritic that will
                      send the notification/indication packets.
-
+        bled112_timeout -- number of seconds to wait for notifications before
+                           timing out.
         """
         self._logger.info("char_write %s", uuid_write)
         # Write to the characteristic
@@ -141,10 +142,14 @@ class BluetoothLEDevice(object):
                 # Wait for num_packets notifications on the receive
                 #   characteristic
                 notifications = self._backend.get_notifications()
-                while (len(notifications[handle_recv]) <
-                       num_packets):
+                sec_waited = 0
+                while (len(notifications[handle_recv]) < num_packets):
+                    if (sec_waited >= bled112_timeout):
+                        raise NoResponseError("Timed out after %s seconds",
+                                              sec_waited)
                     time.sleep(0.25)  # busy wait
                     notifications = self._backend.get_notifications()
+                    sec_waited += 0.25
                 # Assemble notification values into one bytearray and delete
                 #   notification
                 value_list = []
