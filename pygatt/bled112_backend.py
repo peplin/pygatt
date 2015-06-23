@@ -806,7 +806,7 @@ class BLED112Backend(object):
         self._response_received = False  # reset the flag
         rssi_value = self._response_return
 
-        # Drop locks
+        # Drop lock
         self._main_thread_cond.release()
 
         return rssi_value
