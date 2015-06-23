@@ -30,7 +30,7 @@ With BLED112 backend:
 * Install via pip: `$ pip install pygatt`
 
 With BLED112 backend + GATTTOOL backend:
-* Install via pip: `$ pip install pygatt[GATTTOOL]
+* Install via pip: `$ pip install pygatt[GATTTOOL]`
 
 
 ##Author
