@@ -1,11 +1,15 @@
-import logging
-import string
-import time
-import threading
+from __future__ import print_function
 
 from collections import defaultdict
-
-import pexpect
+import logging
+import string
+import sys
+import time
+import threading
+try:
+    import pexpect
+except Exception as e:
+    print("WARNING:", e, file=sys.stderr)
 
 import constants
 import exceptions

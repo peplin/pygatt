@@ -1,7 +1,13 @@
+from __future__ import print_function
+
+import logging
 import re
 import subprocess
-import pexpect
-import logging
+import sys
+try:
+    import pexpect
+except Exception as e:
+    print("WARNING:", e, file=sys.stderr)
 
 from exceptions import BluetoothLEError
 
