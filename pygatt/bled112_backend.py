@@ -212,9 +212,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         self._loglock.acquire()
 
         # Begin encryption and bonding
@@ -226,9 +224,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("encrypt_start failed: %s",
@@ -283,9 +279,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("attribute_write failed: %s",
@@ -340,9 +334,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("read_by_handle failed: %s",
@@ -429,9 +421,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         if self._response_return != 0:
             self._loglock.acquire()
             self._logger.warn("connect_direct failed: %s",
@@ -478,9 +468,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         if self._num_bonds == 0:  # no bonds
             self._main_thread_cond.release()
             return
@@ -498,9 +486,7 @@ class BLED112Backend(object):
 
             # Wait for response
             self._loglock.release()  # don't hold loglock while waiting
-            while not self._response_received:
-                self._main_thread_cond.wait()
-            self._response_received = False  # reset flag
+            self._wait_for_cmd_response()
             self._loglock.acquire()
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
@@ -526,9 +512,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         if self._response_return != 0:
             self._loglock.acquire()
             self._logger.warn("connection_disconnect failed: %s",
@@ -568,9 +552,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
 
         # Start encryption
         self._logger.info("encrypt_start")
@@ -579,9 +561,7 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         if self._response_return != 0:
             self._loglock.acquire()
             self._logger.warn("encrypt_start failed %s",
@@ -654,9 +634,7 @@ class BLED112Backend(object):
 
             # Wait for response
             self._loglock.release()  # don't hold loglock while waiting
-            while not self._response_received:
-                self._main_thread_cond.wait()
-            self._response_received = False  # reset the flag
+            self._wait_for_cmd_response()
             if self._response_return != 0:
                 self._loglock.acquire()
                 self._logger.warn("find_information failed %s",
@@ -757,9 +735,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False  # reset the flag
+        self._wait_for_cmd_response()
         rssi_value = self._response_return
 
         # Drop lock
@@ -830,9 +806,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._main_thread_cond.acquire()
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("gap_set_mode failed: %s",
@@ -845,9 +819,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("gap_end_procedure failed: %s",
@@ -860,9 +832,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
 
         # Drop lock
         self._main_thread_cond.release()
@@ -897,9 +867,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("set_scan_parameters failed: %s",
@@ -915,9 +883,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("gap_discover failed: %s",
@@ -941,9 +907,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._loglock.release()  # don't hold loglock while waiting
-        while not self._response_received:
-            self._main_thread_cond.wait()
-        self._response_received = False
+        self._wait_for_cmd_response()
         self._loglock.acquire()
         if self._response_return != 0:
             self._logger.warn("gap_end_procedure failed: %s",
@@ -1155,6 +1119,15 @@ class BLED112Backend(object):
                     else:
                         data_dict[field_name] = bytearray(field_value)
         return dev_name, data_dict
+
+    def _wait_for_cmd_response(self):
+        """
+        Wait on _main_thread_cond until it is notified and _response_received is
+        set to True, break, then set _response received to False.
+        """
+        while not self._response_received:
+            self._main_thread_cond.wait()
+        self._response_received = False
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, sender, args):
