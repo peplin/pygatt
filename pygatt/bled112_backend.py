@@ -202,11 +202,7 @@ class BLED112Backend(object):
         self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Set to bondable mode
         self._bond_expected = True
@@ -276,11 +272,7 @@ class BLED112Backend(object):
         self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return False
+        self._check_if_connected(fail_return_value=False)
 
         # Write to characteristic
         value_list = [b for b in value]
@@ -337,11 +329,7 @@ class BLED112Backend(object):
         self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return None
+        self._check_if_connected()
 
         # Read from characteristic
         self._logger.info("read_by_handle")
@@ -411,9 +399,9 @@ class BLED112Backend(object):
         # Get locks
         self._get_locks()
 
-        # Make sure there isn't a connection
+        # Make sure there is NOT a connection
         if self._connected:
-            self._logger.warn("Already connected")
+            self._logger.warn("Not connected")
             self._loglock.release()
             self._main_thread_cond.release()
             return False
@@ -571,11 +559,7 @@ class BLED112Backend(object):
         self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
@@ -659,11 +643,7 @@ class BLED112Backend(object):
         self._loglock.acquire()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Discover characteristics if not cached
         if not self._characteristics_cached:
@@ -771,11 +751,7 @@ class BLED112Backend(object):
         self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Get RSSI value
         self._logger.info("get_rssi")
@@ -1023,6 +999,17 @@ class BLED112Backend(object):
         if indicate:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
+
+    def _check_if_connected(self, fail_return_value=None):
+        """
+        Checks if there is a connection already established with a device.
+        Requires that both _main_thread_cond and _loglock have been acquired.
+        """
+        if not self._connected:
+            self._logger.warn("Not connected")
+            self._loglock.release()
+            self._main_thread_cond.release()
+            return fail_return_value
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
