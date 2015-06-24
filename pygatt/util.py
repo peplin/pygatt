@@ -109,5 +109,8 @@ def lescan(timeout=5, use_sudo=True, bled112=None):
         devs_dict = bled112.get_devices_discovered()
         devices = []
         for address, info in devs_dict.iteritems():
-            devices.append([address, info.name])
+            devices.append({
+                'address': address,
+                'name': info.name
+            })
         return devices
