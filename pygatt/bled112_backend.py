@@ -610,9 +610,8 @@ class BLED112Backend(object):
 
         Returns the self._devices_discovered dictionary.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("get_devices_discovered")
@@ -638,9 +637,8 @@ class BLED112Backend(object):
         Returns an integer containing the handle on success.
         Returns None on failure.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Make sure there is a connection
         self._check_if_connected()
@@ -725,9 +723,8 @@ class BLED112Backend(object):
 
         Returns the self._notifications dictionary.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("get_notifications")
@@ -777,9 +774,8 @@ class BLED112Backend(object):
         handle -- the handle from which to remove the notification.
         position -- the index of the element in the notifiaction list to remove.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("remove_notification %d from handle %02x", position,
