@@ -199,15 +199,10 @@ class BLED112Backend(object):
         This requires that a connection is already extablished with the device.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Set to bondable mode
         self._bond_expected = True
@@ -259,8 +254,7 @@ class BLED112Backend(object):
             self._bonding_fail = False
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def char_write(self, handle, value):
         """
@@ -275,15 +269,10 @@ class BLED112Backend(object):
         Returns False otherwise.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return False
+        self._check_if_connected(fail_return_value=False)
 
         # Write to characteristic
         value_list = [b for b in value]
@@ -321,8 +310,7 @@ class BLED112Backend(object):
                               get_return_message(self._event_return))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         return True
 
@@ -338,15 +326,10 @@ class BLED112Backend(object):
         Returns None, on failure.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return None
+        self._check_if_connected()
 
         # Read from characteristic
         self._logger.info("read_by_handle")
@@ -390,8 +373,7 @@ class BLED112Backend(object):
                                   get_return_message(self._event_return))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         # Return characteristic value
         if value is not None:
@@ -415,12 +397,11 @@ class BLED112Backend(object):
         Returns False otherwise.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
-        # Make sure there isn't a connection
+        # Make sure there is NOT a connection
         if self._connected:
-            self._logger.warn("Already connected")
+            self._logger.warn("Not connected")
             self._loglock.release()
             self._main_thread_cond.release()
             return False
@@ -475,8 +456,7 @@ class BLED112Backend(object):
                 return False
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         return True
 
@@ -488,8 +468,7 @@ class BLED112Backend(object):
               device.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Find bonds
         self._logger.info("get_bonds")
@@ -531,16 +510,14 @@ class BLED112Backend(object):
                 return
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def disconnect(self):
         """
         Disconnect from the device if connected.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Disconnect connection
         self._logger.info("connection_disconnect")
@@ -570,8 +547,7 @@ class BLED112Backend(object):
         self._logger.info("Connection disconnected: %s", msg)
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def encrypt(self):
         """
@@ -580,15 +556,10 @@ class BLED112Backend(object):
         This requires that a connection is already established with the device.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
@@ -630,8 +601,7 @@ class BLED112Backend(object):
             self._bonding_fail = False
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def get_devices_discovered(self):
         """
@@ -640,9 +610,8 @@ class BLED112Backend(object):
 
         Returns the self._devices_discovered dictionary.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("get_devices_discovered")
@@ -650,8 +619,7 @@ class BLED112Backend(object):
         devs = self._devices_discovered
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         return devs
 
@@ -669,16 +637,11 @@ class BLED112Backend(object):
         Returns an integer containing the handle on success.
         Returns None on failure.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Discover characteristics if not cached
         if not self._characteristics_cached:
@@ -760,9 +723,8 @@ class BLED112Backend(object):
 
         Returns the self._notifications dictionary.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("get_notifications")
@@ -770,8 +732,7 @@ class BLED112Backend(object):
         notifications = self._notifications
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         return notifications
 
@@ -784,15 +745,10 @@ class BLED112Backend(object):
         Returns the RSSI as in integer in dBm.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Make sure there is a connection
-        if not self._connected:
-            self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+        self._check_if_connected()
 
         # Get RSSI value
         self._logger.info("get_rssi")
@@ -818,9 +774,8 @@ class BLED112Backend(object):
         handle -- the handle from which to remove the notification.
         position -- the index of the element in the notifiaction list to remove.
         """
-        # get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        # Get locks
+        self._get_locks()
 
         # Log
         self._logger.info("remove_notification %d from handle %02x", position,
@@ -925,8 +880,7 @@ class BLED112Backend(object):
         discover_mode -- one of the gap_discover_mode constants.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set scan parameters
         self._logger.info("set_scan_parameters")
@@ -999,8 +953,7 @@ class BLED112Backend(object):
             return
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def stop(self):
         """
@@ -1032,18 +985,27 @@ class BLED112Backend(object):
             return
 
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
         # Subscribe to characteristic
         config_val = [0x01, 0x00]  # Enable notifications 0x0001
         if indicate:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
+
+    def _check_if_connected(self, fail_return_value=None):
+        """
+        Checks if there is a connection already established with a device.
+        Requires that both _main_thread_cond and _loglock have been acquired.
+        """
+        if not self._connected:
+            self._logger.warn("Not connected")
+            self._loglock.release()
+            self._main_thread_cond.release()
+            return fail_return_value
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
@@ -1055,6 +1017,20 @@ class BLED112Backend(object):
         Returns true if flag_to_find is in flags. Returns false otherwise.
         """
         return (flags & flag_to_find) == flag_to_find
+
+    def _drop_locks(self):
+        """
+        Release both _main_thread_cond and _loglock.
+        """
+        self._loglock.release()
+        self._main_thread_cond.release()
+
+    def _get_locks(self):
+        """
+        Acquire both _main_thread_cond and _loglock in the right order.
+        """
+        self._main_thread_cond.acquire()
+        self._loglock.acquire()
 
     def _get_uuid_type(self, uuid):
         """
@@ -1215,8 +1191,7 @@ class BLED112Backend(object):
                 and attribute value ('value')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Check if notification packet
         if self._expected_attribute_handle != args['atthandle']:
@@ -1237,8 +1212,7 @@ class BLED112Backend(object):
                            hexlify(bytearray(args['value'])))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_attclient_find_information_found(self, sender, args):
         """
@@ -1264,8 +1238,7 @@ class BLED112Backend(object):
         uuid_str = "0x"+hexlify(uuid)
 
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Log
         self._logger.info("_ble_evt_attclient_find_information_found")
@@ -1288,8 +1261,7 @@ class BLED112Backend(object):
             self._notifications[new_char.handle] = []
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_attclient_procedure_completed(self, sender, args):
         """
@@ -1304,8 +1276,7 @@ class BLED112Backend(object):
                 return code ('result'), characteristic handle ('chrhandle')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Log
         self._logger.info("_ble_evt_attclient_procedure_completed")
@@ -1320,8 +1291,7 @@ class BLED112Backend(object):
         self._main_thread_cond.notify()
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_connection_disconnected(self, sender, args):
         """
@@ -1337,8 +1307,7 @@ class BLED112Backend(object):
                 return code ('reason')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Determine disconnect reason
         msg = "disconnected by local user"
@@ -1358,8 +1327,7 @@ class BLED112Backend(object):
         self._main_thread_cond.notify()
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_connection_status(self, sender, args):
         """
@@ -1377,8 +1345,7 @@ class BLED112Backend(object):
                 ('latency'), device bond handle ('bonding')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._main_thread_cond.notify()
@@ -1422,8 +1389,7 @@ class BLED112Backend(object):
         self._logger.debug("bonding = %s", hex(args['bonding']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_gap_scan_response(self, sender, args):
         """
@@ -1439,8 +1405,7 @@ class BLED112Backend(object):
                 scan resonse data list ('data')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Parse packet
         packet_type = scan_response_packet_type[args['packet_type']]
@@ -1473,8 +1438,7 @@ class BLED112Backend(object):
         self._logger.debug("data %s", str(data_dict))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_sm_bond_status(self, sender, args):
         """
@@ -1490,8 +1454,7 @@ class BLED112Backend(object):
                 middle used ('mitm'), keys stored for bonding ('keys')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Add to list of stored bonds found or set flag
         if self._bond_expected:
@@ -1511,8 +1474,7 @@ class BLED112Backend(object):
         self._logger.debug("keys = %s", hex(args['keys']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_evt_sm_bonding_fail(self, sender, args):
         """
@@ -1525,8 +1487,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._bonding_fail = True
@@ -1539,8 +1500,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     # Response handlers --------------------------------------------------------
     def _ble_rsp_attclient_attribute_write(self, sender, args):
@@ -1556,8 +1516,7 @@ class BLED112Backend(object):
                 return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1571,8 +1530,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_attclient_find_information(self, sender, args):
         """
@@ -1589,8 +1547,7 @@ class BLED112Backend(object):
                 return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1604,8 +1561,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_attclient_read_by_handle(self, sender, args):
         """
@@ -1622,8 +1578,7 @@ class BLED112Backend(object):
                 return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1637,8 +1592,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_connection_disconnect(self, sender, args):
         """
@@ -1653,8 +1607,7 @@ class BLED112Backend(object):
                 return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1670,8 +1623,7 @@ class BLED112Backend(object):
         self._logger.info("Return code = %s", msg)
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_connection_get_rssi(self, sender, args):
         """
@@ -1686,8 +1638,7 @@ class BLED112Backend(object):
                 receiver signal strength indicator ('rssi')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1700,8 +1651,7 @@ class BLED112Backend(object):
         self._logger.debug("rssi = %d", args['rssi'])
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_gap_connect_direct(self, sender, args):
         """
@@ -1719,8 +1669,7 @@ class BLED112Backend(object):
                 ('connection_handle'), return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1735,8 +1684,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_gap_discover(self, sender, args):
         """
@@ -1751,8 +1699,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1765,8 +1712,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_gap_end_procedure(self, sender, args):
         """
@@ -1781,8 +1727,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1795,8 +1740,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_gap_set_mode(self, sender, args):
         """
@@ -1811,8 +1755,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1825,8 +1768,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_gap_set_scan_parameters(self, sender, args):
         """
@@ -1840,8 +1782,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1854,8 +1795,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_sm_delete_bonding(self, sender, args):
         """
@@ -1869,8 +1809,7 @@ class BLED112Backend(object):
         args -- dictionary containing the return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Remove bond
         if args['result'] == 0:
@@ -1887,8 +1826,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_sm_encrypt_start(self, sender, args):
         """
@@ -1903,8 +1841,7 @@ class BLED112Backend(object):
                 return code ('result')
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1919,8 +1856,7 @@ class BLED112Backend(object):
                           get_return_message(args['result']))
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_sm_get_bonds(self, sender, args):
         """
@@ -1935,8 +1871,7 @@ class BLED112Backend(object):
         args -- dictionary containing the number of stored bonds ('bonds),
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._num_bonds = args['bonds']
@@ -1948,8 +1883,7 @@ class BLED112Backend(object):
         self._logger.info("num bonds = %d", args['bonds'])
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
 
     def _ble_rsp_sm_set_bondable_mode(self, sender, args):
         """
@@ -1962,8 +1896,7 @@ class BLED112Backend(object):
         args -- An empty dictionary.
         """
         # Get locks
-        self._main_thread_cond.acquire()
-        self._loglock.acquire()
+        self._get_locks()
 
         # Set flags, notify
         self._response_received = True
@@ -1973,5 +1906,4 @@ class BLED112Backend(object):
         self._logger.info("_ble_rsp_set_bondable_mode")
 
         # Drop locks
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()

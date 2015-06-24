@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 import logging
+import platform
 import string
 import sys
 import time
@@ -9,7 +10,8 @@ import threading
 try:
     import pexpect
 except Exception as e:
-    print("WARNING:", e, file=sys.stderr)
+    if platform.system() != 'Windows':
+        print("WARNING:", e, file=sys.stderr)
 
 import constants
 import exceptions
