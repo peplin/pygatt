@@ -1,13 +1,15 @@
 from __future__ import print_function
 
 import logging
+import platform
 import re
 import subprocess
 import sys
 try:
     import pexpect
 except Exception as e:
-    print("WARNING:", e, file=sys.stderr)
+    if platform.system() != 'Windows':
+        print("WARNING:", e, file=sys.stderr)
 
 from exceptions import BluetoothLEError
 
