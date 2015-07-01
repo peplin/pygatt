@@ -95,6 +95,11 @@ class BluetoothLEDevice(object):
             raise pygatt.exceptions.BluetoothLEError(
                 "Timed-out connecting to device after %s seconds." % timeout)
 
+    def disconnect(self):
+        """Send gatttool disconnect command"""
+        self.logger.info('Disconnecting...')
+        self.con.sendline('disconnect')
+
     def get_handle(self, uuid):
         """
         Look up and return the handle for an attribute by its UUID.
