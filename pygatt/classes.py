@@ -48,7 +48,7 @@ class BluetoothLEDevice(object):
 
         self.connection_lock = threading.RLock()
 
-        gatttool_cmd = ' '.join([
+        gatttool_cmd = ' '.join(filter(None, [
             'gatttool',
             app_options,
             '-b',
@@ -56,7 +56,7 @@ class BluetoothLEDevice(object):
             '-i',
             hci_device,
             '-I'
-        ])
+        ]))
 
         self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
         self.con = pexpect.spawn(gatttool_cmd)
