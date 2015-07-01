@@ -38,7 +38,7 @@ class BluetoothLEDevice(object):
     logger.addHandler(console_handler)
     logger.propagate = False
 
-    def __init__(self, mac_address, hci_device='hci0'):
+    def __init__(self, mac_address, hci_device='hci0', app_options=''):
         self.handles = {}
         self.subscribed_handlers = {}
 
@@ -50,6 +50,7 @@ class BluetoothLEDevice(object):
 
         gatttool_cmd = ' '.join([
             'gatttool',
+            app_options,
             '-b',
             mac_address,
             '-i',
