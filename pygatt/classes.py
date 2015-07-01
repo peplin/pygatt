@@ -183,7 +183,7 @@ class BluetoothLEDevice(object):
 
             self.logger.debug('Sent cmd=%s', cmd)
 
-    def char_read_uuid(self, uuid):
+    def char_read_uuid(self, uuid, timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """
         Reads a Characteristic by UUID.
 
@@ -194,13 +194,14 @@ class BluetoothLEDevice(object):
         """
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
-            self._expect('value: .*? \r')
+            self._expect('value: .*? \r', timeout)
 
             rval = self.con.after.split()[1:]
 
             return bytearray([int(x, 16) for x in rval])
 
-    def char_read_hnd(self, handle):
+    def char_read_hnd(self, handle,
+                      timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """
         Reads a Characteristic by Handle.
 
@@ -211,7 +212,7 @@ class BluetoothLEDevice(object):
         """
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
-            self._expect('descriptor: .*?\r')
+            self._expect('descriptor: .*?\r', timeout)
 
             rval = self.con.after.split()[1:]
 
