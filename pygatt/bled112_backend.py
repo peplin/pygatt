@@ -106,6 +106,12 @@ class BLED112Backend(object):
         self._timeout = False
         self._timeout_lock = threading.Lock()
 
+        # State
+        self._num_bonds = 0  # number of bonds stored on the BLED112
+        self._stored_bonds = []  # bond handles stored on the BLED112
+        self._bond_handle = 0xFF  # handle for the device bond
+        self._connection_handle = 0x00  # handle for the device connection
+
         # Flags
         self._event_return = 0  # event return code
         self._response_return = 0  # command response return code
@@ -126,18 +132,14 @@ class BLED112Backend(object):
         # BLED112_backend's state
         self._attribute_value = None  # attribute_value event value
         self._expected_attribute_handle = None  # expected handle after a read
-        self._bond_handle = 0xFF  # handle for the device bond
-        self._connection_handle = 0x00  # handle for the device connection
         self._characteristics = {  # the device characteristics discovered
             # uuid_string: Characteristic()
         }
         self._characteristics_cached = False  # characteristics already found
         self._current_characteristic = None  # used in char/descriptor discovery
-        self._num_bonds = 0  # number of bonds stored on the BLED112
         self._notifications = {  # stores notification packet contents
             # handle: [value_bytearray0, ...]
         }
-        self._stored_bonds = []  # bond handles stored on the BLED112
         self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
@@ -481,7 +483,6 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_evt_connection_status], True)
 
-    # TODO refactor
     def delete_stored_bonds(self):
         """
         Delete the bonds stored on the BLED112.
@@ -489,26 +490,32 @@ class BLED112Backend(object):
         Note: this does not delete the corresponding bond stored on the remote
               device.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Find bonds
         self._logger.info("get_bonds")
         self._stored_bonds = []
+        self._state_lock.release()
         cmd = self._lib.ble_cmd_sm_get_bonds()
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_sm_get_bonds,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
         if self._num_bonds == 0:  # no bonds
-            self._main_thread_cond.release()
             return
 
         # Wait for event
+        self._state_lock.acquire()
         while len(self._stored_bonds) < self._num_bonds:
-            self._main_thread_cond.wait()
+            self._state_lock.release()
+            self._process_packets_until(
+                [self._lib.PacketType.ble_evt_sm_bond_status,
+                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+            self._state_lock.acquire()
 
         # Delete bonds
         self._loglock.acquire()
@@ -518,15 +525,16 @@ class BLED112Backend(object):
             self._lib.send_command(self._ser, cmd)
 
             # Wait for response
-            self._loglock.release()  # don't hold loglock while waiting
-            self._wait_for_cmd_response()
+            self._drop_locks()  # don't hold locks while processing
+            self._process_packets_until(
+                [self._lib.PacketType.ble_rsp_sm_delete_bonding,
+                 self._lib.PacketType.ble_evt_connection_disconnected], False)
             self._loglock.acquire()
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
                                   get_return_message(self._response_return))
-                self._loglock.release()
-                self._main_thread_cond.release()
-                return
+                self._drop_locks()
+                raise BLED112Error("Can't delete bonding")
 
         # Drop locks
         self._drop_locks()
@@ -1498,7 +1506,6 @@ class BLED112Backend(object):
                 size used in the long-term key ('keysize'), was man in the
                 middle used ('mitm'), keys stored for bonding ('keys')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
@@ -1508,9 +1515,6 @@ class BLED112Backend(object):
             self._bonded = True
         else:
             self._stored_bonds.append(args['bond'])
-
-        # Notify
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_evt_sm_bond_status")
@@ -1812,12 +1816,8 @@ class BLED112Backend(object):
         """
         Handles the response for the deletion of a stored bond.
 
-        Modifies _response_received and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the return code ('result')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
@@ -1825,10 +1825,8 @@ class BLED112Backend(object):
         if args['result'] == 0:
             self._stored_bonds.pop()
 
-        # Set flags, notify
-        self._response_received = True
+        # Set flags
         self._response_return = args['result']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_sm_delete_bonding")
@@ -1872,19 +1870,13 @@ class BLED112Backend(object):
         Handles the response for the start of stored bond enumeration. Sets
         self._num_bonds to the number of stored bonds.
 
-        Modifies _num_bonds, _response_received, and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the number of stored bonds ('bonds),
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
+        # Set flags
         self._num_bonds = args['bonds']
-        self._response_received = True
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_sm_get_bonds")
