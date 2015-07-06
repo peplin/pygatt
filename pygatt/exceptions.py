@@ -23,3 +23,8 @@ class NotificationTimeout(BluetoothLEError):
 
 class NoResponseError(BluetoothLEError):
     pass
+
+
+class BLED112Error(BluetoothLEError):
+    def __init__(self, msg):
+        self.message = msg
