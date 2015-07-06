@@ -37,67 +37,6 @@ import logging
 from struct import pack, unpack
 
 
-class BGAPIEvent(object):
-
-    def __init__(self, doc=None):
-        self.__doc__ = doc
-
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return BGAPIEventHandler(self, obj)
-
-    def __set__(self, obj, value):
-        pass
-
-
-class BGAPIEventHandler(object):
-    def __init__(self, event, obj):
-        self.event = event
-        self.obj = obj
-
-    def _getfunctionlist(self):
-        """(internal use) """
-        try:
-            eventhandler = self.obj.__eventhandler__
-        except AttributeError:
-            eventhandler = self.obj.__eventhandler__ = {}
-        return eventhandler.setdefault(self.event, [])
-
-    def add(self, func):
-        """
-        Add new event handler function.
-
-        Event handler function must be defined like func(sender, earg).
-        You can add handler also by using '+=' operator.
-        """
-        self._getfunctionlist().append(func)
-        return self
-
-    def remove(self, func):
-        """
-        Remove existing event handler function.
-
-        You can remove handler also by using '-=' operator.
-        """
-        self._getfunctionlist().remove(func)
-        return self
-
-    def fire(self, earg=None):
-        """
-        Fire event and call all handler functions
-
-        You can call EventHandler object itself like e(earg) instead of
-        e.fire(earg).
-        """
-        for func in self._getfunctionlist():
-            func(self.obj, earg)
-
-    __iadd__ = add
-    __isub__ = remove
-    __call__ = fire
-
-
 class BGLib(object):
     """
     Modified version of jrowberg's BGLib implementation.
@@ -118,6 +57,9 @@ class BGLib(object):
             loghandler.setLevel(loglevel)
             loghandler.setFormatter(formatter)
         self._logger.addHandler(loghandler)
+        self.bgapi_rx_buffer = []
+        self.bgapi_rx_expected_length = 0
+        self.packet_mode = False
 
     def ble_cmd_system_reset(self, boot_in_dfu):
         self._logger.info("construct command ble_cmd_system_reset")
@@ -536,152 +478,142 @@ class BGLib(object):
         return pack('<4BB' + str(len(input)) + 's', 0, 1 + len(input), 8, 5,
                     len(input), b''.join(chr(i) for i in input))
 
-    ble_rsp_system_reset = BGAPIEvent()
-    ble_rsp_system_hello = BGAPIEvent()
-    ble_rsp_system_address_get = BGAPIEvent()
-    ble_rsp_system_reg_write = BGAPIEvent()
-    ble_rsp_system_reg_read = BGAPIEvent()
-    ble_rsp_system_get_counters = BGAPIEvent()
-    ble_rsp_system_get_connections = BGAPIEvent()
-    ble_rsp_system_read_memory = BGAPIEvent()
-    ble_rsp_system_get_info = BGAPIEvent()
-    ble_rsp_system_endpoint_tx = BGAPIEvent()
-    ble_rsp_system_whitelist_append = BGAPIEvent()
-    ble_rsp_system_whitelist_remove = BGAPIEvent()
-    ble_rsp_system_whitelist_clear = BGAPIEvent()
-    ble_rsp_system_endpoint_rx = BGAPIEvent()
-    ble_rsp_system_endpoint_set_watermarks = BGAPIEvent()
-    ble_rsp_flash_ps_defrag = BGAPIEvent()
-    ble_rsp_flash_ps_dump = BGAPIEvent()
-    ble_rsp_flash_ps_erase_all = BGAPIEvent()
-    ble_rsp_flash_ps_save = BGAPIEvent()
-    ble_rsp_flash_ps_load = BGAPIEvent()
-    ble_rsp_flash_ps_erase = BGAPIEvent()
-    ble_rsp_flash_erase_page = BGAPIEvent()
-    ble_rsp_flash_write_words = BGAPIEvent()
-    ble_rsp_attributes_write = BGAPIEvent()
-    ble_rsp_attributes_read = BGAPIEvent()
-    ble_rsp_attributes_read_type = BGAPIEvent()
-    ble_rsp_attributes_user_read_response = BGAPIEvent()
-    ble_rsp_attributes_user_write_response = BGAPIEvent()
-    ble_rsp_connection_disconnect = BGAPIEvent()
-    ble_rsp_connection_get_rssi = BGAPIEvent()
-    ble_rsp_connection_update = BGAPIEvent()
-    ble_rsp_connection_version_update = BGAPIEvent()
-    ble_rsp_connection_channel_map_get = BGAPIEvent()
-    ble_rsp_connection_channel_map_set = BGAPIEvent()
-    ble_rsp_connection_features_get = BGAPIEvent()
-    ble_rsp_connection_get_status = BGAPIEvent()
-    ble_rsp_connection_raw_tx = BGAPIEvent()
-    ble_rsp_attclient_find_by_type_value = BGAPIEvent()
-    ble_rsp_attclient_read_by_group_type = BGAPIEvent()
-    ble_rsp_attclient_read_by_type = BGAPIEvent()
-    ble_rsp_attclient_find_information = BGAPIEvent()
-    ble_rsp_attclient_read_by_handle = BGAPIEvent()
-    ble_rsp_attclient_attribute_write = BGAPIEvent()
-    ble_rsp_attclient_write_command = BGAPIEvent()
-    ble_rsp_attclient_indicate_confirm = BGAPIEvent()
-    ble_rsp_attclient_read_long = BGAPIEvent()
-    ble_rsp_attclient_prepare_write = BGAPIEvent()
-    ble_rsp_attclient_execute_write = BGAPIEvent()
-    ble_rsp_attclient_read_multiple = BGAPIEvent()
-    ble_rsp_sm_encrypt_start = BGAPIEvent()
-    ble_rsp_sm_set_bondable_mode = BGAPIEvent()
-    ble_rsp_sm_delete_bonding = BGAPIEvent()
-    ble_rsp_sm_set_parameters = BGAPIEvent()
-    ble_rsp_sm_passkey_entry = BGAPIEvent()
-    ble_rsp_sm_get_bonds = BGAPIEvent()
-    ble_rsp_sm_set_oob_data = BGAPIEvent()
-    ble_rsp_gap_set_privacy_flags = BGAPIEvent()
-    ble_rsp_gap_set_mode = BGAPIEvent()
-    ble_rsp_gap_discover = BGAPIEvent()
-    ble_rsp_gap_connect_direct = BGAPIEvent()
-    ble_rsp_gap_end_procedure = BGAPIEvent()
-    ble_rsp_gap_connect_selective = BGAPIEvent()
-    ble_rsp_gap_set_filtering = BGAPIEvent()
-    ble_rsp_gap_set_scan_parameters = BGAPIEvent()
-    ble_rsp_gap_set_adv_parameters = BGAPIEvent()
-    ble_rsp_gap_set_adv_data = BGAPIEvent()
-    ble_rsp_gap_set_directed_connectable_mode = BGAPIEvent()
-    ble_rsp_hardware_io_port_config_irq = BGAPIEvent()
-    ble_rsp_hardware_set_soft_timer = BGAPIEvent()
-    ble_rsp_hardware_adc_read = BGAPIEvent()
-    ble_rsp_hardware_io_port_config_direction = BGAPIEvent()
-    ble_rsp_hardware_io_port_config_function = BGAPIEvent()
-    ble_rsp_hardware_io_port_config_pull = BGAPIEvent()
-    ble_rsp_hardware_io_port_write = BGAPIEvent()
-    ble_rsp_hardware_io_port_read = BGAPIEvent()
-    ble_rsp_hardware_spi_config = BGAPIEvent()
-    ble_rsp_hardware_spi_transfer = BGAPIEvent()
-    ble_rsp_hardware_i2c_read = BGAPIEvent()
-    ble_rsp_hardware_i2c_write = BGAPIEvent()
-    ble_rsp_hardware_set_txpower = BGAPIEvent()
-    ble_rsp_hardware_timer_comparator = BGAPIEvent()
-    ble_rsp_test_phy_tx = BGAPIEvent()
-    ble_rsp_test_phy_rx = BGAPIEvent()
-    ble_rsp_test_phy_end = BGAPIEvent()
-    ble_rsp_test_phy_reset = BGAPIEvent()
-    ble_rsp_test_get_channel_map = BGAPIEvent()
-    ble_rsp_test_debug = BGAPIEvent()
-
-    ble_evt_system_boot = BGAPIEvent()
-    ble_evt_system_debug = BGAPIEvent()
-    ble_evt_system_endpoint_watermark_rx = BGAPIEvent()
-    ble_evt_system_endpoint_watermark_tx = BGAPIEvent()
-    ble_evt_system_script_failure = BGAPIEvent()
-    ble_evt_system_no_license_key = BGAPIEvent()
-    ble_evt_flash_ps_key = BGAPIEvent()
-    ble_evt_attributes_value = BGAPIEvent()
-    ble_evt_attributes_user_read_request = BGAPIEvent()
-    ble_evt_attributes_status = BGAPIEvent()
-    ble_evt_connection_status = BGAPIEvent()
-    ble_evt_connection_version_ind = BGAPIEvent()
-    ble_evt_connection_feature_ind = BGAPIEvent()
-    ble_evt_connection_raw_rx = BGAPIEvent()
-    ble_evt_connection_disconnected = BGAPIEvent()
-    ble_evt_attclient_indicated = BGAPIEvent()
-    ble_evt_attclient_procedure_completed = BGAPIEvent()
-    ble_evt_attclient_group_found = BGAPIEvent()
-    ble_evt_attclient_attribute_found = BGAPIEvent()
-    ble_evt_attclient_find_information_found = BGAPIEvent()
-    ble_evt_attclient_attribute_value = BGAPIEvent()
-    ble_evt_attclient_read_multiple_response = BGAPIEvent()
-    ble_evt_sm_smp_data = BGAPIEvent()
-    ble_evt_sm_bonding_fail = BGAPIEvent()
-    ble_evt_sm_passkey_display = BGAPIEvent()
-    ble_evt_sm_passkey_request = BGAPIEvent()
-    ble_evt_sm_bond_status = BGAPIEvent()
-    ble_evt_gap_scan_response = BGAPIEvent()
-    ble_evt_gap_mode_changed = BGAPIEvent()
-    ble_evt_hardware_io_port_status = BGAPIEvent()
-    ble_evt_hardware_soft_timer = BGAPIEvent()
-    ble_evt_hardware_adc_result = BGAPIEvent()
-
-    on_busy = BGAPIEvent()
-    on_idle = BGAPIEvent()
-    on_timeout = BGAPIEvent()
-    on_before_tx_command = BGAPIEvent()
-    on_tx_command_complete = BGAPIEvent()
-
-    bgapi_rx_buffer = []
-    bgapi_rx_expected_length = 0
-    busy = False
-    packet_mode = False
-    debug = False
+    class PacketType(object):
+        """Packet type enum for packets received."""
+        # Before first value
+        before_first_value = -1
+        # Responses
+        ble_rsp_system_reset = 0
+        ble_rsp_system_hello = 1
+        ble_rsp_system_address_get = 2
+        ble_rsp_system_reg_write = 3
+        ble_rsp_system_reg_read = 4
+        ble_rsp_system_get_counters = 5
+        ble_rsp_system_get_connections = 6
+        ble_rsp_system_read_memory = 7
+        ble_rsp_system_get_info = 8
+        ble_rsp_system_endpoint_tx = 9
+        ble_rsp_system_whitelist_append = 10
+        ble_rsp_system_whitelist_remove = 11
+        ble_rsp_system_whitelist_clear = 12
+        ble_rsp_system_endpoint_rx = 13
+        ble_rsp_system_endpoint_set_watermarks = 14
+        ble_rsp_flash_ps_defrag = 15
+        ble_rsp_flash_ps_dump = 16
+        ble_rsp_flash_ps_erase_all = 17
+        ble_rsp_flash_ps_save = 18
+        ble_rsp_flash_ps_load = 19
+        ble_rsp_flash_ps_erase = 20
+        ble_rsp_flash_erase_page = 21
+        ble_rsp_flash_write_words = 22
+        ble_rsp_attributes_write = 23
+        ble_rsp_attributes_read = 24
+        ble_rsp_attributes_read_type = 25
+        ble_rsp_attributes_user_read_response = 26
+        ble_rsp_attributes_user_write_response = 27
+        ble_rsp_connection_disconnect = 28
+        ble_rsp_connection_get_rssi = 29
+        ble_rsp_connection_update = 30
+        ble_rsp_connection_version_update = 31
+        ble_rsp_connection_channel_map_get = 32
+        ble_rsp_connection_channel_map_set = 33
+        ble_rsp_connection_features_get = 34
+        ble_rsp_connection_get_status = 35
+        ble_rsp_connection_raw_tx = 36
+        ble_rsp_attclient_find_by_type_value = 37
+        ble_rsp_attclient_read_by_group_type = 38
+        ble_rsp_attclient_read_by_type = 39
+        ble_rsp_attclient_find_information = 40
+        ble_rsp_attclient_read_by_handle = 41
+        ble_rsp_attclient_attribute_write = 42
+        ble_rsp_attclient_write_command = 43
+        ble_rsp_attclient_indicate_confirm = 44
+        ble_rsp_attclient_read_long = 45
+        ble_rsp_attclient_prepare_write = 46
+        ble_rsp_attclient_execute_write = 47
+        ble_rsp_attclient_read_multiple = 48
+        ble_rsp_sm_encrypt_start = 49
+        ble_rsp_sm_set_bondable_mode = 50
+        ble_rsp_sm_delete_bonding = 51
+        ble_rsp_sm_set_parameters = 52
+        ble_rsp_sm_passkey_entry = 53
+        ble_rsp_sm_get_bonds = 54
+        ble_rsp_sm_set_oob_data = 55
+        ble_rsp_gap_set_privacy_flags = 56
+        ble_rsp_gap_set_mode = 57
+        ble_rsp_gap_discover = 58
+        ble_rsp_gap_connect_direct = 59
+        ble_rsp_gap_end_procedure = 60
+        ble_rsp_gap_connect_selective = 61
+        ble_rsp_gap_set_filtering = 62
+        ble_rsp_gap_set_scan_parameters = 63
+        ble_rsp_gap_set_adv_parameters = 64
+        ble_rsp_gap_set_adv_data = 65
+        ble_rsp_gap_set_directed_connectable_mode = 66
+        ble_rsp_hardware_io_port_config_irq = 67
+        ble_rsp_hardware_set_soft_timer = 68
+        ble_rsp_hardware_adc_read = 69
+        ble_rsp_hardware_io_port_config_direction = 70
+        ble_rsp_hardware_io_port_config_function = 71
+        ble_rsp_hardware_io_port_config_pull = 72
+        ble_rsp_hardware_io_port_write = 73
+        ble_rsp_hardware_io_port_read = 74
+        ble_rsp_hardware_spi_config = 75
+        ble_rsp_hardware_spi_transfer = 76
+        ble_rsp_hardware_i2c_read = 77
+        ble_rsp_hardware_i2c_write = 78
+        ble_rsp_hardware_set_txpower = 79
+        ble_rsp_hardware_timer_comparator = 80
+        ble_rsp_test_phy_tx = 81
+        ble_rsp_test_phy_rx = 82
+        ble_rsp_test_phy_end = 83
+        ble_rsp_test_phy_reset = 84
+        ble_rsp_test_get_channel_map = 85
+        ble_rsp_test_debug = 86
+        # Events
+        ble_evt_system_boot = 87
+        ble_evt_system_debug = 88
+        ble_evt_system_endpoint_watermark_rx = 89
+        ble_evt_system_endpoint_watermark_tx = 90
+        ble_evt_system_script_failure = 91
+        ble_evt_system_no_license_key = 92
+        ble_evt_flash_ps_key = 93
+        ble_evt_attributes_value = 94
+        ble_evt_attributes_user_read_request = 95
+        ble_evt_attributes_status = 96
+        ble_evt_connection_status = 97
+        ble_evt_connection_version_ind = 98
+        ble_evt_connection_feature_ind = 99
+        ble_evt_connection_raw_rx = 100
+        ble_evt_connection_disconnected = 101
+        ble_evt_attclient_indicated = 102
+        ble_evt_attclient_procedure_completed = 103
+        ble_evt_attclient_group_found = 104
+        ble_evt_attclient_attribute_found = 105
+        ble_evt_attclient_find_information_found = 106
+        ble_evt_attclient_attribute_value = 107
+        ble_evt_attclient_read_multiple_response = 108
+        ble_evt_sm_smp_data = 109
+        ble_evt_sm_bonding_fail = 110
+        ble_evt_sm_passkey_display = 111
+        ble_evt_sm_passkey_request = 112
+        ble_evt_sm_bond_status = 113
+        ble_evt_gap_scan_response = 114
+        ble_evt_gap_mode_changed = 115
+        ble_evt_hardware_io_port_status = 116
+        ble_evt_hardware_soft_timer = 117
+        ble_evt_hardware_adc_result = 118
+        # After last value
+        after_last_value = 119
 
     def send_command(self, ser, packet):
         self._logger.info("Sending command")
         if self.packet_mode:
-            packet = chr(len(packet) & 0xFF) + packet
-        if self.debug:
-            print('=>[ ' + ' '.join(['%02X' % ord(b) for b in packet]) + ' ]')
-        self.on_before_tx_command()
-        self.busy = True
-        self.on_busy()
+            # packet = chr(len(packet) & 0xFF) + packet
+            pass
         ser.write(packet)
-        self.on_tx_command_complete()
 
-    def parse(self, byte):
+    def parse_byte(self, byte, packet_queue):
         if len(self.bgapi_rx_buffer) == 0 and\
            (byte == 0x00 or byte == 0x80 or byte == 0x08 or byte == 0x88):
             self.bgapi_rx_buffer.append(byte)
@@ -691,8 +623,25 @@ class BGLib(object):
                 (self.bgapi_rx_buffer[0] & 0x07) + self.bgapi_rx_buffer[1]
         elif len(self.bgapi_rx_buffer) > 1:
             self.bgapi_rx_buffer.append(byte)
+
+        # print('%02X: %d, %d' % (b, len(self.bgapi_rx_buffer),
+        #       self.bgapi_rx_expected_length)
+        if self.bgapi_rx_expected_length > 0 and\
+           len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
+
+            # Enqueue completed packet
+            packet_queue.put(list(self.bgapi_rx_buffer))
+            self.bgapi_rx_buffer = []
+
+    def decode_packet(self, packet):
         """
-        BGAPI packet structure (as of 2012-11-07):
+        Decode the packet and call the appropriate handler for the packet type.
+
+        packet -- a list of bytes in the packet to decode.
+
+        Returns PacketType, args{}.
+
+          BGAPI packet structure (as of 2012-11-07):
             Byte 0:
                   [7] - 1 bit, Message Type (MT)     Command/Response, 1 = Event
                 [6:3] - 4 bits, Technology Type (TT)    0000 = BLE, 0001 = Wi-Fi
@@ -702,1031 +651,1140 @@ class BGLib(object):
             Byte 3:     8 bits, Command ID (CMD)         Command ID
             Bytes 4-n:  0 - 2048 Bytes, Payload (PL) Up to 2048 bytes of payload
         """
-        # print('%02X: %d, %d' % (b, len(self.bgapi_rx_buffer),
-        #       self.bgapi_rx_expected_length)
-        if self.bgapi_rx_expected_length > 0 and\
-           len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
-            if self.debug:
-                print('<=[ ' +
-                      ' '.join(['%02X' % b for b in self.bgapi_rx_buffer]) +
-                      ' ]')
-            packet_type, payload_length, packet_class, packet_command =\
-                self.bgapi_rx_buffer[:4]
-            self.bgapi_rx_payload =\
-                b''.join(chr(i) for i in self.bgapi_rx_buffer[4:])
-            self.bgapi_rx_buffer = []
-            if packet_type & 0x88 == 0x00:
-                # 0x00 = BLE response packet
-                if packet_class == 0:
-                    if packet_command == 0:  # ble_rsp_system_reset
-                        self._logger.info(
-                            "received packet ble_rsp_system_reset")
-                        self.ble_rsp_system_reset({})
-                        self.busy = False
-                        self.on_idle()
-                    elif packet_command == 1:  # ble_rsp_system_hello
-                        self._logger.info(
-                            "received packet ble_rsp_system_hello")
-                        self.ble_rsp_system_hello({})
-                    elif packet_command == 2:  # ble_rsp_system_address_get
-                        self._logger.info(
-                            "received packet ble_rsp_system_address_get")
-                        address = unpack('<6s', self.bgapi_rx_payload[:6])[0]
-                        address = [ord(b) for b in address]
-                        self.ble_rsp_system_address_get({
-                            'address': address
-                        })
-                    elif packet_command == 3:  # ble_rsp_system_reg_write
-                        self._logger.info(
-                            "received packet ble_rsp_system_reg_write")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_system_reg_write({
-                            'result': result
-                        })
-                    elif packet_command == 4:  # ble_rsp_system_reg_read
-                        self._logger.info(
-                            "received packet ble_rsp_system_reg_read")
-                        address, value =\
-                            unpack('<HB', self.bgapi_rx_payload[:3])
-                        self.ble_rsp_system_reg_read({
-                            'address': address, 'value': value
-                        })
-                    elif packet_command == 5:  # ble_rsp_system_get_counters
-                        self._logger.info(
-                            "received packet ble_rsp_system_get_counters")
-                        txok, txretry, rxok, rxfail, mbuf =\
-                            unpack('<BBBBB', self.bgapi_rx_payload[:5])
-                        self.ble_rsp_system_get_counters({
-                            'txok': txok, 'txretry': txretry, 'rxok': rxok,
-                            'rxfail': rxfail, 'mbuf': mbuf
-                        })
-                    elif packet_command == 6:  # ble_rsp_system_get_connections
-                        self._logger.info(
-                            "received packet ble_rsp_system_get_connections")
-                        maxconn = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_rsp_system_get_connections({
-                            'maxconn': maxconn
-                        })
-                    elif packet_command == 7:  # ble_rsp_system_read_memory
-                        self._logger.info(
-                            "received packet ble_rsp_system_read_memory")
-                        address, data_len =\
-                            unpack('<IB', self.bgapi_rx_payload[:5])
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[5:]]
-                        self.ble_rsp_system_read_memory({
-                            'address': address, 'data': data_data
-                        })
-                    elif packet_command == 8:  # ble_rsp_system_get_info
-                        self._logger.info(
-                            "received packet ble_rsp_system_get_info")
-                        data = unpack('<HHHHHBB', self.bgapi_rx_payload[:12])
-                        self.ble_rsp_system_get_info({
-                            'major': data[0], 'minor': data[1],
-                            'patch': data[2], 'build': data[3],
-                            'll_version': data[4], 'protocol_version': data[5],
-                            'hw': data[6]
-                        })
-                    elif packet_command == 9:  # ble_rsp_system_endpoint_tx
-                        self._logger.info(
-                            "received packet ble_rsp_system_endpoint_tx")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_system_endpoint_tx({
-                            'result': result
-                        })
-                    # ble_rsp_system_whitelist_append
-                    elif packet_command == 10:
-                        self._logger.info(
-                            "received packet ble_rsp_system_whitelist_append")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_system_whitelist_append({
-                            'result': result
-                        })
-                    # ble_rsp_system_whitelist_remove
-                    elif packet_command == 11:
-                        self._logger.info(
-                            "received packet ble_rsp_system_whitelist_remove")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_system_whitelist_remove({
-                            'result': result
-                        })
-                    elif packet_command == 12:  # ble_rsp_system_whitelist_clear
-                        self._logger.info(
-                            "received packet ble_rsp_system_whitelist_clear")
-                        self.ble_rsp_system_whitelist_clear({})
-                    elif packet_command == 13:  # ble_rsp_system_endpoint_rx
-                        self._logger.info(
-                            "received packet ble_rsp_system_endpoint_rx")
-                        result, data_len =\
-                            unpack('<HB', self.bgapi_rx_payload[:3])
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[3:]]
-                        self.ble_rsp_system_endpoint_rx({
-                            'result': result, 'data': data_data
-                        })
-                    # ble_rsp_system_endpoint_set_watermarks
-                    elif packet_command == 14:
-                        self._logger.info(
-                            "received packet ble_rsp_system_endpoint_set_"
-                            "watermarks")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_system_endpoint_set_watermarks({
-                            'result': result
-                        })
-                elif packet_class == 1:
-                    if packet_command == 0:  # ble_rsp_flash_ps_defrag
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_defrag")
-                        self.ble_rsp_flash_ps_defrag({})
-                    elif packet_command == 1:  # ble_rsp_flash_ps_dump
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_dump")
-                        self.ble_rsp_flash_ps_dump({})
-                    elif packet_command == 2:  # ble_rsp_flash_ps_erase_all
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_erase_all")
-                        self.ble_rsp_flash_ps_erase_all({})
-                    elif packet_command == 3:  # ble_rsp_flash_ps_save
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_save")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_flash_ps_save({
-                            'result': result
-                        })
-                    elif packet_command == 4:  # ble_rsp_flash_ps_load
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_load")
-                        result, value_len = unpack('<HB',
-                                                   self.bgapi_rx_payload[:3])
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[3:]]
-                        self.ble_rsp_flash_ps_load({
-                            'result': result, 'value': value_data
-                        })
-                    elif packet_command == 5:  # ble_rsp_flash_ps_erase
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_erase")
-                        self.ble_rsp_flash_ps_erase({})
-                    elif packet_command == 6:  # ble_rsp_flash_ps_erase_page
-                        self._logger.info(
-                            "received packet ble_rsp_flash_ps_erase_page")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_flash_erase_page({
-                            'result': result
-                        })
-                    elif packet_command == 7:  # ble_rsp_flash_write_words
-                        self._logger.info(
-                            "received packet ble_rsp_flash_write_words")
-                        self.ble_rsp_flash_write_words({})
-                elif packet_class == 2:
-                    if packet_command == 0:  # ble_rsp_attributes_write
-                        self._logger.info(
-                            "received packet ble_rsp_attributes_write")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_attributes_write({
-                            'result': result
-                        })
-                    elif packet_command == 1:  # ble_rsp_attributes_read
-                        self._logger.info(
-                            "received packet ble_rsp_attributes_read")
-                        handle, offset, result, value_len = unpack(
-                            '<HHHB', self.bgapi_rx_payload[:7]
-                        )
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[7:]]
-                        self.ble_rsp_attributes_read({
-                            'handle': handle, 'offset': offset,
-                            'result': result, 'value': value_data
-                        })
-                    elif packet_command == 2:  # ble_rsp_attributes_read_type
-                        self._logger.info(
-                            "received packet ble_rsp_attributes_read_type")
-                        handle, result, value_len = unpack(
-                            '<HHB', self.bgapi_rx_payload[:5]
-                        )
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[5:]]
-                        self.ble_rsp_attributes_read_type({
-                            'handle': handle, 'result': result,
-                            'value': value_data
-                        })
-                    # ble_rsp_attributes_user_read_response
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_rsp_attributes_user_read_"
-                            "response")
-                        self.ble_rsp_attributes_user_read_response({})
-                    # ble_rsp_attributes_user_write_response
-                    elif packet_command == 4:
-                        self._logger.info(
-                            "received packet ble_rsp_attributes_user_write_"
-                            "response")
-                        self.ble_rsp_attributes_user_write_response({})
-                elif packet_class == 3:
-                    if packet_command == 0:  # ble_rsp_connection_disconnect
-                        self._logger.info(
-                            "received packet ble_rsp_connection_disconnect")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_connection_disconnect({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 1:  # ble_rsp_connection_get_rssi
-                        self._logger.info(
-                            "received packet ble_rsp_connection_get_rssi")
-                        connection, rssi = unpack(
-                            '<Bb', self.bgapi_rx_payload[:2]
-                        )
-                        self.ble_rsp_connection_get_rssi({
-                            'connection': connection, 'rssi': rssi
-                        })
-                    elif packet_command == 2:  # ble_rsp_connection_update
-                        self._logger.info(
-                            "received packet ble_rsp_connection_update")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_connection_update({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_connection_version_update
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_rsp_connection_version_update")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_connection_version_update({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_connection_channel_map_get
-                    elif packet_command == 4:
-                        self._logger.info(
-                            "received packet ble_rsp_connection_channel_map_"
-                            "get")
-                        connection, map_len = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        map_data = [ord(b) for b in self.bgapi_rx_payload[2:]]
-                        self.ble_rsp_connection_channel_map_get({
-                            'connection': connection, 'map': map_data
-                        })
-                    # ble_rsp_connection_channel_map_set
-                    elif packet_command == 5:
-                        self._logger.info(
-                            "received packet ble_rsp_connection_channel_map_"
-                            "set")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_connection_channel_map_set({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 6:  # ble_rsp_connection_features_get
-                        self._logger.info(
-                            "received packet ble_rsp_connection_features_get")
-                        connection, result = unpack('<BH',
-                                                    self.bgapi_rx_payload[:3])
-                        self.ble_rsp_connection_features_get({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 7:  # ble_rsp_connection_get_status
-                        self._logger.info(
-                            "received packet ble_rsp_connection_get_status")
-                        connection = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_rsp_connection_get_status({
-                            'connection': connection
-                        })
-                    elif packet_command == 8:  # ble_rsp_connection_raw_tx
-                        self._logger.info(
-                            "received packet ble_rsp_connection_raw_tx")
-                        connection = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_rsp_connection_raw_tx({
-                            'connection': connection
-                        })
-                elif packet_class == 4:
-                    # ble_rsp_attclient_find_by_type_value
-                    if packet_command == 0:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_find_by_type_"
-                            "value")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_find_by_type_value({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_read_by_group_type
-                    elif packet_command == 1:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_read_by_group_"
-                            "type")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_read_by_group_type({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 2:  # ble_rsp_attclient_read_by_type
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_read_by_type")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_read_by_type({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_find_information
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_find_"
-                            "information")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_find_information({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_read_by_handle
-                    elif packet_command == 4:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_read_by_handle")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_read_by_handle({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_attribute_write
-                    elif packet_command == 5:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_attribute_write({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 6:  # ble_rsp_attclient_write_command
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_write_command")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_write_command({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_indicate_confirm
-                    elif packet_command == 7:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_indicate_"
-                            "confirm")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_attclient_indicate_confirm({
-                            'result': result
-                        })
-                    elif packet_command == 8:  # ble_rsp_attclient_read_long
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_read_long")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_read_long({
-                            'connection': connection, 'result': result
-                        })
-                    elif packet_command == 9:  # ble_rsp_attclient_prepare_write
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_prepare_write")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_prepare_write({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_execute_write
-                    elif packet_command == 10:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_execute_write")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_execute_write({
-                            'connection': connection, 'result': result
-                        })
-                    # ble_rsp_attclient_read_multiple
-                    elif packet_command == 11:
-                        self._logger.info(
-                            "received packet ble_rsp_attclient_read_multiple")
-                        connection, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_attclient_read_multiple({
-                            'connection': connection, 'result': result
-                        })
-                elif packet_class == 5:
-                    if packet_command == 0:  # ble_rsp_sm_encrypt_start
-                        self._logger.info(
-                            "received packet ble_rsp_sm_encrypt_start")
-                        handle, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_sm_encrypt_start({
-                            'handle': handle, 'result': result
-                        })
-                    elif packet_command == 1:  # ble_rsp_sm_set_bondable_mode
-                        self._logger.info(
-                            "received packet ble_rsp_sm_set_bondable_mode")
-                        self.ble_rsp_sm_set_bondable_mode({})
-                    elif packet_command == 2:  # ble_rsp_sm_delete_bonding
-                        self._logger.info(
-                            "received packet ble_rsp_sm_delete_bonding")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_sm_delete_bonding({
-                            'result': result
-                        })
-                    elif packet_command == 3:  # ble_rsp_sm_set_parameters
-                        self._logger.info(
-                            "received packet ble_rsp_sm_set_parameters")
-                        self.ble_rsp_sm_set_parameters({})
-                    elif packet_command == 4:  # ble_rsp_sm_passkey_entry
-                        self._logger.info(
-                            "received packet ble_rsp_sm_passkey_entry")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_sm_passkey_entry({
-                            'result': result
-                        })
-                    elif packet_command == 5:  # ble_rsp_sm_get_bonds
-                        self._logger.info(
-                            "received packet ble_rsp_sm_get_bonds")
-                        bonds = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_rsp_sm_get_bonds({
-                            'bonds': bonds
-                        })
-                    elif packet_command == 6:  # ble_rsp_sm_set_oob_data
-                        self._logger.info(
-                            "received packet ble_rsp_sm_set_oob_data")
-                        self.ble_rsp_sm_set_oob_data({})
-                elif packet_class == 6:
-                    if packet_command == 0:  # ble_rsp_gap_set_privacy_flags
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_privacy_flags")
-                        self.ble_rsp_gap_set_privacy_flags({})
-                    elif packet_command == 1:  # ble_rsp_gap_set_mode
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_mode")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_mode({
-                            'result': result
-                        })
-                    elif packet_command == 2:  # ble_rsp_gap_discover
-                        self._logger.info(
-                            "received packet ble_rsp_gap_discover")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_discover({
-                            'result': result
-                        })
-                    elif packet_command == 3:  # ble_rsp_gap_connect_direct
-                        self._logger.info(
-                            "received packet ble_rsp_gap_connect_direct")
-                        result, connection_handle = unpack(
-                            '<HB', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_gap_connect_direct({
-                            'result': result,
-                            'connection_handle': connection_handle
-                        })
-                    elif packet_command == 4:  # ble_rsp_gap_end_procedure
-                        self._logger.info(
-                            "received packet ble_rsp_gap_end_procedure")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_end_procedure({
-                            'result': result
-                        })
-                    elif packet_command == 5:  # ble_rsp_gap_connect_selective
-                        self._logger.info(
-                            "received packet ble_rsp_gap_connect_selective")
-                        result, connection_handle = unpack(
-                            '<HB', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_rsp_gap_connect_selective({
-                            'result': result,
-                            'connection_handle': connection_handle
-                        })
-                    elif packet_command == 6:  # ble_rsp_gap_set_filtering
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_filtering")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_filtering({
-                            'result': result
-                        })
-                    elif packet_command == 7:  # ble_rsp_gap_set_scan_parameters
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_scan_parameters")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_scan_parameters({
-                            'result': result
-                        })
-                    elif packet_command == 8:  # ble_rsp_gap_set_adv_parameters
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_adv_parameters")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_adv_parameters({
-                            'result': result
-                        })
-                    elif packet_command == 9:  # ble_rsp_gap_set_adv_data
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_adv_data")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_adv_data({
-                            'result': result
-                        })
-                    # ble_rsp_gap_set_directed_connectable_mode
-                    elif packet_command == 10:
-                        self._logger.info(
-                            "received packet ble_rsp_gap_set_directed_"
-                            "connectable_mode")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_gap_set_directed_connectable_mode({
-                            'result': result
-                        })
-                elif packet_class == 7:
-                    # ble_rsp_hardware_io_port_config_irq
-                    if packet_command == 0:
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_config_"
-                            "irq")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_io_port_config_irq({
-                            'result': result
-                        })
-                    elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_set_soft_timer")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_set_soft_timer({
-                            'result': result
-                        })
-                    elif packet_command == 2:  # ble_rsp_hardware_adc_read
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_adc_read")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_adc_read({
-                            'result': result
-                        })
-                    # ble_rsp_hardware_io_port_config_direction
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_config_"
-                            "direction")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_io_port_config_direction({
-                            'result': result
-                        })
-                    # ble_rsp_hardware_io_port_config_function
-                    elif packet_command == 4:
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_config_"
-                            "function")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_io_port_config_function({
-                            'result': result
-                        })
-                    # ble_rsp_hardware_io_port_config_pull
-                    elif packet_command == 5:
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_config_"
-                            "pull")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_io_port_config_pull({
-                            'result': result
-                        })
-                    elif packet_command == 6:  # ble_rsp_hardware_io_port_write
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_write")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_io_port_write({
-                            'result': result
-                        })
-                    elif packet_command == 7:  # ble_rsp_hardware_io_port_read
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_io_port_read")
-                        result, port, data = unpack(
-                            '<HBB', self.bgapi_rx_payload[:4]
-                        )
-                        self.ble_rsp_hardware_io_port_read({
-                            'result': result, 'port': port, 'data': data
-                        })
-                    elif packet_command == 8:  # ble_rsp_hardware_spi_config
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_spi_config")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_spi_config({
-                            'result': result
-                        })
-                    elif packet_command == 9:  # ble_rsp_hardware_spi_transfer
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_spi_transfer")
-                        result, channel, data_len = unpack(
-                            '<HBB', self.bgapi_rx_payload[:4]
-                        )
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[4:]]
-                        self.ble_rsp_hardware_spi_transfer({
-                            'result': result, 'channel': channel,
-                            'data': data_data
-                        })
-                    elif packet_command == 10:  # ble_rsp_hardware_i2c_read
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_i2c_read")
-                        result, data_len = unpack(
-                            '<HB', self.bgapi_rx_payload[:3]
-                        )
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[3:]]
-                        self.ble_rsp_hardware_i2c_read({
-                            'result': result, 'data': data_data
-                        })
-                    elif packet_command == 11:  # ble_rsp_hardware_i2c_write
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_i2c_write")
-                        written = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_rsp_hardware_i2c_write({
-                            'written': written
-                        })
-                    elif packet_command == 12:  # ble_rsp_hardware_set_txpower
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_set_txpower")
-                        self.ble_rsp_hardware_set_txpower({})
-                    # ble_rsp_hardware_timer_comparator
-                    elif packet_command == 13:
-                        self._logger.info(
-                            "received packet ble_rsp_hardware_timer_comparator")
-                        result = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_hardware_timer_comparator({
-                            'result': result
-                        })
-                elif packet_class == 8:
-                    if packet_command == 0:  # ble_rsp_test_phy_tx
-                        self._logger.info(
-                            "received packet ble_rsp_test_phy_tx")
-                        self.ble_rsp_test_phy_tx({})
-                    elif packet_command == 1:  # ble_rsp_test_phy_rx
-                        self._logger.info(
-                            "received packet ble_rsp_test_phy_rx")
-                        self.ble_rsp_test_phy_rx({})
-                    elif packet_command == 2:  # ble_rsp_test_phy_end
-                        self._logger.info(
-                            "received packet ble_rsp_test_phy_end")
-                        counter = unpack('<H', self.bgapi_rx_payload[:2])[0]
-                        self.ble_rsp_test_phy_end({
-                            'counter': counter
-                        })
-                    elif packet_command == 3:  # ble_rsp_test_phy_reset
-                        self._logger.info(
-                            "received packet ble_rsp_test_phy_reset")
-                        self.ble_rsp_test_phy_reset({})
-                    elif packet_command == 4:  # ble_rsp_test_get_channel_map
-                        self._logger.info(
-                            "received packet ble_rsp_test_get_channel_map")
-                        # channel_map_len = unpack(
-                        #    '<B', self.bgapi_rx_payload[:1]
-                        # )[0]
-                        channel_map_data =\
-                            [ord(b) for b in self.bgapi_rx_payload[1:]]
-                        self.ble_rsp_test_get_channel_map({
-                            'channel_map': channel_map_data
-                        })
-                    elif packet_command == 5:  # ble_rsp_test_debug
-                        self._logger.info(
-                            "received packet ble_rsp_test_debug")
-                        # output_len = unpack('<B',
-                        #                     self.bgapi_rx_payload[:1])[0]
-                        output_data =\
-                            [ord(b) for b in self.bgapi_rx_payload[1:]]
-                        self.ble_rsp_test_debug({
-                            'output': output_data
-                        })
-                self.busy = False
-                self.on_idle()
-            elif packet_type & 0x88 == 0x80:
-                # 0x80 = BLE event packet
-                if packet_class == 0:
-                    if packet_command == 0:  # ble_evt_system_boot
-                        self._logger.info(
-                            "received packet ble_evt_system_boot")
-                        data = unpack('<HHHHHBB', self.bgapi_rx_payload[:12])
-                        self.ble_evt_system_boot({
-                            'major': data[0], 'minor': data[1],
-                            'patch': data[2], 'build': data[3],
-                            'll_version': data[4], 'protocol_version': data[5],
-                            'hw': data[6]
-                        })
-                        self.busy = False
-                        self.on_idle()
-                    elif packet_command == 1:  # ble_evt_system_debug
-                        self._logger.info(
-                            "received packet ble_evt_system_debug")
-                        data_len = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[1:]]
-                        self.ble_evt_system_debug({
-                            'data': data_data
-                        })
-                    # ble_evt_system_endpoint_watermark_rx
-                    elif packet_command == 2:
-                        self._logger.info(
-                            "received packet ble_evt_system_endpoint_"
-                            "watermark_rx")
-                        endpoint, data = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        self.ble_evt_system_endpoint_watermark_rx({
-                            'endpoint': endpoint, 'data': data
-                        })
-                    # ble_evt_system_endpoint_watermark_tx
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_evt_system_endpoint_"
-                            "watermark_tx")
-                        endpoint, data = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        self.ble_evt_system_endpoint_watermark_tx({
-                            'endpoint': endpoint, 'data': data
-                        })
-                    elif packet_command == 4:  # ble_evt_system_script_failure
-                        self._logger.info(
-                            "received packet ble_evt_system_script_failure")
-                        address, reason = unpack(
-                            '<HH', self.bgapi_rx_payload[:4]
-                        )
-                        self.ble_evt_system_script_failure({
-                            'address': address, 'reason': reason
-                        })
-                    elif packet_command == 5:  # ble_evt_system_no_license_key
-                        self._logger.info(
-                            "received packet ble_evt_system_no_license_key")
-                        self.ble_evt_system_no_license_key({})
-                elif packet_class == 1:
-                    if packet_command == 0:  # ble_evt_flash_ps_key
-                        self._logger.info(
-                            "received packet ble_evt_flash_ps_key")
-                        key, value_len = unpack(
-                            '<HB', self.bgapi_rx_payload[:3]
-                        )
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[3:]]
-                        self.ble_evt_flash_ps_key({
-                            'key': key, 'value': value_data
-                        })
-                elif packet_class == 2:
-                    if packet_command == 0:  # ble_evt_attributes_value
-                        self._logger.info(
-                            "received packet ble_evt_attributes_value")
-                        connection, reason, handle, offset, value_len = unpack(
-                            '<BBHHB', self.bgapi_rx_payload[:7]
-                        )
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[7:]]
-                        self.ble_evt_attributes_value({
-                            'connection': connection, 'reason': reason,
-                            'handle': handle, 'offset': offset,
-                            'value': value_data
-                        })
-                    # ble_evt_attributes_user_read_request
-                    elif packet_command == 1:
-                        self._logger.info(
-                            "received packet ble_evt_attributes_user_read_"
-                            "request")
-                        connection, handle, offset, maxsize = unpack(
-                            '<BHHB', self.bgapi_rx_payload[:6]
-                        )
-                        self.ble_evt_attributes_user_read_request({
-                            'connection': connection, 'handle': handle,
-                            'offset': offset, 'maxsize': maxsize
-                        })
-                    elif packet_command == 2:  # ble_evt_attributes_status
-                        self._logger.info(
-                            "received packet ble_evt_attributes_status")
-                        handle, flags = unpack('<HB', self.bgapi_rx_payload[:3])
-                        self.ble_evt_attributes_status({
-                            'handle': handle, 'flags': flags
-                        })
-                elif packet_class == 3:
-                    if packet_command == 0:  # ble_evt_connection_status
-                        self._logger.info(
-                            "received packet ble_evt_connection_status")
-                        data = unpack('<BB6sBHHHB', self.bgapi_rx_payload[:16])
-                        address = [ord(b) for b in data[2]]
-                        self.ble_evt_connection_status({
-                            'connection': data[0], 'flags': data[1],
-                            'address': address, 'address_type': data[3],
-                            'conn_interval': data[4], 'timeout': data[5],
-                            'latency': data[6], 'bonding': data[7]
-                        })
-                    elif packet_command == 1:  # ble_evt_connection_version_ind
-                        self._logger.info(
-                            "received packet ble_evt_connection_version_ind")
-                        connection, vers_nr, comp_id, sub_vers_nr = unpack(
-                            '<BBHH', self.bgapi_rx_payload[:6]
-                        )
-                        self.ble_evt_connection_version_ind({
-                            'connection': connection, 'vers_nr': vers_nr,
-                            'comp_id': comp_id, 'sub_vers_nr': sub_vers_nr
-                        })
-                    elif packet_command == 2:  # ble_evt_connection_feature_ind
-                        self._logger.info(
-                            "received packet ble_evt_connection_feature_ind")
-                        connection, features_len = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        features_data =\
-                            [ord(b) for b in self.bgapi_rx_payload[2:]]
-                        self.ble_evt_connection_feature_ind({
-                            'connection': connection, 'features': features_data
-                        })
-                    elif packet_command == 3:  # ble_evt_connection_raw_rx
-                        self._logger.info(
-                            "received packet ble_evt_connection_raw_rx")
-                        connection, data_len = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[2:]]
-                        self.ble_evt_connection_raw_rx({
-                            'connection': connection, 'data': data_data
-                        })
-                    elif packet_command == 4:  # ble_evt_connection_disconnected
-                        self._logger.info(
-                            "received packet ble_evt_connection_disconnected")
-                        connection, reason = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_evt_connection_disconnected({
-                            'connection': connection, 'reason': reason
-                        })
-                elif packet_class == 4:
-                    if packet_command == 0:  # ble_evt_attclient_indicated
-                        self._logger.info(
-                            "received packet ble_evt_attclient_indicated")
-                        connection, attrhandle = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_evt_attclient_indicated({
-                            'connection': connection, 'attrhandle': attrhandle
-                        })
-                    # ble_evt_attclient_procedure_completed
-                    elif packet_command == 1:
-                        self._logger.info(
-                            "received packet ble_evt_attclient_procedure_"
-                            "completed")
-                        connection, result, chrhandle = unpack(
-                            '<BHH', self.bgapi_rx_payload[:5]
-                        )
-                        self.ble_evt_attclient_procedure_completed({
-                            'connection': connection, 'result': result,
-                            'chrhandle': chrhandle
-                        })
-                    elif packet_command == 2:  # ble_evt_attclient_group_found
-                        self._logger.info(
-                            "received packet ble_evt_attclient_group_found")
-                        connection, start, end, uuid_len = unpack(
-                            '<BHHB', self.bgapi_rx_payload[:6]
-                        )
-                        uuid_data = [ord(b) for b in self.bgapi_rx_payload[6:]]
-                        self.ble_evt_attclient_group_found({
-                            'connection': connection, 'start': start,
-                            'end': end, 'uuid': uuid_data
-                        })
-                    # ble_evt_attclient_attribute_found
-                    elif packet_command == 3:
-                        self._logger.info(
-                            "received packet ble_evt_attclient_attribute_found")
-                        data = unpack('<BHHBB', self.bgapi_rx_payload[:7])
-                        uuid_data = [ord(b) for b in self.bgapi_rx_payload[7:]]
-                        self.ble_evt_attclient_attribute_found({
-                            'connection': data[0], 'chrdecl': data[1],
-                            'value': data[2], 'properties': data[3],
-                            'uuid': uuid_data
-                        })
-                    # ble_evt_attclient_find_information_found
-                    elif packet_command == 4:
-                        self._logger.info(
-                            "received packet ble_evt_attclient_find_"
-                            "information_found")
-                        connection, chrhandle, uuid_len = unpack(
-                            '<BHB', self.bgapi_rx_payload[:4]
-                        )
-                        uuid_data = [ord(b) for b in self.bgapi_rx_payload[4:]]
-                        self.ble_evt_attclient_find_information_found({
-                            'connection': connection, 'chrhandle': chrhandle,
-                            'uuid': uuid_data
-                        })
-                    # ble_evt_attclient_attribute_value
-                    elif packet_command == 5:
-                        self._logger.info(
-                            "received packet ble_evt_attclient_attribute_value")
-                        connection, atthandle, type, value_len = unpack(
-                            '<BHBB', self.bgapi_rx_payload[:5]
-                        )
-                        value_data = [ord(b) for b in self.bgapi_rx_payload[5:]]
-                        self.ble_evt_attclient_attribute_value({
-                            'connection': connection, 'atthandle': atthandle,
-                            'type': type, 'value': value_data
-                        })
-                    # ble_evt_attclient_read_multiple_response
-                    elif packet_command == 6:
-                        self._logger.info(
-                            "received packet ble_evt_attclient_read_multiple_"
-                            "response")
-                        connection, handles_len = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        handles_data =\
-                            [ord(b) for b in self.bgapi_rx_payload[2:]]
-                        self.ble_evt_attclient_read_multiple_response({
-                            'connection': connection, 'handles': handles_data
-                        })
-                elif packet_class == 5:
-                    if packet_command == 0:  # ble_evt_sm_smp_data
-                        self._logger.info(
-                            "received packet ble_evt_sm_smp_data")
-                        handle, packet, data_len = unpack(
-                            '<BBB', self.bgapi_rx_payload[:3]
-                        )
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[3:]]
-                        self.ble_evt_sm_smp_data({
-                            'handle': handle, 'packet': packet,
-                            'data': data_data
-                        })
-                    elif packet_command == 1:  # ble_evt_sm_bonding_fail
-                        self._logger.info(
-                            "received packet ble_evt_sm_bonding_fail")
-                        handle, result = unpack(
-                            '<BH', self.bgapi_rx_payload[:3]
-                        )
-                        self.ble_evt_sm_bonding_fail({
-                            'handle': handle, 'result': result
-                        })
-                    elif packet_command == 2:  # ble_evt_sm_passkey_display
-                        self._logger.info(
-                            "received packet ble_evt_sm_passkey_display")
-                        handle, passkey = unpack(
-                            '<BI', self.bgapi_rx_payload[:5]
-                        )
-                        self.ble_evt_sm_passkey_display({
-                            'handle': handle, 'passkey': passkey
-                        })
-                    elif packet_command == 3:  # ble_evt_sm_passkey_request
-                        self._logger.info(
-                            "received packet ble_evt_sm_passkey_request")
-                        handle = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_evt_sm_passkey_request({
-                            'handle': handle
-                        })
-                    elif packet_command == 4:  # ble_evt_sm_bond_status
-                        self._logger.info(
-                            "received packet ble_evt_sm_bond_status")
-                        bond, keysize, mitm, keys = unpack(
-                            '<BBBB', self.bgapi_rx_payload[:4]
-                        )
-                        self.ble_evt_sm_bond_status({
-                            'bond': bond, 'keysize': keysize, 'mitm': mitm,
-                            'keys': keys
-                        })
-                elif packet_class == 6:
-                    if packet_command == 0:  # ble_evt_gap_scan_response
-                        self._logger.info(
-                            "received packet ble_evt_gap_scan_response")
-                        data = unpack('<bB6sBBB', self.bgapi_rx_payload[:11])
-                        sender = [ord(b) for b in data[2]]
-                        data_data = [ord(b) for b in self.bgapi_rx_payload[11:]]
-                        self.ble_evt_gap_scan_response({
-                            'rssi': data[0], 'packet_type': data[1],
-                            'sender': sender, 'address_type': data[3],
-                            'bond': data[4], 'data': data_data
-                        })
-                    elif packet_command == 1:  # ble_evt_gap_mode_changed
-                        self._logger.info(
-                            "received packet ble_evt_gap_mode_changed")
-                        discover, connect = unpack(
-                            '<BB', self.bgapi_rx_payload[:2]
-                        )
-                        self.ble_evt_gap_mode_changed({
-                            'discover': discover, 'connect': connect
-                        })
-                elif packet_class == 7:
-                    if packet_command == 0:  # ble_evt_hardware_io_port_status
-                        self._logger.info(
-                            "received packet ble_evt_hardware_io_port_status")
-                        timestamp, port, irq, state = unpack(
-                            '<IBBB', self.bgapi_rx_payload[:7]
-                        )
-                        self.ble_evt_hardware_io_port_status({
-                            'timestamp': timestamp, 'port': port, 'irq': irq,
-                            'state': state
-                        })
-                    elif packet_command == 1:  # ble_evt_hardware_soft_timer
-                        self._logger.info(
-                            "received packet ble_evt_hardware_io_soft_timer")
-                        handle = unpack('<B', self.bgapi_rx_payload[:1])[0]
-                        self.ble_evt_hardware_soft_timer({
-                            'handle': handle
-                        })
-                    elif packet_command == 2:  # ble_evt_hardware_adc_result
-                        self._logger.info(
-                            "received packet ble_evt_hardware_adc_result")
-                        input, value = unpack('<Bh', self.bgapi_rx_payload[:3])
-                        self.ble_evt_hardware_adc_result({
-                            'input': input, 'value': value
-                        })
+        packet_type, payload_length, packet_class, packet_command = packet[:4]
+        bgapi_rx_payload = b''.join(chr(i) for i in packet[4:])
+        if packet_type & 0x88 == 0x00:
+            # 0x00 = BLE response packet
+            if packet_class == 0:
+                if packet_command == 0:  # ble_rsp_system_reset
+                    self._logger.info(
+                        "received packet ble_rsp_system_reset")
+                    return self.PacketType.ble_rsp_system_reset, {}
+                elif packet_command == 1:  # ble_rsp_system_hello
+                    self._logger.info(
+                        "received packet ble_rsp_system_hello")
+                    return self.PacketType.ble_rsp_system_hello, {}
+                elif packet_command == 2:  # ble_rsp_system_address_get
+                    self._logger.info(
+                        "received packet ble_rsp_system_address_get")
+                    address = unpack('<6s', bgapi_rx_payload[:6])[0]
+                    address = [ord(b) for b in address]
+                    args = {
+                        'address': address
+                    }
+                    return self.PacketType.ble_rsp_system_address_get, args
+                elif packet_command == 3:  # ble_rsp_system_reg_write
+                    self._logger.info(
+                        "received packet ble_rsp_system_reg_write")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_system_reg_write, args
+                elif packet_command == 4:  # ble_rsp_system_reg_read
+                    self._logger.info(
+                        "received packet ble_rsp_system_reg_read")
+                    address, value =\
+                        unpack('<HB', bgapi_rx_payload[:3])
+                    args = {
+                        'address': address, 'value': value
+                    }
+                    return self.PacketType.ble_rsp_system_reg_read, args
+                elif packet_command == 5:  # ble_rsp_system_get_counters
+                    self._logger.info(
+                        "received packet ble_rsp_system_get_counters")
+                    txok, txretry, rxok, rxfail, mbuf =\
+                        unpack('<BBBBB', bgapi_rx_payload[:5])
+                    args = {
+                        'txok': txok, 'txretry': txretry, 'rxok': rxok,
+                        'rxfail': rxfail, 'mbuf': mbuf
+                    }
+                    return self.PacketType.ble_rsp_system_get_counters, args
+                elif packet_command == 6:  # ble_rsp_system_get_connections
+                    self._logger.info(
+                        "received packet ble_rsp_system_get_connections")
+                    maxconn = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'maxconn': maxconn
+                    }
+                    return self.PacketType.ble_rsp_system_get_connections, args
+                elif packet_command == 7:  # ble_rsp_system_read_memory
+                    self._logger.info(
+                        "received packet ble_rsp_system_read_memory")
+                    address, data_len =\
+                        unpack('<IB', bgapi_rx_payload[:5])
+                    data_data = [ord(b) for b in bgapi_rx_payload[5:]]
+                    args = {
+                        'address': address, 'data': data_data
+                    }
+                    return self.PacketType.ble_rsp_system_read_memory, args
+                elif packet_command == 8:  # ble_rsp_system_get_info
+                    self._logger.info(
+                        "received packet ble_rsp_system_get_info")
+                    data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
+                    args = {
+                        'major': data[0], 'minor': data[1],
+                        'patch': data[2], 'build': data[3],
+                        'll_version': data[4], 'protocol_version': data[5],
+                        'hw': data[6]
+                    }
+                    return self.PacketType.ble_rsp_system_get_info, args
+                elif packet_command == 9:  # ble_rsp_system_endpoint_tx
+                    self._logger.info(
+                        "received packet ble_rsp_system_endpoint_tx")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_system_endpoint_tx, args
+                # ble_rsp_system_whitelist_append
+                elif packet_command == 10:
+                    self._logger.info(
+                        "received packet ble_rsp_system_whitelist_append")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_system_whitelist_append, args
+                # ble_rsp_system_whitelist_remove
+                elif packet_command == 11:
+                    self._logger.info(
+                        "received packet ble_rsp_system_whitelist_remove")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_system_whitelist_remove
+                elif packet_command == 12:  # ble_rsp_system_whitelist_clear
+                    self._logger.info(
+                        "received packet ble_rsp_system_whitelist_clear")
+                    return self.PacketType.ble_rsp_system_whitelist_clear, {}
+                elif packet_command == 13:  # ble_rsp_system_endpoint_rx
+                    self._logger.info(
+                        "received packet ble_rsp_system_endpoint_rx")
+                    result, data_len =\
+                        unpack('<HB', bgapi_rx_payload[:3])
+                    data_data = [ord(b) for b in bgapi_rx_payload[3:]]
+                    args = {
+                        'result': result, 'data': data_data
+                    }
+                    return self.PacketType.ble_rsp_system_endpoint_rx, args
+                # ble_rsp_system_endpoint_set_watermarks
+                elif packet_command == 14:
+                    self._logger.info(
+                        "received packet ble_rsp_system_endpoint_set_"
+                        "watermarks")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME: return statement line length
+                    return self.PacketType.ble_rsp_system_endpoint_set_watermarks, args  # noqa
+            elif packet_class == 1:
+                if packet_command == 0:  # ble_rsp_flash_ps_defrag
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_defrag")
+                    return self.PacketType.ble_rsp_flash_ps_defrag, {}
+                elif packet_command == 1:  # ble_rsp_flash_ps_dump
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_dump")
+                    return self.PacketType.ble_rsp_flash_ps_dump, {}
+                elif packet_command == 2:  # ble_rsp_flash_ps_erase_all
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_erase_all")
+                    return self.PacketType.ble_rsp_flash_ps_erase_all, {}
+                elif packet_command == 3:  # ble_rsp_flash_ps_save
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_save")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_flash_ps_save, args
+                elif packet_command == 4:  # ble_rsp_flash_ps_load
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_load")
+                    result, value_len = unpack('<HB',
+                                               bgapi_rx_payload[:3])
+                    value_data = [ord(b) for b in bgapi_rx_payload[3:]]
+                    args = {
+                        'result': result, 'value': value_data
+                    }
+                    return self.PacketType.ble_rsp_flash_ps_load, args
+                elif packet_command == 5:  # ble_rsp_flash_ps_erase
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_erase")
+                    return self.PacketType.ble_rsp_flash_ps_erase, {}
+                elif packet_command == 6:  # ble_rsp_flash_ps_erase_page
+                    self._logger.info(
+                        "received packet ble_rsp_flash_ps_erase_page")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_flash_erase_page, args
+                elif packet_command == 7:  # ble_rsp_flash_write_words
+                    self._logger.info(
+                        "received packet ble_rsp_flash_write_words")
+                    return self.PacketType.ble_rsp_flash_write_words, {}
+            elif packet_class == 2:
+                if packet_command == 0:  # ble_rsp_attributes_write
+                    self._logger.info(
+                        "received packet ble_rsp_attributes_write")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_attributes_write, args
+                elif packet_command == 1:  # ble_rsp_attributes_read
+                    self._logger.info(
+                        "received packet ble_rsp_attributes_read")
+                    handle, offset, result, value_len = unpack(
+                        '<HHHB', bgapi_rx_payload[:7]
+                    )
+                    value_data = [ord(b) for b in bgapi_rx_payload[7:]]
+                    args = {
+                        'handle': handle, 'offset': offset,
+                        'result': result, 'value': value_data
+                    }
+                    return self.PacketType.ble_rsp_attributes_read, args
+                elif packet_command == 2:  # ble_rsp_attributes_read_type
+                    self._logger.info(
+                        "received packet ble_rsp_attributes_read_type")
+                    handle, result, value_len = unpack(
+                        '<HHB', bgapi_rx_payload[:5]
+                    )
+                    value_data = [ord(b) for b in bgapi_rx_payload[5:]]
+                    args = {
+                        'handle': handle, 'result': result,
+                        'value': value_data
+                    }
+                    return self.PacketType.ble_rsp_attributes_read_type, args
+                # ble_rsp_attributes_user_read_response
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_rsp_attributes_user_read_"
+                        "response")
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_attributes_user_read_response, {}  # noqa
+                # ble_rsp_attributes_user_write_response
+                elif packet_command == 4:
+                    self._logger.info(
+                        "received packet ble_rsp_attributes_user_write_"
+                        "response")
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_attributes_user_write_response, {}  # noqa
+            elif packet_class == 3:
+                if packet_command == 0:  # ble_rsp_connection_disconnect
+                    self._logger.info(
+                        "received packet ble_rsp_connection_disconnect")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_connection_disconnect, args
+                elif packet_command == 1:  # ble_rsp_connection_get_rssi
+                    self._logger.info(
+                        "received packet ble_rsp_connection_get_rssi")
+                    connection, rssi = unpack(
+                        '<Bb', bgapi_rx_payload[:2]
+                    )
+                    args = {
+                        'connection': connection, 'rssi': rssi
+                    }
+                    return self.PacketType.ble_rsp_connection_get_rssi, args
+                elif packet_command == 2:  # ble_rsp_connection_update
+                    self._logger.info(
+                        "received packet ble_rsp_connection_update")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_connection_update, args
+                # ble_rsp_connection_version_update
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_rsp_connection_version_update")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_connection_version_update, args  # noqa
+                # ble_rsp_connection_channel_map_get
+                elif packet_command == 4:
+                    self._logger.info(
+                        "received packet ble_rsp_connection_channel_map_"
+                        "get")
+                    connection, map_len = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    map_data = [ord(b) for b in bgapi_rx_payload[2:]]
+                    args = {
+                        'connection': connection, 'map': map_data
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_connection_channel_map_get, args  # noqa
+                # ble_rsp_connection_channel_map_set
+                elif packet_command == 5:
+                    self._logger.info(
+                        "received packet ble_rsp_connection_channel_map_"
+                        "set")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_connection_channel_map_set, args  # noqa
+                elif packet_command == 6:  # ble_rsp_connection_features_get
+                    self._logger.info(
+                        "received packet ble_rsp_connection_features_get")
+                    connection, result = unpack('<BH',
+                                                bgapi_rx_payload[:3])
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_connection_features_get, args
+                elif packet_command == 7:  # ble_rsp_connection_get_status
+                    self._logger.info(
+                        "received packet ble_rsp_connection_get_status")
+                    connection = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'connection': connection
+                    }
+                    return self.PacketType.ble_rsp_connection_get_status, args
+                elif packet_command == 8:  # ble_rsp_connection_raw_tx
+                    self._logger.info(
+                        "received packet ble_rsp_connection_raw_tx")
+                    connection = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'connection': connection
+                    }
+                    return self.PacketType.ble_rsp_connection_raw_tx, args
+            elif packet_class == 4:
+                # ble_rsp_attclient_find_by_type_value
+                if packet_command == 0:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_find_by_type_"
+                        "value")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_attclient_find_by_type_value, args  # noqa
+                # ble_rsp_attclient_read_by_group_type
+                elif packet_command == 1:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_read_by_group_"
+                        "type")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_attclient_read_by_group_type, args  # noqa
+                elif packet_command == 2:  # ble_rsp_attclient_read_by_type
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_read_by_type")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_read_by_type, args
+                # ble_rsp_attclient_find_information
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_find_"
+                        "information")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_attclient_find_information, args  # noqa
+                # ble_rsp_attclient_read_by_handle
+                elif packet_command == 4:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_read_by_handle")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_attclient_read_by_handle, args  # noqa
+                # ble_rsp_attclient_attribute_write
+                elif packet_command == 5:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_attclient_attribute_write, args  # noqa
+                elif packet_command == 6:  # ble_rsp_attclient_write_command
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_write_command")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_write_command, args
+                # ble_rsp_attclient_indicate_confirm
+                elif packet_command == 7:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_indicate_"
+                        "confirm")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelenght
+                    return self.PacketType.ble_rsp_attclient_indicate_confirm, args  # noqa
+                elif packet_command == 8:  # ble_rsp_attclient_read_long
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_read_long")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_read_long, args
+                elif packet_command == 9:  # ble_rsp_attclient_prepare_write
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_prepare_write")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_prepare_write, args
+                # ble_rsp_attclient_execute_write
+                elif packet_command == 10:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_execute_write")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_execute_write, args
+                # ble_rsp_attclient_read_multiple
+                elif packet_command == 11:
+                    self._logger.info(
+                        "received packet ble_rsp_attclient_read_multiple")
+                    connection, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_attclient_read_multiple, args
+            elif packet_class == 5:
+                if packet_command == 0:  # ble_rsp_sm_encrypt_start
+                    self._logger.info(
+                        "received packet ble_rsp_sm_encrypt_start")
+                    handle, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'handle': handle, 'result': result
+                    }
+                    return self.PacketType.ble_rsp_sm_encrypt_start, args
+                elif packet_command == 1:  # ble_rsp_sm_set_bondable_mode
+                    self._logger.info(
+                        "received packet ble_rsp_sm_set_bondable_mode")
+                    return self.PacketType.ble_rsp_sm_set_bondable_mode, {}
+                elif packet_command == 2:  # ble_rsp_sm_delete_bonding
+                    self._logger.info(
+                        "received packet ble_rsp_sm_delete_bonding")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_sm_delete_bonding, args
+                elif packet_command == 3:  # ble_rsp_sm_set_parameters
+                    self._logger.info(
+                        "received packet ble_rsp_sm_set_parameters")
+                    return self.PacketType.ble_rsp_sm_set_parameters, {}
+                elif packet_command == 4:  # ble_rsp_sm_passkey_entry
+                    self._logger.info(
+                        "received packet ble_rsp_sm_passkey_entry")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_sm_passkey_entry, args
+                elif packet_command == 5:  # ble_rsp_sm_get_bonds
+                    self._logger.info(
+                        "received packet ble_rsp_sm_get_bonds")
+                    bonds = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'bonds': bonds
+                    }
+                    return self.PacketType.ble_rsp_sm_get_bonds, args
+                elif packet_command == 6:  # ble_rsp_sm_set_oob_data
+                    self._logger.info(
+                        "received packet ble_rsp_sm_set_oob_data")
+                    return self.PacketType.ble_rsp_sm_set_oob_data, {}
+            elif packet_class == 6:
+                if packet_command == 0:  # ble_rsp_gap_set_privacy_flags
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_privacy_flags")
+                    return self.PacketType.ble_rsp_gap_set_privacy_flags, {}
+                elif packet_command == 1:  # ble_rsp_gap_set_mode
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_mode")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_set_mode, args
+                elif packet_command == 2:  # ble_rsp_gap_discover
+                    self._logger.info(
+                        "received packet ble_rsp_gap_discover")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_discover, args
+                elif packet_command == 3:  # ble_rsp_gap_connect_direct
+                    self._logger.info(
+                        "received packet ble_rsp_gap_connect_direct")
+                    result, connection_handle = unpack(
+                        '<HB', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'result': result,
+                        'connection_handle': connection_handle
+                    }
+                    return self.PacketType.ble_rsp_gap_connect_direct, args
+                elif packet_command == 4:  # ble_rsp_gap_end_procedure
+                    self._logger.info(
+                        "received packet ble_rsp_gap_end_procedure")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_end_procedure, args
+                elif packet_command == 5:  # ble_rsp_gap_connect_selective
+                    self._logger.info(
+                        "received packet ble_rsp_gap_connect_selective")
+                    result, connection_handle = unpack(
+                        '<HB', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'result': result,
+                        'connection_handle': connection_handle
+                    }
+                    return self.PacketType.ble_rsp_gap_connect_selective, args
+                elif packet_command == 6:  # ble_rsp_gap_set_filtering
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_filtering")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_set_filtering, args
+                elif packet_command == 7:  # ble_rsp_gap_set_scan_parameters
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_scan_parameters")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_set_scan_parameters, args
+                elif packet_command == 8:  # ble_rsp_gap_set_adv_parameters
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_adv_parameters")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_set_adv_parameters, args
+                elif packet_command == 9:  # ble_rsp_gap_set_adv_data
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_adv_data")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_gap_set_adv_data, args
+                # ble_rsp_gap_set_directed_connectable_mode
+                elif packet_command == 10:
+                    self._logger.info(
+                        "received packet ble_rsp_gap_set_directed_"
+                        "connectable_mode")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_gap_set_directed_connectable_mode, args  # noqa
+            elif packet_class == 7:
+                # ble_rsp_hardware_io_port_config_irq
+                if packet_command == 0:
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_config_"
+                        "irq")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelenght
+                    return self.PacketType.ble_rsp_hardware_io_port_config_irq, args  # noqa
+                elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_set_soft_timer")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_hardware_set_soft_timer, args
+                elif packet_command == 2:  # ble_rsp_hardware_adc_read
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_adc_read")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_hardware_adc_read, args
+                # ble_rsp_hardware_io_port_config_direction
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_config_"
+                        "direction")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_hardware_io_port_config_direction, args  # noqa
+                # ble_rsp_hardware_io_port_config_function
+                elif packet_command == 4:
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_config_"
+                        "function")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_hardware_io_port_config_function, args  # noqa
+                # ble_rsp_hardware_io_port_config_pull
+                elif packet_command == 5:
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_config_"
+                        "pull")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_rsp_hardware_io_port_config_pull, args  # noqa
+                elif packet_command == 6:  # ble_rsp_hardware_io_port_write
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_write")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_hardware_io_port_write, args
+                elif packet_command == 7:  # ble_rsp_hardware_io_port_read
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_io_port_read")
+                    result, port, data = unpack(
+                        '<HBB', bgapi_rx_payload[:4]
+                    )
+                    args = {
+                        'result': result, 'port': port, 'data': data
+                    }
+                    return self.PacketType.ble_rsp_hardware_io_port_read, args
+                elif packet_command == 8:  # ble_rsp_hardware_spi_config
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_spi_config")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    return self.PacketType.ble_rsp_hardware_spi_config, args
+                elif packet_command == 9:  # ble_rsp_hardware_spi_transfer
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_spi_transfer")
+                    result, channel, data_len = unpack(
+                        '<HBB', bgapi_rx_payload[:4]
+                    )
+                    data_data = [ord(b) for b in bgapi_rx_payload[4:]]
+                    args = {
+                        'result': result, 'channel': channel,
+                        'data': data_data
+                    }
+                    return self.PacketType.ble_rsp_hardware_spi_transfer, args
+                elif packet_command == 10:  # ble_rsp_hardware_i2c_read
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_i2c_read")
+                    result, data_len = unpack(
+                        '<HB', bgapi_rx_payload[:3]
+                    )
+                    data_data = [ord(b) for b in bgapi_rx_payload[3:]]
+                    args = {
+                        'result': result, 'data': data_data
+                    }
+                    return self.PacketType.ble_rsp_hardware_i2c_read, args
+                elif packet_command == 11:  # ble_rsp_hardware_i2c_write
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_i2c_write")
+                    written = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'written': written
+                    }
+                    return self.PacketType.ble_rsp_hardware_i2c_write, args
+                elif packet_command == 12:  # ble_rsp_hardware_set_txpower
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_set_txpower")
+                    return self.PacketType.ble_rsp_hardware_set_txpower, {}
+                # ble_rsp_hardware_timer_comparator
+                elif packet_command == 13:
+                    self._logger.info(
+                        "received packet ble_rsp_hardware_timer_comparator")
+                    result = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'result': result
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_rsp_hardware_timer_comparator, args  # noqa
+            elif packet_class == 8:
+                if packet_command == 0:  # ble_rsp_test_phy_tx
+                    self._logger.info(
+                        "received packet ble_rsp_test_phy_tx")
+                    return self.PacketType.ble_rsp_test_phy_tx, {}
+                elif packet_command == 1:  # ble_rsp_test_phy_rx
+                    self._logger.info(
+                        "received packet ble_rsp_test_phy_rx")
+                    return self.PacketType.ble_rsp_test_phy_rx, {}
+                elif packet_command == 2:  # ble_rsp_test_phy_end
+                    self._logger.info(
+                        "received packet ble_rsp_test_phy_end")
+                    counter = unpack('<H', bgapi_rx_payload[:2])[0]
+                    args = {
+                        'counter': counter
+                    }
+                    return self.PacketType.ble_rsp_test_phy_end, args
+                elif packet_command == 3:  # ble_rsp_test_phy_reset
+                    self._logger.info(
+                        "received packet ble_rsp_test_phy_reset")
+                    return self.PacketType.ble_rsp_test_phy_reset, {}
+                elif packet_command == 4:  # ble_rsp_test_get_channel_map
+                    self._logger.info(
+                        "received packet ble_rsp_test_get_channel_map")
+                    # channel_map_len = unpack(
+                    #    '<B', bgapi_rx_payload[:1]
+                    # )[0]
+                    channel_map_data =\
+                        [ord(b) for b in bgapi_rx_payload[1:]]
+                    args = {
+                        'channel_map': channel_map_data
+                    }
+                    return self.PacketType.ble_rsp_test_get_channel_map, args
+                elif packet_command == 5:  # ble_rsp_test_debug
+                    self._logger.info(
+                        "received packet ble_rsp_test_debug")
+                    # output_len = unpack('<B',
+                    #                     bgapi_rx_payload[:1])[0]
+                    output_data =\
+                        [ord(b) for b in bgapi_rx_payload[1:]]
+                    args = {
+                        'output': output_data
+                    }
+                    return self.PacketType.ble_rsp_test_debug, args
+        elif packet_type & 0x88 == 0x80:
+            # 0x80 = BLE event packet
+            if packet_class == 0:
+                if packet_command == 0:  # ble_evt_system_boot
+                    self._logger.info(
+                        "received packet ble_evt_system_boot")
+                    data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
+                    args = {
+                        'major': data[0], 'minor': data[1],
+                        'patch': data[2], 'build': data[3],
+                        'll_version': data[4], 'protocol_version': data[5],
+                        'hw': data[6]
+                    }
+                    return self.PacketType.ble_evt_system_boot, args
+                elif packet_command == 1:  # ble_evt_system_debug
+                    self._logger.info(
+                        "received packet ble_evt_system_debug")
+                    data_len = unpack('<B', bgapi_rx_payload[:1])[0]
+                    data_data = [ord(b) for b in bgapi_rx_payload[1:]]
+                    args = {
+                        'data': data_data
+                    }
+                    return self.PacketType.ble_evt_system_debug, args
+                # ble_evt_system_endpoint_watermark_rx
+                elif packet_command == 2:
+                    self._logger.info(
+                        "received packet ble_evt_system_endpoint_"
+                        "watermark_rx")
+                    endpoint, data = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    args = {
+                        'endpoint': endpoint, 'data': data
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_evt_system_endpoint_watermark_rx, args  # noqa
+                # ble_evt_system_endpoint_watermark_tx
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_evt_system_endpoint_"
+                        "watermark_tx")
+                    endpoint, data = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    args = {
+                        'endpoint': endpoint, 'data': data
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_evt_system_endpoint_watermark_tx, args  # noqa
+                elif packet_command == 4:  # ble_evt_system_script_failure
+                    self._logger.info(
+                        "received packet ble_evt_system_script_failure")
+                    address, reason = unpack(
+                        '<HH', bgapi_rx_payload[:4]
+                    )
+                    args = {
+                        'address': address, 'reason': reason
+                    }
+                    return self.PacketType.ble_evt_system_script_failure, args
+                elif packet_command == 5:  # ble_evt_system_no_license_key
+                    self._logger.info(
+                        "received packet ble_evt_system_no_license_key")
+                    return self.PacketType.ble_evt_system_no_license_key, {}
+            elif packet_class == 1:
+                if packet_command == 0:  # ble_evt_flash_ps_key
+                    self._logger.info(
+                        "received packet ble_evt_flash_ps_key")
+                    key, value_len = unpack(
+                        '<HB', bgapi_rx_payload[:3]
+                    )
+                    value_data = [ord(b) for b in bgapi_rx_payload[3:]]
+                    args = {
+                        'key': key, 'value': value_data
+                    }
+                    return self.PacketType.ble_evt_flash_ps_key, args
+            elif packet_class == 2:
+                if packet_command == 0:  # ble_evt_attributes_value
+                    self._logger.info(
+                        "received packet ble_evt_attributes_value")
+                    connection, reason, handle, offset, value_len = unpack(
+                        '<BBHHB', bgapi_rx_payload[:7]
+                    )
+                    value_data = [ord(b) for b in bgapi_rx_payload[7:]]
+                    args = {
+                        'connection': connection, 'reason': reason,
+                        'handle': handle, 'offset': offset,
+                        'value': value_data
+                    }
+                    return self.PacketType.ble_evt_attributes_value, args
+                # ble_evt_attributes_user_read_request
+                elif packet_command == 1:
+                    self._logger.info(
+                        "received packet ble_evt_attributes_user_read_"
+                        "request")
+                    connection, handle, offset, maxsize = unpack(
+                        '<BHHB', bgapi_rx_payload[:6]
+                    )
+                    args = {
+                        'connection': connection, 'handle': handle,
+                        'offset': offset, 'maxsize': maxsize
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_evt_attributes_user_read_request, args  # noqa
+                elif packet_command == 2:  # ble_evt_attributes_status
+                    self._logger.info(
+                        "received packet ble_evt_attributes_status")
+                    handle, flags = unpack('<HB', bgapi_rx_payload[:3])
+                    args = {
+                        'handle': handle, 'flags': flags
+                    }
+                    return self.PacketType.ble_evt_attributes_status, args
+            elif packet_class == 3:
+                if packet_command == 0:  # ble_evt_connection_status
+                    self._logger.info(
+                        "received packet ble_evt_connection_status")
+                    data = unpack('<BB6sBHHHB', bgapi_rx_payload[:16])
+                    address = [ord(b) for b in data[2]]
+                    args = {
+                        'connection': data[0], 'flags': data[1],
+                        'address': address, 'address_type': data[3],
+                        'conn_interval': data[4], 'timeout': data[5],
+                        'latency': data[6], 'bonding': data[7]
+                    }
+                    return self.PacketType.ble_evt_connection_status, args
+                elif packet_command == 1:  # ble_evt_connection_version_ind
+                    self._logger.info(
+                        "received packet ble_evt_connection_version_ind")
+                    connection, vers_nr, comp_id, sub_vers_nr = unpack(
+                        '<BBHH', bgapi_rx_payload[:6]
+                    )
+                    args = {
+                        'connection': connection, 'vers_nr': vers_nr,
+                        'comp_id': comp_id, 'sub_vers_nr': sub_vers_nr
+                    }
+                    return self.PacketType.ble_evt_connection_version_ind, args
+                elif packet_command == 2:  # ble_evt_connection_feature_ind
+                    self._logger.info(
+                        "received packet ble_evt_connection_feature_ind")
+                    connection, features_len = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    features_data =\
+                        [ord(b) for b in bgapi_rx_payload[2:]]
+                    args = {
+                        'connection': connection, 'features': features_data
+                    }
+                    return self.PacketType.ble_evt_connection_feature_ind, args
+                elif packet_command == 3:  # ble_evt_connection_raw_rx
+                    self._logger.info(
+                        "received packet ble_evt_connection_raw_rx")
+                    connection, data_len = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    data_data = [ord(b) for b in bgapi_rx_payload[2:]]
+                    args = {
+                        'connection': connection, 'data': data_data
+                    }
+                    return self.PacketType.ble_evt_connection_raw_rx, args
+                elif packet_command == 4:  # ble_evt_connection_disconnected
+                    self._logger.info(
+                        "received packet ble_evt_connection_disconnected")
+                    connection, reason = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'reason': reason
+                    }
+                    return self.PacketType.ble_evt_connection_disconnected, args
+            elif packet_class == 4:
+                if packet_command == 0:  # ble_evt_attclient_indicated
+                    self._logger.info(
+                        "received packet ble_evt_attclient_indicated")
+                    connection, attrhandle = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'connection': connection, 'attrhandle': attrhandle
+                    }
+                    return self.PacketType.ble_evt_attclient_indicated, args
+                # ble_evt_attclient_procedure_completed
+                elif packet_command == 1:
+                    self._logger.info(
+                        "received packet ble_evt_attclient_procedure_"
+                        "completed")
+                    connection, result, chrhandle = unpack(
+                        '<BHH', bgapi_rx_payload[:5]
+                    )
+                    args = {
+                        'connection': connection, 'result': result,
+                        'chrhandle': chrhandle
+                    }
+                    # FIXME line length
+                    return self.PacketType.ble_evt_attclient_procedure_completed, args  # noqa
+                elif packet_command == 2:  # ble_evt_attclient_group_found
+                    self._logger.info(
+                        "received packet ble_evt_attclient_group_found")
+                    connection, start, end, uuid_len = unpack(
+                        '<BHHB', bgapi_rx_payload[:6]
+                    )
+                    uuid_data = [ord(b) for b in bgapi_rx_payload[6:]]
+                    args = {
+                        'connection': connection, 'start': start,
+                        'end': end, 'uuid': uuid_data
+                    }
+                    return self.PacketType.ble_evt_attclient_group_found, args
+                # ble_evt_attclient_attribute_found
+                elif packet_command == 3:
+                    self._logger.info(
+                        "received packet ble_evt_attclient_attribute_found")
+                    data = unpack('<BHHBB', bgapi_rx_payload[:7])
+                    uuid_data = [ord(b) for b in bgapi_rx_payload[7:]]
+                    args = {
+                        'connection': data[0], 'chrdecl': data[1],
+                        'value': data[2], 'properties': data[3],
+                        'uuid': uuid_data
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_evt_attclient_attribute_found, args  # noqa
+                # ble_evt_attclient_find_information_found
+                elif packet_command == 4:
+                    self._logger.info(
+                        "received packet ble_evt_attclient_find_"
+                        "information_found")
+                    connection, chrhandle, uuid_len = unpack(
+                        '<BHB', bgapi_rx_payload[:4]
+                    )
+                    uuid_data = [ord(b) for b in bgapi_rx_payload[4:]]
+                    args = {
+                        'connection': connection, 'chrhandle': chrhandle,
+                        'uuid': uuid_data
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_evt_attclient_find_information_found, args  # noqa
+                # ble_evt_attclient_attribute_value
+                elif packet_command == 5:
+                    self._logger.info(
+                        "received packet ble_evt_attclient_attribute_value")
+                    connection, atthandle, type, value_len = unpack(
+                        '<BHBB', bgapi_rx_payload[:5]
+                    )
+                    value_data = [ord(b) for b in bgapi_rx_payload[5:]]
+                    args = {
+                        'connection': connection, 'atthandle': atthandle,
+                        'type': type, 'value': value_data
+                    }
+                    # FIXME linelength
+                    return self.PacketType.ble_evt_attclient_attribute_value, args  # noqa
+                # ble_evt_attclient_read_multiple_response
+                elif packet_command == 6:
+                    self._logger.info(
+                        "received packet ble_evt_attclient_read_multiple_"
+                        "response")
+                    connection, handles_len = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    handles_data =\
+                        [ord(b) for b in bgapi_rx_payload[2:]]
+                    args = {
+                        'connection': connection, 'handles': handles_data
+                    }
+                    # FIXME Line length
+                    return self.PacketType.ble_evt_attclient_read_multiple_response, args  # noqa
+            elif packet_class == 5:
+                if packet_command == 0:  # ble_evt_sm_smp_data
+                    self._logger.info(
+                        "received packet ble_evt_sm_smp_data")
+                    handle, packet, data_len = unpack(
+                        '<BBB', bgapi_rx_payload[:3]
+                    )
+                    data_data = [ord(b) for b in bgapi_rx_payload[3:]]
+                    args = {
+                        'handle': handle, 'packet': packet,
+                        'data': data_data
+                    }
+                    return self.PacketType.ble_evt_sm_smp_data, args
+                elif packet_command == 1:  # ble_evt_sm_bonding_fail
+                    self._logger.info(
+                        "received packet ble_evt_sm_bonding_fail")
+                    handle, result = unpack(
+                        '<BH', bgapi_rx_payload[:3]
+                    )
+                    args = {
+                        'handle': handle, 'result': result
+                    }
+                    return self.PacketType.ble_evt_sm_bonding_fail, args
+                elif packet_command == 2:  # ble_evt_sm_passkey_display
+                    self._logger.info(
+                        "received packet ble_evt_sm_passkey_display")
+                    handle, passkey = unpack(
+                        '<BI', bgapi_rx_payload[:5]
+                    )
+                    args = {
+                        'handle': handle, 'passkey': passkey
+                    }
+                    return self.PacketType.ble_evt_sm_passkey_display, args
+                elif packet_command == 3:  # ble_evt_sm_passkey_request
+                    self._logger.info(
+                        "received packet ble_evt_sm_passkey_request")
+                    handle = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'handle': handle
+                    }
+                    return self.PacketType.ble_evt_sm_passkey_request, args
+                elif packet_command == 4:  # ble_evt_sm_bond_status
+                    self._logger.info(
+                        "received packet ble_evt_sm_bond_status")
+                    bond, keysize, mitm, keys = unpack(
+                        '<BBBB', bgapi_rx_payload[:4]
+                    )
+                    args = {
+                        'bond': bond, 'keysize': keysize, 'mitm': mitm,
+                        'keys': keys
+                    }
+                    return self.PacketType.ble_evt_sm_bond_status, args
+            elif packet_class == 6:
+                if packet_command == 0:  # ble_evt_gap_scan_response
+                    self._logger.info(
+                        "received packet ble_evt_gap_scan_response")
+                    data = unpack('<bB6sBBB', bgapi_rx_payload[:11])
+                    sender = [ord(b) for b in data[2]]
+                    data_data = [ord(b) for b in bgapi_rx_payload[11:]]
+                    args = {
+                        'rssi': data[0], 'packet_type': data[1],
+                        'sender': sender, 'address_type': data[3],
+                        'bond': data[4], 'data': data_data
+                    }
+                    return self.PacketType.ble_evt_gap_scan_response, args
+                elif packet_command == 1:  # ble_evt_gap_mode_changed
+                    self._logger.info(
+                        "received packet ble_evt_gap_mode_changed")
+                    discover, connect = unpack(
+                        '<BB', bgapi_rx_payload[:2]
+                    )
+                    args = {
+                        'discover': discover, 'connect': connect
+                    }
+                    return self.PacketType.ble_evt_gap_mode_changed, args
+            elif packet_class == 7:
+                if packet_command == 0:  # ble_evt_hardware_io_port_status
+                    self._logger.info(
+                        "received packet ble_evt_hardware_io_port_status")
+                    timestamp, port, irq, state = unpack(
+                        '<IBBB', bgapi_rx_payload[:7]
+                    )
+                    args = {
+                        'timestamp': timestamp, 'port': port, 'irq': irq,
+                        'state': state
+                    }
+                    return self.PacketType.ble_evt_hardware_io_port_status, args
+                elif packet_command == 1:  # ble_evt_hardware_soft_timer
+                    self._logger.info(
+                        "received packet ble_evt_hardware_io_soft_timer")
+                    handle = unpack('<B', bgapi_rx_payload[:1])[0]
+                    args = {
+                        'handle': handle
+                    }
+                    return self.PacketType.ble_evt_hardware_soft_timer, args
+                elif packet_command == 2:  # ble_evt_hardware_adc_result
+                    self._logger.info(
+                        "received packet ble_evt_hardware_adc_result")
+                    input, value = unpack('<Bh', bgapi_rx_payload[:3])
+                    args = {
+                        'input': input, 'value': value
+                    }
+                    return self.PacketType.ble_evt_hardware_adc_result, args

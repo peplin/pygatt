@@ -7,7 +7,7 @@ import time
 from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
-from exceptions import NoResponseError, NotConnectedError
+from exceptions import NoResponseError
 from gatttool_classes import GATTToolBackend
 
 
@@ -81,9 +81,7 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("connect")
         if self._backend_type == BACKEND['BLED112']:
-            ret = self._backend.connect(self._mac_address, timeout=timeout)
-            if not ret:
-                raise NotConnectedError("Connect failed")
+            self._backend.connect(self._mac_address, timeout=timeout)
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.connect(timeout=timeout)
         else:
