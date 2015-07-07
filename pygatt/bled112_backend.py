@@ -100,6 +100,7 @@ class BLED112Backend(object):
         self._recvr_stop = True  # tell recvr thread not to run
 
         # Protect BLED112Backend state
+        # TODO: pretty sure this is unecessary
         self._state_lock = threading.Lock()
 
         # Timeout
@@ -115,6 +116,13 @@ class BLED112Backend(object):
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
+        self._attribute_value = None  # attribute_value event value
+        self._characteristics = {  # the device characteristics discovered
+            # uuid_string: Characteristic()
+        }
+        self._characteristics_cached = False  # characteristics already found
+        self._current_characteristic = None  # used in char/descriptor discovery
+        self._expected_attribute_handle = None  # expected handle after a read
 
         # Flags
         self._event_return = 0  # event return code
@@ -123,22 +131,15 @@ class BLED112Backend(object):
         self._connected = False  # device is connected
         self._encrypted = False  # connection is encrypted
         self._bond_expected = False  # tell bond_status handler to set _bonded
+        self._attribute_value_received = False  # attribute_value event occurred
+        self._procedure_completed = False  # procecure_completed event occurred
 
 # -------------
 # TODO: check if used
         # Flags to tell the main thread what to do when woken up from waiting
-        self._attribute_value_received = False  # attribute_value event occurred
         self._bonding_fail = False  # failed to bond with device
-        self._procedure_completed = False  # procecure_completed event occurred
 
         # BLED112_backend's state
-        self._attribute_value = None  # attribute_value event value
-        self._expected_attribute_handle = None  # expected handle after a read
-        self._characteristics = {  # the device characteristics discovered
-            # uuid_string: Characteristic()
-        }
-        self._characteristics_cached = False  # characteristics already found
-        self._current_characteristic = None  # used in char/descriptor discovery
         self._notifications = {  # stores notification packet contents
             # handle: [value_bytearray0, ...]
         }
@@ -349,7 +350,6 @@ class BLED112Backend(object):
 
         return True
 
-    # TODO refactor
     def char_read(self, handle):
         """
         Read a value from a characteristic on the device.
@@ -359,14 +359,14 @@ class BLED112Backend(object):
         handle -- the characteristic handle to read from.
 
         Returns a bytearray containing the value read, on success.
-        Returns None, on failure.
+        Raised BLED112Error on failure.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Make sure there is a connection
         self._check_if_connected()
+        self._state_lock.release()
 
         # Read from characteristic
         self._logger.info("read_by_handle")
@@ -376,45 +376,54 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_attclient_read_by_handle,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
         self._loglock.acquire()
         if self._response_return != 0:
-            self._logger.warn("read_by_handle failed: %s",
-                              get_return_message(self._response_return))
+            warning = "read_by_handle failed: " +\
+                      get_return_message(self._response_return)
+            self._logger.warn(warning)
             self._loglock.release()
-            self._main_thread_cond.release()
-            return None
+            raise BLED112Error(warning)
+
+        # Reset flags
+        self._state_lock.acquire()
+        self._attribute_value_received = False  # reset the flag
+        self._procedure_completed = False  # reset the flag
+        self._state_lock.release()
 
         # Wait for event
-        self._loglock.release()  # don't hold loglock while waiting
-        while (not (self._attribute_value_received or
-                    self._procedure_completed)) and self._connected:
-            self._main_thread_cond.wait()
-        value = None  # return value
-        self._loglock.acquire()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_evt_attclient_attribute_value,
+             self._lib.PacketType.ble_evt_attclient_procedure_completed,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
+        self._get_locks()
         if not self._connected:
-            self._logger.warn("read_by_handle failed: disconnected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return None
+            warning = "read_by_handle failed: disconnected" +\
+                      get_return_message(self._event_return)
+            self._logger.warn()
+            self._drop_locks()
+            raise BLED112Error(warning)
+        value = None
+        if self._procedure_completed:
+            self._procedure_completed = False  # reset the flag
+            warning = "read_by_handle failed: " +\
+                      get_return_message(self._event_return)
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
         if self._attribute_value_received:
             self._attribute_value_received = False  # reset the flag
             value = self._attribute_value
-        elif self._procedure_completed:
-            self._procedure_completed = False  # reset the flag
-            if self._event_return != 0:
-                self._logger.warn("read_by_handle failed: %s",
-                                  get_return_message(self._event_return))
 
         # Drop locks
         self._drop_locks()
 
         # Return characteristic value
-        if value is not None:
-            return bytearray(value)
-        else:
-            return value
+        return bytearray(value)
 
     def connect(self, address, timeout=5,
                 addr_type=ble_address_type['gap_address_type_public']):
@@ -649,7 +658,6 @@ class BLED112Backend(object):
 
         return devs
 
-    # TODO refactor
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
         Get the handle for a characteristic or descriptor.
@@ -662,9 +670,8 @@ class BLED112Backend(object):
                            gatt_characteristic_descriptor_uuid constant.
 
         Returns an integer containing the handle on success.
-        Returns None on failure.
+        Raises BLED112Error on failure.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
@@ -681,32 +688,37 @@ class BLED112Backend(object):
             self._lib.send_command(self._ser, cmd)
 
             # Wait for response
-            self._loglock.release()  # don't hold loglock while waiting
-            self._wait_for_cmd_response()
+            self._drop_locks()  # don't hold locks while processing
+            self._process_packets_until(
+                [self._lib.PacketType.ble_rsp_attclient_find_information,
+                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+            self._get_locks()
             if self._response_return != 0:
-                self._loglock.acquire()
-                self._logger.warn("find_information failed %s",
-                                  get_return_message(self._response_return))
-                self._loglock.release()
-                self._main_thread_cond.release()
-                return
+                warning = "find_information failed " +\
+                          get_return_message(self._response_return)
+                self._logger.warn(warning)
+                self._drop_locks()
+                raise BLED112Error(warning)
 
             # Wait for event
-            while (not self._procedure_completed) and self._connected:
-                self._main_thread_cond.wait()
+            self._drop_locks()  # don't hold locks while processing
+            self._process_packets_until(
+                [self._lib.PacketType.ble_evt_attclient_procedure_completed,
+                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+            self._get_locks()
             self._procedure_completed = False
-            self._loglock.acquire()
             if not self._connected:
-                self._logger.warn("find_information failed: disconnected")
-                self._loglock.release()
-                self._main_thread_cond.release()
-                return
+                warning = "find_information failed: disconnected " +\
+                          get_return_message(self._event_return)
+                self._logger.warn(warning)
+                self._drop_locks()
+                raise BLED112Error(warning)
             elif self._event_return != 0:
-                self._logger.warn("find_information failed: %s",
-                                  get_return_message(self._event_return))
-                self._loglock.release()
-                self._main_thread_cond.release()
-                return
+                warning = "find_information failed: " +\
+                          get_return_message(self._event_return)
+                self._logger.warn(warning)
+                self._drop_locks()
+                raise BLED112Error(warning)
             self._characteristics_cached = True
 
             # Log
@@ -723,24 +735,22 @@ class BLED112Backend(object):
         char = None
         char_uuid_str = hexlify(characteristic_uuid)
         if not (char_uuid_str in self._characteristics):
-            self._logger.warn("No such characterisitic")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+            warning = "No such characteristic"
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
         char = self._characteristics[char_uuid_str]
         if descriptor_uuid is None:
-            self._loglock.release()
-            self._main_thread_cond.release()
+            self._drop_locks()
             return char.handle
         desc_uuid_str = hexlify(descriptor_uuid)
         if not (desc_uuid_str in char.descriptors):
-            self._logger.warn("No such descriptor")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+            warning = "No such descriptor"
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
         desc_handle = char.descriptors[desc_uuid_str]
-        self._loglock.release()
-        self._main_thread_cond.release()
+        self._drop_locks()
         return desc_handle
 
     # TODO refactor
@@ -1237,14 +1247,10 @@ class BLED112Backend(object):
         """
         Handles the BLED112 event for values of characteristics.
 
-        Modifies _attribute_value_received, _attribute_value. Nofifies
-        _main_thread_cond.
-
         args -- dictionary containing the connection handle ('connection'),
                 attribute handle ('atthandle'), attribute type ('type'),
                 and attribute value ('value')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
@@ -1253,10 +1259,9 @@ class BLED112Backend(object):
             self._notifications[args['atthandle']].append(
                 bytearray(args['value']))
         else:
-            # Set flags, record info, and notify
+            # Set flags, record info
             self._attribute_value_received = True
             self._attribute_value = args['value']
-            self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_evt_attclient_attriute_value")
@@ -1287,7 +1292,6 @@ class BLED112Backend(object):
                 characteristic handle ('chrhandle'), and characteristic UUID
                 ('uuid')
         """
-        raise NotImplementedError()
         uuid = bytearray(list(reversed(args['uuid'])))
         uuid_str = "0x"+hexlify(uuid)
 
@@ -1321,15 +1325,9 @@ class BLED112Backend(object):
         """
         Handles the event for completion of writes to remote device.
 
-        Modifies _procedure_completed and _event_return. Notifies
-        _main_thread_cond.
-
-        sender -- Who fired the event. Should be the BGLib object. This is a
-                  product of the event system used in  BGLib.
         args -- dictionary containing the connection handle ('connection'),
                 return code ('result'), characteristic handle ('chrhandle')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
@@ -1340,10 +1338,9 @@ class BLED112Backend(object):
         self._logger.info("return code = %s",
                           get_return_message(args['result']))
 
-        # Set flag, return value, and notify
+        # Set flag, return value
         self._procedure_completed = True
         self._event_return = args['result']
-        self._main_thread_cond.notify()
 
         # Drop locks
         self._drop_locks()
@@ -1572,20 +1569,14 @@ class BLED112Backend(object):
         indicates success or failure. The find_information_found event contains
         the characteristic/descriptor information.
 
-        Modifies _response_received and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the connection handle ('connection'),
                 return code ('result')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
-        self._response_received = True
+        # Set flags
         self._response_return = args['result']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_attclient_find_information")
@@ -1602,20 +1593,14 @@ class BLED112Backend(object):
         indicates success or failure. The attribute_value event contains the
         characteristic value.
 
-        Modifies _response_received and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the connection handle ('connection'),
                 return code ('result')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
-        self._response_received = True
+        # Set flags
         self._response_return = args['result']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_attclient_read_by_handle")
