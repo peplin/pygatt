@@ -586,19 +586,20 @@ class BLED112Backend(object):
         # Drop locks
         self._loglock.release()
 
-    # TODO refactor
     def encrypt(self):
         """
         Begin encryption on the connection with the device.
 
         This requires that a connection is already established with the device.
+
+        Raises BLED112Error on failure.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Make sure there is a connection
         self._check_if_connected()
+        self._state_lock.release()
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
@@ -606,8 +607,11 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
+        self._loglock.acquire()
 
         # Start encryption
         self._logger.info("encrypt_start")
@@ -616,24 +620,29 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._wait_for_cmd_response()
+        self._loglock.release()
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_sm_encrypt_start,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
+        self._get_locks()
         if self._response_return != 0:
-            self._loglock.acquire()
-            self._logger.warn("encrypt_start failed %s",
-                              get_return_message(self._response_return))
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
+            warning = "encrypt_start failed " +\
+                      get_return_message(self._response_return)
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
 
         # Wait for event
-        while (not self._encrypted) and self._connected:
-            self._main_thread_cond.wait()
-        self._loglock.acquire()
-        if not self._connected:
-            self._logger.warn("encrypt_start failed: disconnected")
-        elif self._bonding_fail:
-            # Device may try to bond and cause this, so catch if possible
-            self._bonding_fail = False
+        self._drop_locks()
+        self._process_packets_until(
+            [self._lib.PacketType.ble_evt_connection_status], False)
+        self._get_locks()
+        if not (self._connected and self._encrypted):
+            warning = "encrypt_start failed: " +\
+                      get_return_message(self._response_return)
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
 
         # Drop locks
         self._drop_locks()
@@ -1779,20 +1788,14 @@ class BLED112Backend(object):
         """
         Handles the response for the start of an encrypted connection.
 
-        Modifies _response_received and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the connection handle ('handle'),
                 return code ('result')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
-        self._response_received = True
+        # Set flags
         self._response_return = args['result']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_sm_encrypt_start")
