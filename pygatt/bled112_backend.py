@@ -537,7 +537,6 @@ class BLED112Backend(object):
         # Drop locks
         self._drop_locks()
 
-    # TODO refactor
     def disconnect(self, fail_quietly=False):
         """
         Disconnect from the device if connected.
@@ -545,7 +544,6 @@ class BLED112Backend(object):
         fail_quietly -- do not raise an exception on failure.
         """
         # Get locks
-        # self._get_locks()
         self._loglock.acquire()
 
         # Disconnect connection
@@ -577,7 +575,6 @@ class BLED112Backend(object):
         self._logger.info("Connection disconnected: %s", msg)
 
         # Drop locks
-        # self._drop_locks()
         self._loglock.release()
 
     # TODO refactor
@@ -767,7 +764,6 @@ class BLED112Backend(object):
 
         return notifications
 
-    # TODO refactor
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the device.
@@ -776,12 +772,12 @@ class BLED112Backend(object):
 
         Returns the RSSI as in integer in dBm.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Make sure there is a connection
         self._check_if_connected()
+        self._state_lock.release()
 
         # Get RSSI value
         self._logger.info("get_rssi")
@@ -789,12 +785,11 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_connection_get_rssi,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
         rssi_value = self._response_return
-
-        # Drop lock
-        self._main_thread_cond.release()
 
         return rssi_value
 
@@ -1016,16 +1011,17 @@ class BLED112Backend(object):
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
 
-    def _check_if_connected(self, fail_return_value=None):
+    # TODO: is this really necessary since we only process packets when we are
+    #       when we are waiting for a response/event which could disconnect?
+    def _check_if_connected(self):
         """
         Checks if there is a connection already established with a device.
-        Requires that both _main_thread_cond and _loglock have been acquired.
+        Requires that self._get_locks has been called.
         """
         if not self._connected:
             self._logger.warn("Not connected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return fail_return_value
+            self._drop_locks()
+            raise BLED112Error("Not connected")
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
@@ -1517,6 +1513,7 @@ class BLED112Backend(object):
         # Drop locks
         self._drop_locks()
 
+    # TODO refactor
     def _ble_evt_sm_bonding_fail(self, args):
         """
         Handles the event for the failure to establish a bond for a connection.
@@ -1525,14 +1522,12 @@ class BLED112Backend(object):
 
         args -- dictionary containing the return code ('result')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Set flags, notify
         self._bonding_fail = True
         self._event_return = args['result']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_evt_sm_bonding_fail")
@@ -1659,20 +1654,14 @@ class BLED112Backend(object):
         """
         Handles the response that contains the RSSI for the connection.
 
-        Modifies _response_received and response_return. Notifies
-        _main_thread_cond.
-
         args -- dictionary containing the connection handle ('connection'),
                 receiver signal strength indicator ('rssi')
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
-        self._response_received = True
+        # Set flags
         self._response_return = args['rssi']
-        self._main_thread_cond.notify()
 
         # Log
         self._logger.info("_ble_rsp_connection_get_rssi")
