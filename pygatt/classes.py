@@ -7,7 +7,7 @@ import time
 from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
-from exceptions import NoResponseError
+from exceptions import NoResponseError, BLED112Error
 from gatttool_classes import GATTToolBackend
 
 
@@ -98,17 +98,14 @@ class BluetoothLEDevice(object):
         self._logger.info("char_read %s", uuid)
         if self._backend_type == BACKEND['BLED112']:
             handle = self._get_handle(uuid)
-            if handle is None:
-                raise ValueError("invalid UUID")
             ret = self._backend.char_read(handle)
-            if ret is None:
-                raise Exception("read failed")
             return ret
         elif self._backend_type == BACKEND['GATTTOOL']:
             return self._backend.char_read_uuid(uuid)
         else:
             raise NotImplementedError("backend", self._backend_type)
 
+    # TODO: refactor bled112backend
     def char_write(self, uuid_write, value, wait_for_response=False,
                    num_packets=1, uuid_recv=None, bled112_timeout=5):
         """
@@ -131,9 +128,7 @@ class BluetoothLEDevice(object):
                 raise ValueError("num_packets must be greater than 0")
             handle_write = self._get_handle(uuid_write)
             handle_recv = self._get_handle(uuid_recv)
-            ret = self._backend.char_write(handle_write, value)
-            if not ret:  # write failed
-                raise Exception("write failed")
+            self._backend.char_write(handle_write, value)
             if wait_for_response:
                 # Wait for num_packets notifications on the receive
                 #   characteristic
@@ -193,7 +188,7 @@ class BluetoothLEDevice(object):
                 if rssi != 25:
                     return rssi
                 time.sleep(0.1)
-            return Exception("get rssi failed")
+            return BLED112Error("get rssi failed")
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("pygatt[GATTOOL].get_rssi")
         else:
