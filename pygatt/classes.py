@@ -7,7 +7,7 @@ import time
 from constants import(
     BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 )
-from exceptions import NoResponseError, BLED112Error
+from exceptions import BLED112Error
 from gatttool_classes import GATTToolBackend
 
 
@@ -105,7 +105,6 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    # TODO: refactor bled112backend
     def char_write(self, uuid_write, value, wait_for_response=False,
                    num_packets=1, uuid_recv=None, bled112_timeout=5):
         """
@@ -127,31 +126,21 @@ class BluetoothLEDevice(object):
             if wait_for_response and (num_packets <= 0):
                 raise ValueError("num_packets must be greater than 0")
             handle_write = self._get_handle(uuid_write)
-            handle_recv = self._get_handle(uuid_recv)
             self._backend.char_write(handle_write, value)
             if wait_for_response:
                 # Wait for num_packets notifications on the receive
                 #   characteristic
-                notifications = self._backend.get_notifications()
-                sec_waited = 0
-                while (len(notifications[handle_recv]) < num_packets):
-                    if (sec_waited >= bled112_timeout):
-                        raise NoResponseError("Timed out after %s seconds",
-                                              sec_waited)
-                    time.sleep(0.25)  # busy wait
-                    notifications = self._backend.get_notifications()
-                    sec_waited += 0.25
-                # Assemble notification values into one bytearray and delete
-                #   notification
-                value_list = []
-                for i in range(0, num_packets):
-                    val = notifications[handle_recv][0]
-                    value_list += [b for b in val]
-                    self._backend.remove_notification(handle_recv, 0)
+                handle_recv = self._get_handle(uuid_recv)
+                notifications = self._backend.wait_for_response(
+                    handle_recv, num_packets, bled112_timeout)
+                # Assemble notification values into one bytearray
+                value_bytearray = bytearray()
+                for val in notifications:
+                    value_bytearray += val
                 # Callback for notifications
                 if uuid_recv in self._callbacks:
                     for cb in self._callbacks[uuid_recv]:
-                        cb(bytearray(value_list))
+                        cb(value_bytearray)
         elif self._backend_type == BACKEND['GATTTOOL']:
             handle = self._backend.get_handle(uuid_write)
             self._backend.char_write(handle, value,
@@ -215,7 +204,7 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
-            self._backend.disconnect()
+            self._backend.disconnect(fail_quietly=True)
             self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.stop()

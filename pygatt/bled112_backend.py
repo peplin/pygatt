@@ -761,27 +761,6 @@ class BLED112Backend(object):
         self._drop_locks()
         return desc_handle
 
-    # TODO refactor
-    def get_notifications(self):
-        """
-        Get self._notifications in a thread-safe way.
-
-        Returns the self._notifications dictionary.
-        """
-        raise NotImplementedError()
-        # Get locks
-        self._get_locks()
-
-        # Log
-        self._logger.info("get_notifications")
-
-        notifications = self._notifications
-
-        # Drop locks
-        self._drop_locks()
-
-        return notifications
-
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the device.
@@ -810,35 +789,6 @@ class BLED112Backend(object):
         rssi_value = self._response_return
 
         return rssi_value
-
-    # TODO refactor
-    def remove_notification(self, handle, position):
-        """
-        Remove a notification from self._notifications in a thread-safe way.
-
-        handle -- the handle from which to remove the notification.
-        position -- the index of the element in the notifiaction list to remove.
-        """
-        raise NotImplementedError()
-        # Get locks
-        self._get_locks()
-
-        # Log
-        self._logger.info("remove_notification %d from handle %02x", position,
-                          handle)
-        self._loglock.release()
-
-        # Remove
-        if handle not in self._notifications:
-            self._main_thread_cond.release()
-            return
-        if position > (len(self._notifications[handle])-1):
-            self._main_thread_cond.release()
-            return
-        self._notifications[handle].pop(position)
-
-        # Drop lock
-        self._main_thread_cond.release()
 
     def run(self):
         """
@@ -998,7 +948,7 @@ class BLED112Backend(object):
 
     def subscribe(self, characteristic_uuid, indicate=False):
         """
-        Receive notifications from the characteritic.
+        Ask GATT server to receive notifications from the characteristic.
 
         This requires that a connection is already established with the device.
 
@@ -1020,6 +970,44 @@ class BLED112Backend(object):
         if indicate:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
+
+    # TODO timeout
+    def wait_for_response(self, handle, num_packets, timeout):
+        """
+        Process packets until the specified number of  notification/indication
+        packets are received from the specified attribute handle.
+
+        handle -- attribute handle to receive packets from.
+        num_packets -- number of packets to wait to receive.
+        timeout -- how many seconds to wait before timing out if not enough
+                   packets received.
+
+        Returns a list of (list of bytes containting the data received) on
+        success.
+        Raises BLED112Error on failure.
+        """
+        # Get locks
+        self._get_locks()
+
+        # Clear existing unhandled notifications on this handle
+        self._notifications[handle] = []
+
+        # Process packets until the desired number received
+        while (num_packets > len(self._notifications[handle])) and\
+              (self._connected):
+            self._drop_locks()
+            self._process_packets_until(
+                [self._lib.PacketType.ble_evt_connection_disconnected,
+                 self._lib.PacketType.ble_evt_attclient_attribute_value], False)
+            self._get_locks()
+
+        # Get the packet values
+        packet_values = self._notifications[handle]
+
+        # Drop locks
+        self._drop_locks()
+
+        return packet_values
 
     # TODO: is this really necessary since we only process packets when we are
     #       when we are waiting for a response/event which could disconnect?
