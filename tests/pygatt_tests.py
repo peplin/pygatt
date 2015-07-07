@@ -1,10 +1,12 @@
 from mock import patch
+# from nose.tools import assert_raises
 import Queue
 import unittest
-from struct import pack, unpack
+from struct import pack  # , unpack
 
 
 from pygatt.bled112_backend import BLED112Backend
+# from pygatt.exceptions import BLED112Error
 
 
 class SerialMock(object):
@@ -43,7 +45,7 @@ class SerialMock(object):
 
                 # BLED112 backend calls ord() on the return value, so cast to
                 # a char
-                return chr(read_byte)
+                return read_byte
             else:
                 if not self._output_queue.empty():
                     self._active_packet = self._output_queue.get()
@@ -55,24 +57,6 @@ class SerialMock(object):
         self._output_queue.put(next_output)
         if self._active_packet is None:
             self._active_packet = self._output_queue.get()
-
-
-# FIXME: docstring, pack unpack
-def bled112_response_packet_builder(length, cmd_class_id, cmd_id, payload):
-    """
-    """
-    # Shift out the bottom 5 low bits
-    message_type = unpack('B', pack('B', length))[0] >> 5
-    # Mask out the top three high bits
-    length_remainder = unpack('B', pack('B', length))[0] & 0x1F
-
-    # Pack the header
-    return unpack('<BBBB',
-                  pack('<BBBB',
-                       message_type,
-                       length_remainder,
-                       cmd_class_id,
-                       cmd_id)) + payload
 
 
 class BLED112_BackendTests(unittest.TestCase):
@@ -94,3 +78,78 @@ class BLED112_BackendTests(unittest.TestCase):
 
     def test_create_BLED112_Backend(self):
         assert(BLED112Backend(serial_port='dummy', run=False) is not None)
+
+    def test_BLED112_Backend_run_stop(self):
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', run=False)
+
+        # Stage ble_rsp_connection_disconnect (fail not connected)
+        bled112._ser.stage_output(pack(
+            '<4BBH', 0x00, 0x03, 0x03, 0x00, 0x00, 0x0186))
+        # Stage ble_rsp_gap_set_mode (success)
+        bled112._ser.stage_output(pack(
+            '<4BH', 0x00, 0x02, 0x06, 0x01, 0x0000))
+        # Stage ble_rsp_gap_end_procedure (fail device in wrong state)
+        bled112._ser.stage_output(pack(
+            '<4BH', 0x00, 0x02, 0x06, 0x04, 0x0181))
+        # Stage ble_rsp_sm_set_bondable_mode
+        bled112._ser.stage_output(pack(
+            '<4B', 0x00, 0x00, 0x05, 0x01))
+
+        # Test run
+        bled112.run()
+
+        # Make sure to stop the receiver thread
+        bled112.stop()
+
+    # TODO
+    def test_BLED112_Backend_connect(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_disconnect_when_connected(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_char_read(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_char_write(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_encrypt(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_bond(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_get_rssi(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_get_handle(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_scan(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_get_devices_discovered(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_subscribe(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_wait_for_response(self):
+        pass
+
+    # TODO
+    def test_BLED112_Backend_delete_stored_bonds(self):
+        pass
