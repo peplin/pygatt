@@ -49,7 +49,8 @@ setup(
     },
     setup_requires=[
         'coverage==3.7.1',
-        'nose==1.3.1'
+        'nose==1.3.1',
+        'mock'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,
