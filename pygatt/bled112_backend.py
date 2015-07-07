@@ -136,12 +136,7 @@ class BLED112Backend(object):
         self._bond_expected = False  # tell bond_status handler to set _bonded
         self._attribute_value_received = False  # attribute_value event occurred
         self._procedure_completed = False  # procecure_completed event occurred
-
-# -------------
-# TODO: check if used
-        # Flags to tell the main thread what to do when woken up from waiting
-        self._bonding_fail = False  # failed to bond with device
-# -------------
+        self._bonding_fail = False  # bonding with device failed
 
         # Packet handlers
         self._packet_handlers = {
@@ -229,19 +224,18 @@ class BLED112Backend(object):
         if run:
             self.run()
 
-    # TODO refactor
     def bond(self):
         """
         Create a bond and encrypted connection with the device.
 
         This requires that a connection is already extablished with the device.
         """
-        raise NotImplementedError()
         # Get locks
         self._get_locks()
 
         # Make sure there is a connection
         self._check_if_connected()
+        self._state_lock.release()
 
         # Set to bondable mode
         self._bond_expected = True
@@ -250,8 +244,10 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
         self._loglock.acquire()
 
         # Begin encryption and bonding
@@ -262,30 +258,33 @@ class BLED112Backend(object):
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
-        self._loglock.release()  # don't hold loglock while waiting
-        self._wait_for_cmd_response()
-        self._loglock.acquire()
+        self._loglock.release()  # don't hold loglock while processing
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_sm_encrypt_start,
+             self._lib.PacketType.ble_evt_connection_disconnected], False)
+        self._get_locks()
         if self._response_return != 0:
-            self._logger.warn("encrypt_start failed: %s",
-                              get_return_message(self._response_return))
-            self._loglock.release()
-            return
+            warning = "encrypt_start failed: " +\
+                      get_return_message(self._response_return)
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
 
         # Wait for event
-        self._loglock.release()
-        while (not (self._bonded or self._bonding_fail)) and self._connected:
-            self._main_thread_cond.wait()
-        self._loglock.acquire()
-        if not self._connected:
-            self._logger.warn("encrypt_start failed: disconnected")
-            self._loglock.release()
-            self._main_thread_cond.release()
-            return
-        if self._bonded:
-            self._logger.info("Bonding successful")
-        if self._bonding_fail:
-            self._logger.info("Bonding failed")
-            self._bonding_fail = False
+        while (not self._bonding_fail) and self._connected and\
+              (not self._bonded) and (not self._encrypted):
+            self._drop_locks()
+            self._process_packets_until(
+                [self._lib.PacketType.ble_evt_connection_status,
+                 self._lib.PacketType.ble_evt_sm_bonding_fail,
+                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+            self._get_locks()
+        if (not self._connected) or self._bonding_fail:
+            warning = "encrypt_start failed: " +\
+                      get_return_message(self._event_return)
+            self._logger.warn(warning)
+            self._drop_locks()
+            raise BLED112Error(warning)
 
         # Drop locks
         self._drop_locks()
@@ -536,7 +535,7 @@ class BLED112Backend(object):
             self._process_packets_until(
                 [self._lib.PacketType.ble_rsp_sm_delete_bonding,
                  self._lib.PacketType.ble_evt_connection_disconnected], False)
-            self._loglock.acquire()
+            self._get_locks()
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
                                   get_return_message(self._response_return))
@@ -1511,19 +1510,16 @@ class BLED112Backend(object):
         # Drop locks
         self._drop_locks()
 
-    # TODO refactor
     def _ble_evt_sm_bonding_fail(self, args):
         """
         Handles the event for the failure to establish a bond for a connection.
-
-        Modifies _bonding_fail and _event_return. Notifies _main_thread_cond.
 
         args -- dictionary containing the return code ('result')
         """
         # Get locks
         self._get_locks()
 
-        # Set flags, notify
+        # Set flags
         self._bonding_fail = True
         self._event_return = args['result']
 
