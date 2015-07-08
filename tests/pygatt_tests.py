@@ -89,15 +89,15 @@ class BLED112_BackendTests(unittest.TestCase):
     # ------------------------ Packet Building ---------------------------------
     @nottest
     def _ble_rsp_attclient_attribute_write(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_rsp_attclient_find_information(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_rsp_attclient_read_by_handle(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_rsp_connection_disconnect(self, fail=False,
@@ -124,7 +124,7 @@ class BLED112_BackendTests(unittest.TestCase):
 
     @nottest
     def _ble_rsp_gap_discover(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_rsp_gap_end_procedure(self, fail=False):
@@ -144,11 +144,15 @@ class BLED112_BackendTests(unittest.TestCase):
 
     @nottest
     def _ble_rsp_gap_set_scan_parameters(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
-    def _ble_rsp_sm_delete_bonding(self):
-        pass
+    def _ble_rsp_sm_delete_bonding(self, fail=False):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000
+        return pack('<4BH', 0x00, 0x02, 0x05, 0x02, ret_code)
 
     @nottest
     def _ble_rsp_sm_encrypt_start(self, fail=False, connection_handle=0x00):
@@ -160,8 +164,9 @@ class BLED112_BackendTests(unittest.TestCase):
                     ret_code)
 
     @nottest
-    def _ble_rsp_sm_get_bonds(self):
-        pass
+    def _ble_rsp_sm_get_bonds(self, bonds=[]):
+        assert((len(bonds) >= 0) and (len(bonds) <= 8))  # hardware constraint
+        return pack('<4BB', 0x00, 0x01, 0x05, 0x05, len(bonds))
 
     @nottest
     def _ble_rsp_sm_set_bondable_mode(self):
@@ -169,15 +174,15 @@ class BLED112_BackendTests(unittest.TestCase):
 
     @nottest
     def _ble_evt_attclient_attribute_value(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_evt_attclient_find_information_found(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_evt_attclient_procedure_completed(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     def _ble_evt_connection_status(
@@ -202,7 +207,7 @@ class BLED112_BackendTests(unittest.TestCase):
 
     @nottest
     def _ble_evt_gap_scan_response(self):
-        pass
+        raise NotImplementedError()
 
     @nottest
     # TODO: better default values
@@ -290,6 +295,16 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_evt_connection_status(
             addr, flags_byte, connection_handle))
 
+    @nottest
+    def _stage_delete_stored_bonds_packets(self, bled112, bonds=[]):
+        # Stage ble_rsp_get_bonds (num_bonds = len(bonds))
+        bled112._ser.stage_output(self._ble_rsp_sm_get_bonds(bonds))
+        # Stage ble_evt_sm_bond_status (bond handle)
+        for b in bonds:
+            bled112._ser.stage_output(self._ble_evt_sm_bond_status(b))
+        for b in bonds:
+            bled112._ser.stage_output(self._ble_rsp_sm_delete_bonding())
+
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
         bled112 = None
@@ -345,12 +360,12 @@ class BLED112_BackendTests(unittest.TestCase):
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_char_read(self):
-        pass
+        raise NotImplementedError()
 
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_char_write(self):
-        pass
+        raise NotImplementedError()
 
     def test_BLED112_Backend_encrypt(self):
         try:
@@ -409,29 +424,28 @@ class BLED112_BackendTests(unittest.TestCase):
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_get_handle(self):
-        pass
+        raise NotImplementedError()
 
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_scan(self):
-        pass
+        raise NotImplementedError()
 
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_get_devices_discovered(self):
-        pass
+        raise NotImplementedError()
 
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_subscribe(self):
-        pass
+        raise NotImplementedError()
 
     # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_wait_for_response(self):
-        pass
+        raise NotImplementedError()
 
-    @unittest.skip("not implemented")
     def test_BLED112_Backend_delete_stored_bonds(self):
         try:
             bled112 = BLED112Backend(
@@ -439,9 +453,9 @@ class BLED112_BackendTests(unittest.TestCase):
             self._stage_run_packets(bled112)
             bled112.run()
             # Test delete stored bonds
-            self._stage_delete_stored_bonds_packets()
-            self.delete_stored_bonds()
+            self._stage_delete_stored_bonds_packets(
+                bled112, [0x00, 0x01, 0x02, 0x03, 0x04])
+            bled112.delete_stored_bonds()
         finally:
             # Make sure to stop the receiver thread
             bled112.stop()
-        assert(False)
