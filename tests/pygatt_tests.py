@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from mock import patch
 from nose.tools import nottest  # assert_raises
 import platform
@@ -32,32 +34,21 @@ class SerialMock(object):
         self._input = input_data
 
     def read(self):
-        if self._output_queue.empty() and self._active_packet is None:
-            # Return an empty byte string.  The BLED112 backend receiver thread
-            # check for len(x) > 0 on each serial read, so the return type
-            # must be a valid argument of len(x)
-            return b''
-        else:
-            if self._active_packet is not None:
-                read_byte = self._active_packet[0]
-                self._active_packet = self._active_packet[1:]
-                if len(self._active_packet) is 0:
-                    self._active_packet = None
-
-                # BLED112 backend calls ord() on the return value, so cast to
-                # a char
-                return read_byte
-            else:
-                if not self._output_queue.empty():
-                    self._active_packet = self._output_queue.get()
-
-                # TODO return the next byte instead of wasting a cycle
+        if self._active_packet is None:
+            try:
+                self._active_packet = self._output_queue.get_nowait()
+            except Queue.Empty:
+                # When no bytes to read, serial.read() returns empty byte string
                 return b''
+        read_byte = self._active_packet[0]
+        if len(self._active_packet) == 1:  # we read the last byte
+            self._active_packet = None
+        else:
+            self._active_packet = self._active_packet[1:]
+        return read_byte
 
     def stage_output(self, next_output):
         self._output_queue.put(next_output)
-        if self._active_packet is None:
-            self._active_packet = self._output_queue.get()
 
 
 class BLED112_BackendTests(unittest.TestCase):
@@ -126,6 +117,13 @@ class BLED112_BackendTests(unittest.TestCase):
             addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], 0x00, 0x0006,
             0x0014, 0x0000, 0xFF))
 
+    @nottest
+    def _stage_get_rssi_packets(self, bled112, connection_handle=0x00,
+                                rssi=-80):
+        # Stage ble_rsp_connection_get_rssi
+        bled112._ser.stage_output(pack(
+            '<4BBb', 0x00, 0x02, 0x03, 0x01, connection_handle, rssi))
+
     def test_create_BLED112_Backend(self):
         assert(BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False) is not None)
@@ -175,45 +173,69 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112.stop()
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_char_read(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_char_write(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_encrypt(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_bond(self):
         pass
 
-    # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_get_rssi(self):
-        pass
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
+                                 run=False)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(bled112, address)
+            bled112.connect(bytearray(address))
+            # Test get_rssi
+            self._stage_get_rssi_packets(bled112)
+            assert(bled112.get_rssi() == -80)
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_get_handle(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_scan(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_get_devices_discovered(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_subscribe(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_wait_for_response(self):
         pass
 
     # TODO
+    @unittest.skip("not implemented")
     def test_BLED112_Backend_delete_stored_bonds(self):
         pass
