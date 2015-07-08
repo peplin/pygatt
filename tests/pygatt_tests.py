@@ -205,12 +205,17 @@ class BLED112_BackendTests(unittest.TestCase):
         pass
 
     @nottest
-    def _ble_evt_sm_bond_status(self):
-        pass
+    # TODO: better default values
+    def _ble_evt_sm_bond_status(self, bond_handle=0x00, keysize=0x00,
+                                mitm=0x00, keys=0x00):
+        return pack('<4B4B', 0x80, 0x04, 0x05, 0x04, bond_handle, keysize, mitm,
+                    keys)
 
     @nottest
-    def _ble_evt_sm_bonding_fail(self):
-        pass
+    def _ble_evt_sm_bonding_fail(self, connection_handle=0x00,
+                                 return_code=0x0308):
+        return pack('<4BBH', 0x80, 0x03, 0x05, 0x01, connection_handle,
+                    return_code)
 
     # ------------------------ Packet Staging ----------------------------------
     @nottest
@@ -266,6 +271,20 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
         bled112._ser.stage_output(self._ble_rsp_sm_encrypt_start())
+        # Stage ble_evt_connection_status
+        flags_byte = self._get_connection_status_flags_byte(flags)
+        bled112._ser.stage_output(self._ble_evt_connection_status(
+            addr, flags_byte, connection_handle))
+
+    @nottest
+    def _stage_bond_packets(self, bled112, addr, flags,
+                            connection_handle=0x00):
+        # Stage ble_rsp_sm_set_bondable_mode (always success)
+        bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
+        # Stage ble_rsp_sm_encrypt_start (success)
+        bled112._ser.stage_output(self._ble_rsp_sm_encrypt_start())
+        # Stage ble_evt_sm_bond_status (bond handle)
+        bled112._ser.stage_output(self._ble_evt_sm_bond_status())
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
         bled112._ser.stage_output(self._ble_evt_connection_status(
@@ -351,10 +370,26 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    # TODO
-    @unittest.skip("not implemented")
+    # FIXME
     def test_BLED112_Backend_bond(self):
-        pass
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
+                                 run=False)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test encrypt
+            self._stage_bond_packets(
+                bled112, address, ['connected', 'encrypted',
+                                   'parameters_change'])
+            bled112.bond()
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     def test_BLED112_Backend_get_rssi(self):
         # Create bled112
