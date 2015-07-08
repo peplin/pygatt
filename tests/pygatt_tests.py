@@ -73,6 +73,19 @@ class BLED112_BackendTests(unittest.TestCase):
             except RuntimeError:
                 pass
 
+    @nottest
+    def _get_connection_status_flags_byte(self, flags):
+        flags_byte = 0x00
+        if 'connected' in flags:
+            flags_byte |= 0x01
+        if 'encrypted' in flags:
+            flags_byte |= 0x02
+        if 'completed' in flags:
+            flags_byte |= 0x04
+        if 'parameters_change' in flags:
+            flags_byte |= 0x08
+        return flags_byte
+
     # ------------------------ Packet Building ---------------------------------
     @nottest
     def _ble_rsp_attclient_attribute_write(self):
@@ -138,8 +151,13 @@ class BLED112_BackendTests(unittest.TestCase):
         pass
 
     @nottest
-    def _ble_rsp_sm_encrypt_start(self):
-        pass
+    def _ble_rsp_sm_encrypt_start(self, fail=False, connection_handle=0x00):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BBH', 0x00, 0x03, 0x05, 0x00, connection_handle,
+                    ret_code)
 
     @nottest
     def _ble_rsp_sm_get_bonds(self):
@@ -230,15 +248,7 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_rsp_gap_connect_direct(
             connection_handle=connection_handle))
         # Stage ble_evt_connection_status (flags = connected, completed)
-        flags_byte = 0x00
-        if 'connected' in flags:
-            flags_byte |= 0x01
-        if 'encrypted' in flags:
-            flags_byte |= 0x02
-        if 'completed' in flags:
-            flags_byte |= 0x04
-        if 'parameters_change' in flags:
-            flags_byte |= 0x08
+        flags_byte = self._get_connection_status_flags_byte(flags)
         bled112._ser.stage_output(self._ble_evt_connection_status(
             addr, flags_byte, connection_handle))
 
@@ -250,15 +260,16 @@ class BLED112_BackendTests(unittest.TestCase):
             self._ble_rsp_connection_get_rssi(connection_handle, rssi))
 
     @nottest
-    def _stage_encrypt_packets(self, bled112, connection_handle=0x00):
+    def _stage_encrypt_packets(self, bled112, addr, flags,
+                               connection_handle=0x00):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
-        bled112._ser.stage_output(self._ble_rsp_connection_get_rssi())
+        bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
-        bled112._ser.stage_output(pack(
-            '<4BBH', 0x00, 0x03, 0x05, 0x00, connection_handle, 0x0000))
+        bled112._ser.stage_output(self._ble_rsp_sm_encrypt_start())
         # Stage ble_evt_connection_status
-        bled112._ser.stage_output(pack(
-            '<4BBH', 0x00, 0x03, 0x05, 0x00, connection_handle, 0x0000))
+        flags_byte = self._get_connection_status_flags_byte(flags)
+        bled112._ser.stage_output(self._ble_evt_connection_status(
+            addr, flags_byte, connection_handle))
 
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
@@ -321,10 +332,7 @@ class BLED112_BackendTests(unittest.TestCase):
     def test_BLED112_Backend_char_write(self):
         pass
 
-    # TODO
-    @unittest.skip("not implemented")
     def test_BLED112_Backend_encrypt(self):
-        assert(False)
         # Create bled112
         bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
                                  run=False)
@@ -336,7 +344,8 @@ class BLED112_BackendTests(unittest.TestCase):
                 bled112, address, ['connected', 'completed'])
             bled112.connect(bytearray(address))
             # Test encrypt
-            self._stage_encrypt_packets(bled112)
+            self._stage_encrypt_packets(
+                bled112, address, ['connected', 'encrypted'])
             bled112.encrypt()
         finally:
             # Make sure to stop the receiver thread
