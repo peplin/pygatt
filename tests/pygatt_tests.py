@@ -1,5 +1,6 @@
 from mock import patch
-# from nose.tools import assert_raises
+from nose.tools import nottest  # assert_raises
+import platform
 import Queue
 import unittest
 from struct import pack  # , unpack
@@ -68,6 +69,11 @@ class BLED112_BackendTests(unittest.TestCase):
         patcher = patch('serial.Serial', return_value=SerialMock('dummy', 0.25))
         patcher.start()
         self.patchers.append(patcher)
+        # Where to write BLED112 logfiles
+        system = platform.system()
+        self.null_file = '/dev/null'
+        if system.lower() == 'windows':
+            self.null_file = 'nul'
 
     def tearDown(self):
         for patcher in self.patchers:
@@ -76,13 +82,8 @@ class BLED112_BackendTests(unittest.TestCase):
             except RuntimeError:
                 pass
 
-    def test_create_BLED112_Backend(self):
-        assert(BLED112Backend(serial_port='dummy', run=False) is not None)
-
-    def test_BLED112_Backend_run_stop(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', run=False)
-
+    @nottest
+    def _stage_run_packets(self, bled112):
         # Stage ble_rsp_connection_disconnect (fail not connected)
         bled112._ser.stage_output(pack(
             '<4BBH', 0x00, 0x03, 0x03, 0x00, 0x00, 0x0186))
@@ -96,15 +97,54 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(pack(
             '<4B', 0x00, 0x00, 0x05, 0x01))
 
+    @nottest
+    def _stage_connect_packets(self, bled112, addr):
+        # Stage ble_rsp_gap_connect_direct (success, conn handle 0x99)
+        bled112._ser.stage_output(pack(
+            '<4BHB', 0x00, 0x03, 0x06, 0x03, 0x0000, 0x99))
+        # Stage ble_evt_connection_status (flags = connected, completed;
+        #   address_type = public; conn_interval = 7.5; timeout = 200;
+        #   latency = 0; bonding = 0xFF)
+        bled112._ser.stage_output(pack(
+            '<4B2B6BB3HB', 0x80, 0x10, 0x03, 0x00, 0x99, 0x05, addr[0], addr[1],
+            addr[2], addr[3], addr[4], addr[5], 0x00, 0x0006, 0x0014, 0x0000,
+            0xFF))
+
+    def test_create_BLED112_Backend(self):
+        assert(BLED112Backend(
+            serial_port='dummy', logfile=self.null_file, run=False) is not None)
+
+    def test_BLED112_Backend_run_stop(self):
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
+                                 run=False)
+
+        self._stage_run_packets(bled112)
+
         # Test run
         bled112.run()
 
         # Make sure to stop the receiver thread
         bled112.stop()
 
-    # TODO
     def test_BLED112_Backend_connect(self):
-        pass
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
+                                 run=False)
+
+        self._stage_run_packets(bled112)
+
+        # Test run
+        bled112.run()
+
+        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+        self._stage_connect_packets(bled112, address)
+
+        # Test connect
+        bled112.connect(bytearray(address))
+
+        # Make sure to stop the receiver thread
+        bled112.stop()
 
     # TODO
     def test_BLED112_Backend_disconnect_when_connected(self):
