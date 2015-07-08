@@ -292,14 +292,17 @@ class BLED112_BackendTests(unittest.TestCase):
 
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
-        assert(BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False) is not None)
+        bled112 = None
+        try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
+        finally:
+            assert(bled112 is not None)
 
     def test_BLED112_Backend_run_stop(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             # Test run
             self._stage_run_packets(bled112)
             bled112.run()
@@ -308,10 +311,9 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112.stop()
 
     def test_BLED112_Backend_connect(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             # Test connect
@@ -324,10 +326,9 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112.stop()
 
     def test_BLED112_Backend_disconnect_when_connected(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -352,10 +353,9 @@ class BLED112_BackendTests(unittest.TestCase):
         pass
 
     def test_BLED112_Backend_encrypt(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -370,12 +370,10 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    # FIXME
     def test_BLED112_Backend_bond(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -392,10 +390,9 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112.stop()
 
     def test_BLED112_Backend_get_rssi(self):
-        # Create bled112
-        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
-                                 run=False)
         try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -434,7 +431,17 @@ class BLED112_BackendTests(unittest.TestCase):
     def test_BLED112_Backend_wait_for_response(self):
         pass
 
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_delete_stored_bonds(self):
-        pass
+        try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test delete stored bonds
+            self._stage_delete_stored_bonds_packets()
+            self.delete_stored_bonds()
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
+        assert(False)
