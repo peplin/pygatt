@@ -88,16 +88,31 @@ class BLED112_BackendTests(unittest.TestCase):
 
     # ------------------------ Packet Building ---------------------------------
     @nottest
-    def _ble_rsp_attclient_attribute_write(self):
-        raise NotImplementedError()
+    def _ble_rsp_attclient_attribute_write(self, fail=False,
+                                           connection_handle=0x00):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BBH', 0x00, 0x03, 0x04, 0x05, ret_code)
 
     @nottest
-    def _ble_rsp_attclient_find_information(self):
-        raise NotImplementedError()
+    def _ble_rsp_attclient_find_information(self, fail=False,
+                                            connection_handle=0x00):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BBH', 0x00, 0x03, 0x04, 0x03, ret_code)
 
     @nottest
-    def _ble_rsp_attclient_read_by_handle(self):
-        raise NotImplementedError()
+    def _ble_rsp_attclient_read_by_handle(self, fail=False,
+                                          connection_handle=0x00):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BBH', 0x00, 0x03, 0x04, 0x04, ret_code)
 
     @nottest
     def _ble_rsp_connection_disconnect(self, fail=False,
@@ -123,8 +138,12 @@ class BLED112_BackendTests(unittest.TestCase):
                     connection_handle)
 
     @nottest
-    def _ble_rsp_gap_discover(self):
-        raise NotImplementedError()
+    def _ble_rsp_gap_discover(self, fail=False):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BH', 0x00, 0x02, 0x06, 0x02, ret_code)
 
     @nottest
     def _ble_rsp_gap_end_procedure(self, fail=False):
@@ -143,8 +162,12 @@ class BLED112_BackendTests(unittest.TestCase):
         return pack('<4BH', 0x00, 0x02, 0x06, 0x01, ret_code)
 
     @nottest
-    def _ble_rsp_gap_set_scan_parameters(self):
-        raise NotImplementedError()
+    def _ble_rsp_gap_set_scan_parameters(self, fail=False):
+        if fail:
+            raise NotImplementedError()
+        else:
+            ret_code = 0x0000  # success
+        return pack('<4BH', 0x00, 0x02, 0x06, 0x01, ret_code)
 
     @nottest
     def _ble_rsp_sm_delete_bonding(self, fail=False):
@@ -173,16 +196,25 @@ class BLED112_BackendTests(unittest.TestCase):
         return pack('<4B', 0x00, 0x00, 0x05, 0x01)
 
     @nottest
-    def _ble_evt_attclient_attribute_value(self):
-        raise NotImplementedError()
+    def _ble_evt_attclient_attribute_value(
+            self, connection_handle=0x00, att_handle=0x0000, att_type=0x00,
+            value=[0x00]):
+        return pack('<4BBHB' + str(len(value)) + 's', 0x80, 0x05, 0x04, 0x05,
+                    connection_handle, att_handle, att_type,
+                    b''.join(chr(i) for i in value))
 
     @nottest
-    def _ble_evt_attclient_find_information_found(self):
-        raise NotImplementedError()
+    def _ble_evt_attclient_find_information_found(
+            self, connection_handle=0x00, chr_handle=0x0000, uuid=[0x00, 0x00]):
+        return pack('<4BBH' + str(len(uuid)) + 's', 0x80, 0x04, 0x04, 0x04,
+                    connection_handle, chr_handle,
+                    b''.join(chr(i) for i in uuid))
 
     @nottest
-    def _ble_evt_attclient_procedure_completed(self):
-        raise NotImplementedError()
+    def _ble_evt_attclient_procedure_completed(
+            self, connection_handle=0x00, return_code=0x0000, chr_handle=0xFF):
+        return pack('<4BB2H', 0x80, 0x05, 0x04, 0x01, connection_handle,
+                    return_code, chr_handle)
 
     @nottest
     def _ble_evt_connection_status(
@@ -206,11 +238,15 @@ class BLED112_BackendTests(unittest.TestCase):
                     ret_code)
 
     @nottest
-    def _ble_evt_gap_scan_response(self):
-        raise NotImplementedError()
+    def _ble_evt_gap_scan_response(self, rssi=-80, packet_type=0x00,
+                                   bd_addr=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+                                   addr_type=0x00, bond=0x00, data=[0x00]):
+        return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 0x0B, 0x06, 0x00,
+                    rssi, packet_type, bd_addr[0], bd_addr[1], bd_addr[2],
+                    bd_addr[3], bd_addr[4], bd_addr[5], addr_type, bond,
+                    b''.join(chr(i) for i in data))
 
     @nottest
-    # TODO: better default values
     def _ble_evt_sm_bond_status(self, bond_handle=0x00, keysize=0x00,
                                 mitm=0x00, keys=0x00):
         return pack('<4B4B', 0x80, 0x04, 0x05, 0x04, bond_handle, keysize, mitm,
