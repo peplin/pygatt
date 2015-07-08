@@ -192,7 +192,6 @@ class BLED112_BackendTests(unittest.TestCase):
     def test_BLED112_Backend_bond(self):
         pass
 
-    @unittest.skip("not implemented")
     def test_BLED112_Backend_get_rssi(self):
         # Create bled112
         bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
