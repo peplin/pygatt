@@ -83,10 +83,26 @@ class BLED112_BackendTests(unittest.TestCase):
                 pass
 
     @nottest
+    def _stage_disconnect_packets(self, bled112, connected, fail,
+                                  connection_handle=0x00):
+        if connected:
+            if fail:
+                raise NotImplementedError()
+            else:
+                # Stage ble_rsp_connection_disconnect (success)
+                bled112._ser.stage_output(pack(
+                    '<4BBH', 0x00, 0x03, 0x03, 0x00, connection_handle, 0x0000))
+                # Stage ble_evt_connection_disconnected (success by local user)
+                bled112._ser.stage_output(pack(
+                    '<4BBH', 0x80, 0x03, 0x03, 0x04, connection_handle, 0x0000))
+        else:  # not connected always fails
+            bled112._ser.stage_output(pack(
+                '<4BBH', 0x00, 0x03, 0x03, 0x00, connection_handle, 0x0186))
+
+    @nottest
     def _stage_run_packets(self, bled112):
-        # Stage ble_rsp_connection_disconnect (fail not connected)
-        bled112._ser.stage_output(pack(
-            '<4BBH', 0x00, 0x03, 0x03, 0x00, 0x00, 0x0186))
+        # Stage ble_rsp_connection_disconnect (not connected, fail)
+        self._stage_disconnect_packets(bled112, False, True)
         # Stage ble_rsp_gap_set_mode (success)
         bled112._ser.stage_output(pack(
             '<4BH', 0x00, 0x02, 0x06, 0x01, 0x0000))
@@ -98,17 +114,17 @@ class BLED112_BackendTests(unittest.TestCase):
             '<4B', 0x00, 0x00, 0x05, 0x01))
 
     @nottest
-    def _stage_connect_packets(self, bled112, addr):
+    def _stage_connect_packets(self, bled112, addr, connection_handle=0x00):
         # Stage ble_rsp_gap_connect_direct (success, conn handle 0x99)
         bled112._ser.stage_output(pack(
-            '<4BHB', 0x00, 0x03, 0x06, 0x03, 0x0000, 0x99))
+            '<4BHB', 0x00, 0x03, 0x06, 0x03, 0x0000, connection_handle))
         # Stage ble_evt_connection_status (flags = connected, completed;
         #   address_type = public; conn_interval = 7.5; timeout = 200;
         #   latency = 0; bonding = 0xFF)
         bled112._ser.stage_output(pack(
-            '<4B2B6BB3HB', 0x80, 0x10, 0x03, 0x00, 0x99, 0x05, addr[0], addr[1],
-            addr[2], addr[3], addr[4], addr[5], 0x00, 0x0006, 0x0014, 0x0000,
-            0xFF))
+            '<4B2B6BB3HB', 0x80, 0x10, 0x03, 0x00, connection_handle, 0x05,
+            addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], 0x00, 0x0006,
+            0x0014, 0x0000, 0xFF))
 
     def test_create_BLED112_Backend(self):
         assert(BLED112Backend(
@@ -118,37 +134,45 @@ class BLED112_BackendTests(unittest.TestCase):
         # Create bled112
         bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
                                  run=False)
-
-        self._stage_run_packets(bled112)
-
-        # Test run
-        bled112.run()
-
-        # Make sure to stop the receiver thread
-        bled112.stop()
+        try:
+            # Test run
+            self._stage_run_packets(bled112)
+            bled112.run()
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     def test_BLED112_Backend_connect(self):
         # Create bled112
         bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
                                  run=False)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test connect
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(bled112, address)
+            bled112.connect(bytearray(address))
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
-        self._stage_run_packets(bled112)
-
-        # Test run
-        bled112.run()
-
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(bled112, address)
-
-        # Test connect
-        bled112.connect(bytearray(address))
-
-        # Make sure to stop the receiver thread
-        bled112.stop()
-
-    # TODO
     def test_BLED112_Backend_disconnect_when_connected(self):
-        pass
+        # Create bled112
+        bled112 = BLED112Backend(serial_port='dummy', logfile=self.null_file,
+                                 run=False)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(bled112, address)
+            bled112.connect(bytearray(address))
+            # Test disconnect (connected, not fail)
+            self._stage_disconnect_packets(bled112, True, False)
+            bled112.disconnect()
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     # TODO
     def test_BLED112_Backend_char_read(self):
