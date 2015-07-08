@@ -217,6 +217,7 @@ class BLED112Backend(object):
 
         # Start logging
         self._loglock.acquire()
+        self._logger.info("---------------------------------")
         self._logger.info("BLED112Backend on %s", serial_port)
         self._loglock.release()
 
@@ -1168,7 +1169,7 @@ class BLED112Backend(object):
                         data_dict[field_name] = bytearray(field_value)
         return dev_name, data_dict
 
-    # TODO: remove prints
+    # TODO: docstring, remove prints
     def _process_packets_until(self, expected_packet_choices, timeout):
         """
         Process packets from self._recv_packet_q until a packet of one of the
@@ -1182,6 +1183,14 @@ class BLED112Backend(object):
 
         Raises BLED112Error if a timeout occurs.
         """
+        # Log
+        self._loglock.acquire()
+        epc_str = ""
+        for pt in expected_packet_choices:
+            epc_str += '{0} '.format(pt)
+        self._logger.info("process packets until " + epc_str)
+        self._loglock.release()
+
         found = False
         packet = None
         while not found:
@@ -1201,7 +1210,11 @@ class BLED112Backend(object):
                 time.sleep(0.25)
                 continue
             # Process packet
+            self._loglock.acquire()
+            self._logger.debug("got packet")
             packet_type, args = self._lib.decode_packet(packet)
+            self._logger.debug('packet type {0}'.format(packet_type))
+            self._loglock.release()
             self._timeout_lock.acquire()
             if packet_type in expected_packet_choices:
                 found = True
@@ -1212,9 +1225,16 @@ class BLED112Backend(object):
             self._timeout_lock.release()
             # Call handler for this packet
             if packet_type in self._packet_handlers:
-                # print("\tCalling handler",
-                #      self._packet_handlers[packet_type].__name__)
+                self._loglock.acquire()
+                self._logger.debug("Calling handler " +
+                                   self._packet_handlers[packet_type].__name__)
+                self._loglock.release()
                 self._packet_handlers[packet_type](args)
+
+        # Log
+        self._loglock.acquire()
+        self._logger.debug("done processing packets until")
+        self._loglock.release()
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, args):

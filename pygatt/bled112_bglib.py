@@ -630,6 +630,7 @@ class BGLib(object):
            len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
 
             # Enqueue completed packet
+            self._logger.info("enqueue packet")
             packet_queue.put(list(self.bgapi_rx_buffer))
             self.bgapi_rx_buffer = []
 
