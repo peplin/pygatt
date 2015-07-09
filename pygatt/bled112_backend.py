@@ -990,6 +990,10 @@ class BLED112Backend(object):
         # Get locks
         self._get_locks()
 
+        # Log
+        self._logger.debug("wait for %d packets from %04x" % (num_packets,
+                           handle))
+
         # Clear existing unhandled notifications on this handle
         self._notifications[handle] = []
 
@@ -1001,6 +1005,8 @@ class BLED112Backend(object):
                 [self._lib.PacketType.ble_evt_connection_disconnected,
                  self._lib.PacketType.ble_evt_attclient_attribute_value], False)
             self._get_locks()
+            self._logger.debug("len(self._notifications[handle]) = %d" %
+                               len(self._notifications[handle]))
 
         # Get the packet values
         packet_values = self._notifications[handle]

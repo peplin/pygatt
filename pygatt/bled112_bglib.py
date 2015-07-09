@@ -1035,7 +1035,7 @@ class BGLib(object):
                 # ble_rsp_attclient_attribute_write
                 elif packet_command == 5:
                     self._logger.info(
-                        "received packet ble_rsp_attclient_")
+                        "received packet ble_rsp_attclient_attribute_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )

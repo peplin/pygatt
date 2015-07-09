@@ -405,6 +405,34 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             chr_handle=handle))
 
+    @nottest
+    def _stage_subscribe_packets(self, bled112, uuid0_bytearray, handle0,
+                                 indications=False):
+        # Stage get_handle packets
+        uuid1_bytearray = bytearray([0x29, 0x02])
+        handle1 = [0x56, 0x78]
+        self._stage_get_handle_packets(bled112, [
+            hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
+            hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
+            ])
+        handle = bled112.get_handle(uuid0_bytearray)
+        assert(handle == int(hexlify(bytearray(handle0)), 16))
+        # Stage char_write packets
+        if indications:
+            value = [0x02, 0x00]
+        else:
+            value = [0x01, 0x00]
+        self._stage_char_write_packets(bled112, handle, value)
+
+    @nottest
+    def _stage_wait_for_response_packets(self, bled112, handle, packet_values):
+        # Stage ble_evt_attclient_attribute_value
+        for value in packet_values:
+            val = list(value)
+            bled112._ser.stage_output(self._ble_evt_attclient_attribute_value(
+                att_handle=int(hexlify(bytearray(handle)), 16),
+                value=[len(val)+1]+val))
+
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
         bled112 = None
@@ -627,15 +655,35 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    @unittest.skip("not implemented")
-    def test_BLED112_Backend_subscribe(self):
-        # TODO
-        raise NotImplementedError()
-
-    @unittest.skip("not implemented")
-    def test_BLED112_Backend_wait_for_response(self):
-        # TODO
-        raise NotImplementedError()
+    # FIXME
+    def test_BLED112_Backend_subscribe_and_wait_for_response(self):
+        try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', run=False)
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test subscribe
+            handle0 = [0x12, 0x34]
+            uuid0 = '01234567-0123-0123-0123-0123456789AB'
+            uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
+            self._stage_subscribe_packets(bled112, uuid0_bytearray, handle0)
+            bled112.subscribe(uuid0_bytearray)
+            # Test wait for response
+            value0 = [0xF0, 0x0D, 0xBE, 0xEF]
+            packet_values = []
+            packet_values.append(bytearray(value0))
+            self._stage_wait_for_response_packets(
+                bled112, handle0, packet_values)
+            packet_values_received = bled112.wait_for_response(
+                int(hexlify(bytearray(handle0)), 16), len(packet_values), 5)
+            assert(packet_values_received == packet_values)
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     def test_BLED112_Backend_delete_stored_bonds(self):
         try:
