@@ -167,7 +167,7 @@ class BLED112_BackendTests(unittest.TestCase):
             raise NotImplementedError()
         else:
             ret_code = 0x0000  # success
-        return pack('<4BH', 0x00, 0x02, 0x06, 0x01, ret_code)
+        return pack('<4BH', 0x00, 0x02, 0x06, 0x07, ret_code)
 
     @nottest
     def _ble_rsp_sm_delete_bonding(self, fail=False):
@@ -241,10 +241,12 @@ class BLED112_BackendTests(unittest.TestCase):
     def _ble_evt_gap_scan_response(self, rssi=-80, packet_type=0x00,
                                    bd_addr=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
                                    addr_type=0x00, bond=0x00, data=[0x00]):
-        return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 0x0B, 0x06, 0x00,
-                    rssi, packet_type, bd_addr[0], bd_addr[1], bd_addr[2],
-                    bd_addr[3], bd_addr[4], bd_addr[5], addr_type, bond,
-                    b''.join(chr(i) for i in data))
+        # the first byte of data must be the length of data
+        assert(len(data) > 0)
+        return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 10 + len(data),
+                    0x06, 0x00, rssi, packet_type, bd_addr[0], bd_addr[1],
+                    bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5], addr_type,
+                    bond, b''.join(chr(i) for i in data))
 
     @nottest
     def _ble_evt_sm_bond_status(self, bond_handle=0x00, keysize=0x00,
@@ -341,6 +343,21 @@ class BLED112_BackendTests(unittest.TestCase):
         for b in bonds:
             bled112._ser.stage_output(self._ble_rsp_sm_delete_bonding())
 
+    @nottest
+    def _stage_scan_packets(self, bled112, scan_responses=[]):
+        # Stage ble_rsp_gap_set_scan_parameters (success)
+        bled112._ser.stage_output(self._ble_rsp_gap_set_scan_parameters())
+        # Stage ble_rsp_gap_discover (success)
+        bled112._ser.stage_output(self._ble_rsp_gap_discover())
+        for srp in scan_responses:
+            # Stage ble_evt_gap_scan_response
+            bled112._ser.stage_output(self._ble_evt_gap_scan_response(
+                rssi=srp['rssi'], packet_type=srp['packet_type'],
+                bd_addr=srp['bd_addr'], addr_type=srp['addr_type'],
+                bond=srp['bond'], data=srp['data']))
+        # Stage ble_rsp_gap_end_procedure (success)
+        bled112._ser.stage_output(self._ble_rsp_gap_end_procedure())
+
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
         bled112 = None
@@ -393,14 +410,14 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_char_read(self):
+        # TODO
         raise NotImplementedError()
 
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_char_write(self):
+        # TODO
         raise NotImplementedError()
 
     def test_BLED112_Backend_encrypt(self):
@@ -457,29 +474,49 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_get_handle(self):
+        # TODO
         raise NotImplementedError()
 
-    # TODO
-    @unittest.skip("not implemented")
-    def test_BLED112_Backend_scan(self):
-        raise NotImplementedError()
+    # FIXME
+    def test_BLED112_Backend_scan_and_get_devices_discovered(self):
+        try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test scan
+            scan_responses = []
+            addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            addr_0_str = ":".join([hex(b)[2:] for b in addr_0])
+            scan_responses.append({
+                'rssi': -80,
+                'packet_type': 0,
+                'bd_addr': addr_0,
+                'addr_type': 0x00,
+                'bond': 0xFF,
+                # Note: the first byte of data must be the length of data
+                'data': [0x09, 0x07, 0x09, ord('H'), ord('e'), ord('l'),
+                         ord('l'), ord('o'), ord('!')]
+            })
+            self._stage_scan_packets(bled112, scan_responses=scan_responses)
+            bled112.scan()
+            devs = bled112.get_devices_discovered()
+            assert(addr_0_str in devs)
+            assert(devs[addr_0_str].name == 'Hello!')
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
-    # TODO
-    @unittest.skip("not implemented")
-    def test_BLED112_Backend_get_devices_discovered(self):
-        raise NotImplementedError()
-
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_subscribe(self):
+        # TODO
         raise NotImplementedError()
 
-    # TODO
     @unittest.skip("not implemented")
     def test_BLED112_Backend_wait_for_response(self):
+        # TODO
         raise NotImplementedError()
 
     def test_BLED112_Backend_delete_stored_bonds(self):

@@ -1474,8 +1474,6 @@ class BLED112Backend(object):
                 len(dev.packet_data[packet_type]) < len(data_dict):
             dev.packet_data[packet_type] = data_dict
 
-        # self._devices_discovered[address] = dev
-
         # Log
         self._logger.info("_ble_evt_gap_scan_response")
         self._logger.debug("rssi = %d dBm", args['rssi'])
