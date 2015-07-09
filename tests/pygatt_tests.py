@@ -357,7 +357,7 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112._ser.stage_output(self._ble_evt_gap_scan_response(
                 rssi=srp['rssi'], packet_type=srp['packet_type'],
                 bd_addr=srp['bd_addr'], addr_type=srp['addr_type'],
-                bond=srp['bond'], data=srp['data']))
+                bond=srp['bond'], data=[len(srp['data'])+1]+srp['data']))
         # Stage ble_rsp_gap_end_procedure (success)
         bled112._ser.stage_output(self._ble_rsp_gap_end_procedure())
 
@@ -570,8 +570,7 @@ class BLED112_BackendTests(unittest.TestCase):
                 'bd_addr': addr_0,
                 'addr_type': 0x00,
                 'bond': 0xFF,
-                # Note: the first byte of data must be the length of data
-                'data': [0x09, 0x07, 0x09, ord('H'), ord('e'), ord('l'),
+                'data': [0x07, 0x09, ord('H'), ord('e'), ord('l'),
                          ord('l'), ord('o'), ord('!')]
             })
             self._stage_scan_packets(bled112, scan_responses=scan_responses)
