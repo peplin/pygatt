@@ -779,8 +779,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME: return statement line length
-                    return self.PacketType.ble_rsp_system_endpoint_set_watermarks, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_system_endpoint_set_watermarks, args)
             elif packet_class == 1:
                 if packet_command == 0:  # ble_rsp_flash_ps_defrag
                     self._logger.info(
@@ -866,15 +866,15 @@ class BGLib(object):
                     self._logger.info(
                         "received packet ble_rsp_attributes_user_read_"
                         "response")
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_attributes_user_read_response, {}  # noqa
+                    return (self.PacketType.
+                            ble_rsp_attributes_user_read_response, {})
                 # ble_rsp_attributes_user_write_response
                 elif packet_command == 4:
                     self._logger.info(
                         "received packet ble_rsp_attributes_user_write_"
                         "response")
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_attributes_user_write_response, {}  # noqa
+                    return (self.PacketType.
+                            ble_rsp_attributes_user_write_response, {})
             elif packet_class == 3:
                 if packet_command == 0:  # ble_rsp_connection_disconnect
                     self._logger.info(
@@ -916,8 +916,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_connection_version_update, args  # noqa
+                    return (self.PacketType.ble_rsp_connection_version_update,
+                            args)
                 # ble_rsp_connection_channel_map_get
                 elif packet_command == 4:
                     self._logger.info(
@@ -930,8 +930,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'map': map_data
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_connection_channel_map_get, args  # noqa
+                    return (self.PacketType.ble_rsp_connection_channel_map_get,
+                            args)
                 # ble_rsp_connection_channel_map_set
                 elif packet_command == 5:
                     self._logger.info(
@@ -943,8 +943,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_connection_channel_map_set, args  # noqa
+                    return (self.PacketType.ble_rsp_connection_channel_map_set,
+                            args)
                 elif packet_command == 6:  # ble_rsp_connection_features_get
                     self._logger.info(
                         "received packet ble_rsp_connection_features_get")
@@ -982,8 +982,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_attclient_find_by_type_value, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_attclient_find_by_type_value, args)
                 # ble_rsp_attclient_read_by_group_type
                 elif packet_command == 1:
                     self._logger.info(
@@ -995,8 +995,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_attclient_read_by_group_type, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_attclient_read_by_group_type, args)
                 elif packet_command == 2:  # ble_rsp_attclient_read_by_type
                     self._logger.info(
                         "received packet ble_rsp_attclient_read_by_type")
@@ -1018,8 +1018,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_attclient_find_information, args  # noqa
+                    return (self.PacketType.ble_rsp_attclient_find_information,
+                            args)
                 # ble_rsp_attclient_read_by_handle
                 elif packet_command == 4:
                     self._logger.info(
@@ -1030,8 +1030,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_attclient_read_by_handle, args  # noqa
+                    return (self.PacketType.ble_rsp_attclient_read_by_handle,
+                            args)
                 # ble_rsp_attclient_attribute_write
                 elif packet_command == 5:
                     self._logger.info(
@@ -1042,8 +1042,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_attclient_attribute_write, args  # noqa
+                    return (self.PacketType.ble_rsp_attclient_attribute_write,
+                            args)
                 elif packet_command == 6:  # ble_rsp_attclient_write_command
                     self._logger.info(
                         "received packet ble_rsp_attclient_write_command")
@@ -1063,8 +1063,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelenght
-                    return self.PacketType.ble_rsp_attclient_indicate_confirm, args  # noqa
+                    return (self.PacketType.ble_rsp_attclient_indicate_confirm,
+                            args)
                 elif packet_command == 8:  # ble_rsp_attclient_read_long
                     self._logger.info(
                         "received packet ble_rsp_attclient_read_long")
@@ -1246,8 +1246,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_gap_set_directed_connectable_mode, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_gap_set_directed_connectable_mode, args)
             elif packet_class == 7:
                 # ble_rsp_hardware_io_port_config_irq
                 if packet_command == 0:
@@ -1258,8 +1258,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelenght
-                    return self.PacketType.ble_rsp_hardware_io_port_config_irq, args  # noqa
+                    return (self.PacketType.ble_rsp_hardware_io_port_config_irq,
+                            args)
                 elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
                     self._logger.info(
                         "received packet ble_rsp_hardware_set_soft_timer")
@@ -1285,8 +1285,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_hardware_io_port_config_direction, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_hardware_io_port_config_direction, args)
                 # ble_rsp_hardware_io_port_config_function
                 elif packet_command == 4:
                     self._logger.info(
@@ -1296,8 +1296,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_hardware_io_port_config_function, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_hardware_io_port_config_function, args)
                 # ble_rsp_hardware_io_port_config_pull
                 elif packet_command == 5:
                     self._logger.info(
@@ -1307,8 +1307,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_rsp_hardware_io_port_config_pull, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_hardware_io_port_config_pull, args)
                 elif packet_command == 6:  # ble_rsp_hardware_io_port_write
                     self._logger.info(
                         "received packet ble_rsp_hardware_io_port_write")
@@ -1378,8 +1378,8 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_rsp_hardware_timer_comparator, args  # noqa
+                    return (self.PacketType.
+                            ble_rsp_hardware_timer_comparator, args)
             elif packet_class == 8:
                 if packet_command == 0:  # ble_rsp_test_phy_tx
                     self._logger.info(
@@ -1458,8 +1458,8 @@ class BGLib(object):
                     args = {
                         'endpoint': endpoint, 'data': data
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_evt_system_endpoint_watermark_rx, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_system_endpoint_watermark_rx, args)
                 # ble_evt_system_endpoint_watermark_tx
                 elif packet_command == 3:
                     self._logger.info(
@@ -1471,8 +1471,8 @@ class BGLib(object):
                     args = {
                         'endpoint': endpoint, 'data': data
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_evt_system_endpoint_watermark_tx, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_system_endpoint_watermark_tx, args)
                 elif packet_command == 4:  # ble_evt_system_script_failure
                     self._logger.info(
                         "received packet ble_evt_system_script_failure")
@@ -1525,8 +1525,8 @@ class BGLib(object):
                         'connection': connection, 'handle': handle,
                         'offset': offset, 'maxsize': maxsize
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_evt_attributes_user_read_request, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_attributes_user_read_request, args)
                 elif packet_command == 2:  # ble_evt_attributes_status
                     self._logger.info(
                         "received packet ble_evt_attributes_status")
@@ -1615,8 +1615,8 @@ class BGLib(object):
                         'connection': connection, 'result': result,
                         'chrhandle': chrhandle
                     }
-                    # FIXME line length
-                    return self.PacketType.ble_evt_attclient_procedure_completed, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_attclient_procedure_completed, args)
                 elif packet_command == 2:  # ble_evt_attclient_group_found
                     self._logger.info(
                         "received packet ble_evt_attclient_group_found")
@@ -1640,8 +1640,8 @@ class BGLib(object):
                         'value': data[2], 'properties': data[3],
                         'uuid': uuid_data
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_evt_attclient_attribute_found, args  # noqa
+                    return (self.PacketType.ble_evt_attclient_attribute_found,
+                            args)
                 # ble_evt_attclient_find_information_found
                 elif packet_command == 4:
                     self._logger.info(
@@ -1655,8 +1655,8 @@ class BGLib(object):
                         'connection': connection, 'chrhandle': chrhandle,
                         'uuid': uuid_data
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_evt_attclient_find_information_found, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_attclient_find_information_found, args)
                 # ble_evt_attclient_attribute_value
                 elif packet_command == 5:
                     self._logger.info(
@@ -1669,8 +1669,8 @@ class BGLib(object):
                         'connection': connection, 'atthandle': atthandle,
                         'type': type, 'value': value_data
                     }
-                    # FIXME linelength
-                    return self.PacketType.ble_evt_attclient_attribute_value, args  # noqa
+                    return (self.PacketType.ble_evt_attclient_attribute_value,
+                            args)
                 # ble_evt_attclient_read_multiple_response
                 elif packet_command == 6:
                     self._logger.info(
@@ -1684,8 +1684,8 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'handles': handles_data
                     }
-                    # FIXME Line length
-                    return self.PacketType.ble_evt_attclient_read_multiple_response, args  # noqa
+                    return (self.PacketType.
+                            ble_evt_attclient_read_multiple_response, args)
             elif packet_class == 5:
                 if packet_command == 0:  # ble_evt_sm_smp_data
                     self._logger.info(
