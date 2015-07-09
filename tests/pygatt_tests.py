@@ -19,9 +19,9 @@ class SerialMock(object):
         self._isOpen = True
         self._port = port
         self._timeout = timeout
-        self._input = None
         self._output_queue = Queue.Queue()
         self._active_packet = None
+        self._expected_input_queue = Queue.Queue()
 
     def open(self):
         self._isOpen = True
@@ -30,7 +30,13 @@ class SerialMock(object):
         self._isOpen = False
 
     def write(self, input_data):
-        self._input = input_data
+        pass
+        # Note: if we want to check the incoming packets, uncomment this
+        # try:
+        #    expected_packet = self._expected_input_queue.get_nowait()
+        #    assert(input_data == expected_packet)
+        # except Queue.Empty:
+        #    raise Exception("MockSerial._expected_input_queue was empty")
 
     def read(self):
         if self._active_packet is None:
@@ -48,6 +54,10 @@ class SerialMock(object):
 
     def stage_output(self, next_output):
         self._output_queue.put(next_output)
+
+    # Note: if we want to check the incoming packets, uncomment this
+    # def expect_input(self, next_input):
+    #    self._expected_input_queue.put(next_input)
 
 
 class BLED112_BackendTests(unittest.TestCase):
@@ -93,7 +103,8 @@ class BLED112_BackendTests(unittest.TestCase):
             raise NotImplementedError()
         else:
             ret_code = 0x0000  # success
-        return pack('<4BBH', 0x00, 0x03, 0x04, 0x05, ret_code)
+        return pack('<4BBH', 0x00, 0x03, 0x04, 0x05, connection_handle,
+                    ret_code)
 
     @nottest
     def _ble_rsp_attclient_find_information(self, fail=False,
@@ -215,7 +226,8 @@ class BLED112_BackendTests(unittest.TestCase):
 
     @nottest
     def _ble_evt_attclient_procedure_completed(
-            self, connection_handle=0x00, return_code=0x0000, chr_handle=0xFF):
+            self, connection_handle=0x00, return_code=0x0000,
+            chr_handle=0xFFFF):
         return pack('<4BB2H', 0x80, 0x05, 0x04, 0x01, connection_handle,
                     return_code, chr_handle)
 
@@ -385,6 +397,14 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_evt_attclient_attribute_value(
             att_handle=handle, value=[len(value)+1]+value))
 
+    @nottest
+    def _stage_char_write_packets(self, bled112, handle, value):
+        # Stage ble_rsp_attclient_attribute_write (success)
+        bled112._ser.stage_output(self._ble_rsp_attclient_attribute_write())
+        # Stage ble_evt_attclient_procedure_completed
+        bled112._ser.stage_output(self._ble_evt_attclient_procedure_completed(
+            chr_handle=handle))
+
     # --------------------------- Tests ----------------------------------------
     def test_create_BLED112_Backend(self):
         bled112 = None
@@ -467,10 +487,35 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    @unittest.skip("not implemented")
     def test_BLED112_Backend_char_write(self):
-        # TODO
-        raise NotImplementedError()
+        try:
+            bled112 = BLED112Backend(
+                serial_port='dummy', logfile=self.null_file, run=False)
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            uuid0 = '01234567-0123-0123-0123-0123456789AB'
+            uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
+            handle0 = [0x12, 0x34]
+            uuid1_bytearray = bytearray([0x29, 0x02])
+            handle1 = [0x56, 0x78]
+            self._stage_get_handle_packets(bled112, [
+                hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
+                hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
+                ])
+            handle = bled112.get_handle(uuid0_bytearray)
+            assert(handle == int(hexlify(bytearray(handle0)), 16))
+            # Test char_write
+            value = [0xF0, 0x0F, 0x00]
+            self._stage_char_write_packets(bled112, handle, value)
+            bled112.char_write(handle, bytearray(value))
+
+        finally:
+            # Make sure to stop the receiver thread
+            bled112.stop()
 
     def test_BLED112_Backend_encrypt(self):
         try:
