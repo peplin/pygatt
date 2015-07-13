@@ -613,7 +613,7 @@ class BGLib(object):
             pass
         ser.write(packet)
 
-    def parse_byte(self, byte, packet_queue):
+    def parse_byte(self, byte):
         if len(self.bgapi_rx_buffer) == 0 and\
            (byte == 0x00 or byte == 0x80 or byte == 0x08 or byte == 0x88):
             self.bgapi_rx_buffer.append(byte)
@@ -629,10 +629,12 @@ class BGLib(object):
         if self.bgapi_rx_expected_length > 0 and\
            len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
 
-            # Enqueue completed packet
-            self._logger.info("enqueue packet")
-            packet_queue.put(list(self.bgapi_rx_buffer))
+            # Return completed packet
+            self._logger.info("read complete packet")
+            packet = self.bgapi_rx_buffer
             self.bgapi_rx_buffer = []
+            return packet
+        return None
 
     def decode_packet(self, packet):
         """

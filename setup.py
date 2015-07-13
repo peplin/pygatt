@@ -50,7 +50,7 @@ setup(
     setup_requires=[
         'coverage==3.7.1',
         'nose==1.3.1',
-        'mock'
+        'mock==1.1.2'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,

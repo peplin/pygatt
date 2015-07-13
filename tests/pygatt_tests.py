@@ -655,11 +655,10 @@ class BLED112_BackendTests(unittest.TestCase):
             # Make sure to stop the receiver thread
             bled112.stop()
 
-    # FIXME
     def test_BLED112_Backend_subscribe_and_wait_for_response(self):
         try:
             bled112 = BLED112Backend(
-                serial_port='dummy', run=False)
+                serial_port='dummy', logfile=self.null_file, run=False)
             self._stage_run_packets(bled112)
             bled112.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
