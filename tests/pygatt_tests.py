@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from binascii import hexlify, unhexlify
+from binascii import unhexlify
 from mock import patch
 from nose.tools import nottest
 import platform
@@ -94,6 +94,11 @@ class BLED112_BackendTests(unittest.TestCase):
         if 'parameters_change' in flags:
             flags_byte |= 0x08
         return flags_byte
+
+    @nottest
+    def _uuid_str_to_bytearray(self, uuid_str):
+        """Convert a UUID string to a bytearray."""
+        return unhexlify(uuid_str.replace('-', ''))
 
     # ------------------------ Packet Building ---------------------------------
     @nottest
@@ -338,14 +343,14 @@ class BLED112_BackendTests(unittest.TestCase):
         bled112._ser.stage_output(self._ble_rsp_attclient_find_information(
             connection_handle, 0x0000))
         for i in range(0, len(uuid_handle_list)/2):
-            uuid = uuid_handle_list[2*i]
+            uuid = self._uuid_str_to_bytearray(uuid_handle_list[2*i])
             handle = uuid_handle_list[2*i + 1]
             # Stage ble_evt_attclient_find_information_found
-            u = [len(unhexlify(uuid)) + 1]
+            u = [len(uuid) + 1]
             bled112._ser.stage_output(
                 self._ble_evt_attclient_find_information_found(
-                    connection_handle, int(handle, 16),
-                    (u+list(reversed([ord(b) for b in unhexlify(uuid)])))))
+                    connection_handle, handle,
+                    (u+list(reversed([ord(b) for b in uuid])))))
         # Stage ble_evt_attclient_procedure_completed (success)
         bled112._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             connection_handle, 0x0000, 0xFFFF))
@@ -371,17 +376,16 @@ class BLED112_BackendTests(unittest.TestCase):
             connection_handle, 0x0000, handle))
 
     @nottest
-    def _stage_subscribe_packets(self, bled112, uuid0_bytearray, handle0,
+    def _stage_subscribe_packets(self, bled112, uuid_char, handle_char,
                                  indications=False, connection_handle=0x00):
         # Stage get_handle packets
-        uuid1_bytearray = bytearray([0x29, 0x02])
-        handle1 = [0x56, 0x78]
+        uuid_desc = '2902'
+        handle_desc = 0x5678
         self._stage_get_handle_packets(bled112, [
-            hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
-            hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
-            ])
-        handle = bled112.get_handle(uuid0_bytearray)
-        assert(handle == int(hexlify(bytearray(handle0)), 16))
+            uuid_char, handle_char,
+            uuid_desc, handle_desc])
+        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
+                                    self._uuid_str_to_bytearray(uuid_desc))
         # Stage char_write packets
         if indications:
             value = [0x02, 0x00]
@@ -397,7 +401,7 @@ class BLED112_BackendTests(unittest.TestCase):
         for value in packet_values:
             val = list(value)
             bled112._ser.stage_output(self._ble_evt_attclient_attribute_value(
-                connection_handle, int(hexlify(bytearray(handle)), 16), 0x00,
+                connection_handle, handle, 0x00,
                 value=[len(val)+1]+val))
 
     # --------------------------- Tests ----------------------------------------
@@ -452,17 +456,14 @@ class BLED112_BackendTests(unittest.TestCase):
         self._stage_connect_packets(
             bled112, address, ['connected', 'completed'])
         bled112.connect(bytearray(address))
-        uuid0 = '01234567-0123-0123-0123-0123456789AB'
-        uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
-        handle0 = [0x12, 0x34]
-        uuid1_bytearray = bytearray([0x29, 0x02])
-        handle1 = [0x56, 0x78]
+        uuid_char = '01234567-0123-0123-0123-0123456789AB'
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
         self._stage_get_handle_packets(bled112, [
-            hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
-            hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
-            ])
-        handle = bled112.get_handle(uuid0_bytearray)
-        assert(handle == int(hexlify(bytearray(handle0)), 16))
+            uuid_char, handle_char,
+            uuid_desc, handle_desc])
+        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
         # Test char_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self._stage_char_read_packets(bled112, handle, 0x00, expected_value)
@@ -479,17 +480,14 @@ class BLED112_BackendTests(unittest.TestCase):
         self._stage_connect_packets(
             bled112, address, ['connected', 'completed'])
         bled112.connect(bytearray(address))
-        uuid0 = '01234567-0123-0123-0123-0123456789AB'
-        uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
-        handle0 = [0x12, 0x34]
-        uuid1_bytearray = bytearray([0x29, 0x02])
-        handle1 = [0x56, 0x78]
+        uuid_char = '01234567-0123-0123-0123-0123456789AB'
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
         self._stage_get_handle_packets(bled112, [
-            hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
-            hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
-            ])
-        handle = bled112.get_handle(uuid0_bytearray)
-        assert(handle == int(hexlify(bytearray(handle0)), 16))
+            uuid_char, handle_char,
+            uuid_desc, handle_desc])
+        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
         # Test char_write
         value = [0xF0, 0x0F, 0x00]
         self._stage_char_write_packets(bled112, handle, value)
@@ -551,19 +549,18 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112, address, ['connected', 'completed'])
         bled112.connect(bytearray(address))
         # Test get_handle
-        uuid0 = '01234567-0123-0123-0123-0123456789AB'
-        uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
-        handle0 = [0x12, 0x34]
-        uuid1_bytearray = bytearray([0x29, 0x02])
-        handle1 = [0x56, 0x78]
+        uuid_char = '01234567-0123-0123-0123-0123456789AB'
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
         self._stage_get_handle_packets(bled112, [
-            hexlify(uuid0_bytearray), hexlify(bytearray(handle0)),
-            hexlify(uuid1_bytearray), hexlify(bytearray(handle1))
-            ])
-        handle = bled112.get_handle(uuid0_bytearray)
-        assert(handle == int(hexlify(bytearray(handle0)), 16))
-        handle = bled112.get_handle(uuid0_bytearray, uuid1_bytearray)
-        assert(handle == int(hexlify(bytearray(handle1)), 16))
+            uuid_char, handle_char,
+            uuid_desc, handle_desc])
+        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+        assert(handle == handle_char)
+        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
+                                    self._uuid_str_to_bytearray(uuid_desc))
+        assert(handle == handle_desc)
 
     def test_BLED112_Backend_scan_and_get_devices_discovered(self):
         """scan/get_devices_discovered general functionality."""
@@ -601,19 +598,16 @@ class BLED112_BackendTests(unittest.TestCase):
             bled112, address, ['connected', 'completed'])
         bled112.connect(bytearray(address))
         # Test subscribe
-        handle0 = [0x12, 0x34]
-        uuid0 = '01234567-0123-0123-0123-0123456789AB'
-        uuid0_bytearray = unhexlify(uuid0.replace('-', ''))
-        self._stage_subscribe_packets(bled112, uuid0_bytearray, handle0)
-        bled112.subscribe(uuid0_bytearray)
+        handle = 0x1234
+        uuid = '01234567-0123-0123-0123-0123456789AB'
+        self._stage_subscribe_packets(bled112, uuid, handle)
+        bled112.subscribe(self._uuid_str_to_bytearray(uuid))
         # Test wait for response
-        value0 = [0xF0, 0x0D, 0xBE, 0xEF]
-        packet_values = []
-        packet_values.append(bytearray(value0))
+        packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
         self._stage_wait_for_response_packets(
-            bled112, handle0, packet_values)
+            bled112, handle, packet_values)
         packet_values_received = bled112.wait_for_response(
-            int(hexlify(bytearray(handle0)), 16), len(packet_values), 5)
+            handle, len(packet_values), 5)
         assert(packet_values_received == packet_values)
 
     def test_BLED112_Backend_delete_stored_bonds(self):
