@@ -757,10 +757,6 @@ class BLED112Backend(object):
                               get_return_message(self._response_return))
             raise BLED112Error("gap end procedure failed")
 
-    # FIXME delete
-    def stop(self):
-        pass
-
     def subscribe(self, characteristic_uuid, indicate=False):
         """
         Ask GATT server to receive notifications from the characteristic.
