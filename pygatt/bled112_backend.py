@@ -4,7 +4,6 @@ from binascii import hexlify
 import logging
 import serial
 import time
-import threading
 
 import bled112_bglib
 from bled112_error import get_return_message
@@ -58,7 +57,6 @@ class BLED112Backend(object):
     Only supports 1 device connection at a time.
     This object is NOT threadsafe.
     """
-    # TODO: fix docstring
     def __init__(self, serial_port, run=True, logfile=None):
         """
         Initialize the BLED112 to be ready for use with a BLE device, i.e.,
@@ -86,10 +84,6 @@ class BLED112Backend(object):
         self._lib = bled112_bglib.BGLib(loghandler=handler,
                                         loglevel=LOG_LEVEL)
         self._ser = serial.Serial(serial_port, timeout=0.25)
-
-        # Timeout
-        self._timeout = False
-        self._timeout_lock = threading.Lock()
 
         # State
         self._num_bonds = 0  # number of bonds stored on the BLED112
@@ -225,7 +219,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
 
         # Begin encryption and bonding
         self._bonding_fail = False
@@ -237,7 +231,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_encrypt_start,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if self._response_return != 0:
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
@@ -250,7 +244,7 @@ class BLED112Backend(object):
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_connection_status,
                  self._lib.PacketType.ble_evt_sm_bonding_fail,
-                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+                 self._lib.PacketType.ble_evt_connection_disconnected])
         if (not self._connected) or self._bonding_fail:
             warning = "encrypt_start failed: " +\
                       get_return_message(self._event_return)
@@ -281,7 +275,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_attclient_attribute_write,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if self._response_return != 0:
             warning = "attribute_write failed: " +\
                       get_return_message(self._response_return)
@@ -291,7 +285,7 @@ class BLED112Backend(object):
         # Wait for event
         self._process_packets_until(
             [self._lib.PacketType.ble_evt_attclient_procedure_completed,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         self._procedure_completed = False
         if not self._connected:
             warning = "attribute_write failed: disconnected " +\
@@ -328,7 +322,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_attclient_read_by_handle,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if self._response_return != 0:
             warning = "read_by_handle failed: " +\
                       get_return_message(self._response_return)
@@ -343,7 +337,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_evt_attclient_attribute_value,
              self._lib.PacketType.ble_evt_attclient_procedure_completed,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if not self._connected:
             warning = "read_by_handle failed: disconnected" +\
                       get_return_message(self._event_return)
@@ -379,18 +373,11 @@ class BLED112Backend(object):
             self._logger.warn("Already connected")
             raise BLED112Error("Tried to connect when already connected")
 
-        # TODO: make timer cancelable
-        # Setup connection timeout timer
-        self._timeout_lock.acquire()
-        self._timeout = False
-        self._timeout_lock.release()
-        timer = threading.Timer(timeout, self._timer_func)
-
         # Connect to the device
         bd_addr = [b for b in address]
         interval_min = 6  # 6/1.25 ms
         interval_max = 30  # 30/1.25 ms
-        timeout = 20  # 20/10 ms
+        supervision_timeout = 20  # 20/10 ms
         latency = 0  # intervals that can be skipped
         self._logger.info("gap_connect_direct")
         self._logger.info("address = %s", '0x'+hexlify(address))
@@ -399,15 +386,13 @@ class BLED112Backend(object):
         self._logger.debug("timeout = %d ms", timeout/10)
         self._logger.debug("latency = %d intervals", latency)
         cmd = self._lib.ble_cmd_gap_connect_direct(
-            bd_addr, addr_type, interval_min, interval_max, timeout, latency)
+            bd_addr, addr_type, interval_min, interval_max, supervision_timeout,
+            latency)
         self._lib.send_command(self._ser, cmd)
-
-        # Start timeout timer
-        timer.start()
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_connect_direct], True)
+            [self._lib.PacketType.ble_rsp_gap_connect_direct])
         if self._response_return != 0:
             self._logger.warn("connect_direct failed: %s",
                               get_return_message(self._response_return))
@@ -415,7 +400,7 @@ class BLED112Backend(object):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status], True)
+            [self._lib.PacketType.ble_evt_connection_status], timeout=timeout)
 
     def delete_stored_bonds(self):
         """
@@ -433,7 +418,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_get_bonds,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if self._num_bonds == 0:  # no bonds
             return
 
@@ -441,7 +426,7 @@ class BLED112Backend(object):
         while len(self._stored_bonds) < self._num_bonds:
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_sm_bond_status,
-                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+                 self._lib.PacketType.ble_evt_connection_disconnected])
 
         # Delete bonds
         for b in reversed(self._stored_bonds):
@@ -452,7 +437,7 @@ class BLED112Backend(object):
             # Wait for response
             self._process_packets_until(
                 [self._lib.PacketType.ble_rsp_sm_delete_bonding,
-                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+                 self._lib.PacketType.ble_evt_connection_disconnected])
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
                                   get_return_message(self._response_return))
@@ -471,7 +456,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_connection_disconnect], False)
+            [self._lib.PacketType.ble_rsp_connection_disconnect])
         if self._response_return != 0:
             self._logger.warn("connection_disconnect failed: %s",
                               get_return_message(self._response_return))
@@ -482,7 +467,7 @@ class BLED112Backend(object):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_disconnected], False)
+            [self._lib.PacketType.ble_evt_connection_disconnected])
         msg = "Disconnected by local user"
         if self._event_return != 0:
             msg = get_return_message(self._event_return)
@@ -507,7 +492,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
 
         # Start encryption
         self._logger.info("encrypt_start")
@@ -518,7 +503,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_encrypt_start,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         if self._response_return != 0:
             warning = "encrypt_start failed " +\
                       get_return_message(self._response_return)
@@ -527,7 +512,7 @@ class BLED112Backend(object):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status], False)
+            [self._lib.PacketType.ble_evt_connection_status])
         if not (self._connected and self._encrypted):
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
@@ -576,7 +561,7 @@ class BLED112Backend(object):
             # Wait for response
             self._process_packets_until(
                 [self._lib.PacketType.ble_rsp_attclient_find_information,
-                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+                 self._lib.PacketType.ble_evt_connection_disconnected])
             if self._response_return != 0:
                 warning = "find_information failed " +\
                           get_return_message(self._response_return)
@@ -586,7 +571,7 @@ class BLED112Backend(object):
             # Wait for event
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_attclient_procedure_completed,
-                 self._lib.PacketType.ble_evt_connection_disconnected], False)
+                 self._lib.PacketType.ble_evt_connection_disconnected])
             self._procedure_completed = False
             if not self._connected:
                 warning = "find_information failed: disconnected " +\
@@ -647,7 +632,7 @@ class BLED112Backend(object):
         # Wait for response
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_connection_get_rssi,
-             self._lib.PacketType.ble_evt_connection_disconnected], False)
+             self._lib.PacketType.ble_evt_connection_disconnected])
         rssi_value = self._response_return
 
         return rssi_value
@@ -668,7 +653,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_set_mode], False)
+            [self._lib.PacketType.ble_rsp_gap_set_mode])
         if self._response_return != 0:
             self._logger.warn("gap_set_mode failed: %s",
                               get_return_message(self._response_return))
@@ -680,7 +665,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_end_procedure], False)
+            [self._lib.PacketType.ble_rsp_gap_end_procedure])
         if self._response_return != 0:
             self._logger.warn("gap_end_procedure failed: %s",
                               get_return_message(self._response_return))
@@ -692,7 +677,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode], False)
+            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode])
 
     def scan(self, scan_interval=75, scan_window=50, active=True,
              scan_time=1000, discover_mode=gap_discover_mode['generic']):
@@ -721,7 +706,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_set_scan_parameters], False)
+            [self._lib.PacketType.ble_rsp_gap_set_scan_parameters])
         if self._response_return != 0:
             self._logger.warn("set_scan_parameters failed: %s",
                               get_return_message(self._response_return))
@@ -734,7 +719,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_discover], False)
+            [self._lib.PacketType.ble_rsp_gap_discover])
         if self._response_return != 0:
             self._logger.warn("gap_discover failed: %s",
                               get_return_message(self._response_return))
@@ -751,7 +736,7 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_end_procedure], False)
+            [self._lib.PacketType.ble_rsp_gap_end_procedure])
         if self._response_return != 0:
             self._logger.warn("gap_end_procedure failed: %s",
                               get_return_message(self._response_return))
@@ -782,7 +767,6 @@ class BLED112Backend(object):
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
 
-    # TODO timeout
     def wait_for_response(self, handle, num_packets, timeout):
         """
         Process packets until the specified number of  notification/indication
@@ -809,7 +793,8 @@ class BLED112Backend(object):
               (self._connected):
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_connection_disconnected,
-                 self._lib.PacketType.ble_evt_attclient_attribute_value], False)
+                 self._lib.PacketType.ble_evt_attclient_attribute_value],
+                timeout=timeout)
             self._logger.debug("len(self._notifications[handle]) = %d" %
                                len(self._notifications[handle]))
 
@@ -877,15 +862,6 @@ class BLED112Backend(object):
         self._logger.debug("no match")
         return -1
 
-    def _timer_func(self):
-        """
-        Set the self._timeout flag to True. For use in a threading.Timer object.
-        """
-        self._timeout_lock.acquire()
-        self._timeout = True
-        print("TIMER FIRED!")
-        self._timeout_lock.release()
-
     def _scan_rsp_data(self, data):
         """
         Parse scan response data.
@@ -934,15 +910,14 @@ class BLED112Backend(object):
                         data_dict[field_name] = bytearray(field_value)
         return dev_name, data_dict
 
-    # TODO: docstring, remove prints, timeout
-    def _process_packets_until(self, expected_packet_choices, timeout):
+    def _process_packets_until(self, expected_packet_choices, timeout=None):
         """
         Process packets until a packet of one of the expected types is found.
 
         expected_packet_choices -- a list of BGLib.PacketType.xxxxx. Upon
                                    processing a packet of a type contained in
                                    the list, this function will return.
-        timeout -- If True will return when the self._timeout flag is set.
+        timeout -- maximum time in seconds to process packets.
 
         Raises BLED112Error if a timeout occurs.
         """
@@ -960,14 +935,8 @@ class BLED112Backend(object):
             self._logger.debug("got packet")
             packet_type, args = self._lib.decode_packet(packet)
             self._logger.debug('packet type {0}'.format(packet_type))
-            self._timeout_lock.acquire()
             if packet_type in expected_packet_choices:
                 found = True
-            elif timeout and self._timeout:
-                self._timeout = False
-                self._timeout_lock.release()
-                raise BLED112Error("Timeout")
-            self._timeout_lock.release()
             # Call handler for this packet
             if packet_type in self._packet_handlers:
                 self._logger.debug("Calling handler " +
@@ -977,25 +946,29 @@ class BLED112Backend(object):
         # Log
         self._logger.debug("done processing packets")
 
-    # TODO: timeout
     def _recv_packet(self, timeout):
         """
         Read from serial until a packet is received or a timeout occurs.
 
+        timeout -- maximum time in seconds to process packets.
+
         Returns a list of bytes (the packet) on success.
         Raises BLED112Error on failure.
         """
+        start_time = None
+        if timeout is not None:
+            start_time = time.time()
         packet = None
         while packet is None:
+            if timeout is not None:
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= timeout:
+                    raise BLED112Error(
+                        "timed out after %d seconds" % elapsed_time)
             byte = self._ser.read()
             if len(byte) > 0:
                 byte = ord(byte)
-                self._logger.debug("\tREAD BYTE %02x", byte)
                 packet = self._lib.parse_byte(byte)
-            self._timeout_lock.acquire()
-            if self._timeout:
-                raise BLED112Error("connect timeout")
-            self._timeout_lock.release()
         return packet
 
     # Generic event/response handler -------------------------------------------
