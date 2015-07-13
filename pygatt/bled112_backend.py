@@ -194,7 +194,6 @@ class BLED112Backend(object):
             self._ble_evt_sm_bonding_fail
 
         # Start logging
-        self._logger.info("---------------------------------")
         self._logger.info("BLED112Backend on %s", serial_port)
 
         # Run the receiver thread
@@ -257,7 +256,7 @@ class BLED112Backend(object):
 
         This requires that a connection is already extablished with the device.
 
-        handle -- the characteristic/descriptor handle to write to.
+        handle -- the characteristic/descriptor handle (integer) to write to.
         value -- a bytearray holding the value to write.
 
         Raises BLED112Error on failure.
@@ -304,7 +303,7 @@ class BLED112Backend(object):
 
         This requires that a connection is already established with the device.
 
-        handle -- the characteristic handle to read from.
+        handle -- the characteristic handle (integer) to read from.
 
         Returns a bytearray containing the value read, on success.
         Raised BLED112Error on failure.
@@ -519,10 +518,9 @@ class BLED112Backend(object):
             self._logger.warn(warning)
             raise BLED112Error(warning)
 
-    # TODO: unneeded...
     def get_devices_discovered(self):
         """
-        Get self._devices_discovered in a thread-safe way.
+        Get self._devices_discovered.
         A scan() should be run prior to accessing this data.
 
         Returns the self._devices_discovered dictionary.
@@ -534,7 +532,7 @@ class BLED112Backend(object):
 
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
-        Get the handle for a characteristic or descriptor.
+        Get the handle (integer) for a characteristic or descriptor.
 
         This requires that a connection is already established with the device.
 
@@ -803,8 +801,6 @@ class BLED112Backend(object):
 
         return packet_values
 
-    # TODO: is this really necessary since we only process packets when we are
-    #       when we are waiting for a response/event which could disconnect?
     def _check_if_connected(self):
         """
         Checks if there is a connection already established with a device.
