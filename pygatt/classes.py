@@ -185,12 +185,11 @@ class BluetoothLEDevice(object):
 
     def run(self):
         """
-        Run a background thread to listen for notifications (GATTTOOL only) or
-        run the receiver background thread (BLED112 only).
+        Run a background thread to listen for notifications (GATTTOOL only).
         """
         self._logger.info("run")
         if self._backend_type == BACKEND['BLED112']:
-            self._backend.run()
+            pass
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.run()
         else:
