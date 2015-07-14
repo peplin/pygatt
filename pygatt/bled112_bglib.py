@@ -59,7 +59,11 @@ class BGLib(object):
         self._logger.addHandler(loghandler)
         self.bgapi_rx_buffer = []
         self.bgapi_rx_expected_length = 0
-        self.packet_mode = False
+        # Packet message types
+        self._ble_event = 0x80
+        self._ble_response = 0x00
+        self._wifi_event = 0x88
+        self._wifi_response = 0x08
 
     def ble_cmd_system_reset(self, boot_in_dfu):
         self._logger.info("construct command ble_cmd_system_reset")
@@ -607,15 +611,27 @@ class BGLib(object):
         after_last_value = 119
 
     def send_command(self, ser, packet):
+        """
+        Send a packet to the BLED12 over serial.
+
+        ser -- The serial.Serial object to write to.
+        packet -- The packet to write.
+        """
         self._logger.info("Sending command")
-        if self.packet_mode:
-            # packet = chr(len(packet) & 0xFF) + packet
-            pass
         ser.write(packet)
 
     def parse_byte(self, byte):
-        if len(self.bgapi_rx_buffer) == 0 and\
-           (byte == 0x00 or byte == 0x80 or byte == 0x08 or byte == 0x88):
+        """
+        Re-build packets read in from bytes over serial one byte at a time.
+
+        byte -- the next byte to add to the packet.
+
+        Returns a list of the bytes in the packet once a full packet is read.
+        Returns None otherwise.
+        """
+        if (len(self.bgapi_rx_buffer) == 0 and
+            (byte == self._ble_event or byte == self._ble_response or
+             byte == self._wifi_event or byte == self._wifi_response)):
             self.bgapi_rx_buffer.append(byte)
         elif len(self.bgapi_rx_buffer) == 1:
             self.bgapi_rx_buffer.append(byte)
@@ -624,12 +640,8 @@ class BGLib(object):
         elif len(self.bgapi_rx_buffer) > 1:
             self.bgapi_rx_buffer.append(byte)
 
-        # print('%02X: %d, %d' % (b, len(self.bgapi_rx_buffer),
-        #       self.bgapi_rx_expected_length)
         if self.bgapi_rx_expected_length > 0 and\
            len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
-
-            # Return completed packet
             self._logger.info("read complete packet")
             packet = self.bgapi_rx_buffer
             self.bgapi_rx_buffer = []
