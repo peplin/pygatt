@@ -26,5 +26,4 @@ class NoResponseError(BluetoothLEError):
 
 
 class BLED112Error(BluetoothLEError):
-    def __init__(self, msg):
-        self.message = msg
+    pass

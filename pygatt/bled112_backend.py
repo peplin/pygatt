@@ -15,7 +15,7 @@ from bled112_constants import(
     scan_response_packet_type
 )
 from constants import LOG_FORMAT, LOG_LEVEL
-from exceptions import BLED112Error
+from exceptions import BLED112Error, NotConnectedError, NoResponseError
 
 
 class Characteristic(object):
@@ -206,7 +206,7 @@ class BLED112Backend(object):
         This requires that a connection is already extablished with the device.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Set to bondable mode
         self._bond_expected = True
@@ -218,6 +218,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
 
         # Begin encryption and bonding
         self._bonding_fail = False
@@ -230,6 +231,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_encrypt_start,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
         if self._response_return != 0:
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
@@ -243,7 +245,8 @@ class BLED112Backend(object):
                 [self._lib.PacketType.ble_evt_connection_status,
                  self._lib.PacketType.ble_evt_sm_bonding_fail,
                  self._lib.PacketType.ble_evt_connection_disconnected])
-        if (not self._connected) or self._bonding_fail:
+        self._check_connection()
+        if self._bonding_fail:
             warning = "encrypt_start failed: " +\
                       get_return_message(self._event_return)
             self._logger.warn(warning)
@@ -261,7 +264,7 @@ class BLED112Backend(object):
         Raises BLED112Error on failure.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Write to characteristic
         value_list = [b for b in value]
@@ -274,6 +277,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_attclient_attribute_write,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
         if self._response_return != 0:
             warning = "attribute_write failed: " +\
                       get_return_message(self._response_return)
@@ -285,11 +289,7 @@ class BLED112Backend(object):
             [self._lib.PacketType.ble_evt_attclient_procedure_completed,
              self._lib.PacketType.ble_evt_connection_disconnected])
         self._procedure_completed = False
-        if not self._connected:
-            warning = "attribute_write failed: disconnected " +\
-                      get_return_message(self._event_return)
-            self._logger.warn(warning)
-            raise BLED112Error(warning)
+        self._check_connection()
         if self._event_return != 0:
             warning = "attribute_write failed: " +\
                       get_return_message(self._event_return)
@@ -308,7 +308,7 @@ class BLED112Backend(object):
         Raised BLED112Error on failure.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Read from characteristic
         self._logger.info("read_by_handle")
@@ -321,6 +321,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_attclient_read_by_handle,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
         if self._response_return != 0:
             warning = "read_by_handle failed: " +\
                       get_return_message(self._response_return)
@@ -336,11 +337,7 @@ class BLED112Backend(object):
             [self._lib.PacketType.ble_evt_attclient_attribute_value,
              self._lib.PacketType.ble_evt_attclient_procedure_completed,
              self._lib.PacketType.ble_evt_connection_disconnected])
-        if not self._connected:
-            warning = "read_by_handle failed: disconnected" +\
-                      get_return_message(self._event_return)
-            self._logger.warn()
-            raise BLED112Error(warning)
+        self._check_connection()
         if self._procedure_completed:
             self._procedure_completed = False  # reset the flag
             warning = "read_by_handle failed: " +\
@@ -364,12 +361,10 @@ class BLED112Backend(object):
         timeout -- number of seconds to wait before returning if not connected.
         addr_type -- one of the ble_address_type constants.
 
-        Raises BLED112Error on failure.
+        Raises BLED112Error or NotConnectedError on failure.
         """
         # Make sure there is NOT a connection
-        if self._connected:
-            self._logger.warn("Already connected")
-            raise BLED112Error("Tried to connect when already connected")
+        self._check_connection(check_if_connected=False)
 
         # Connect to the device
         bd_addr = [b for b in address]
@@ -398,7 +393,8 @@ class BLED112Backend(object):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status], timeout=timeout)
+            [self._lib.PacketType.ble_evt_connection_status], timeout=timeout,
+            exception_type=NotConnectedError)
 
     def delete_stored_bonds(self):
         """
@@ -477,7 +473,7 @@ class BLED112Backend(object):
         Raises BLED112Error on failure.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
@@ -488,6 +484,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
 
         # Start encryption
         self._logger.info("encrypt_start")
@@ -499,6 +496,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_sm_encrypt_start,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
         if self._response_return != 0:
             warning = "encrypt_start failed " +\
                       get_return_message(self._response_return)
@@ -507,8 +505,10 @@ class BLED112Backend(object):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status])
-        if not (self._connected and self._encrypted):
+            [self._lib.PacketType.ble_evt_connection_status,
+             self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
+        if not self._encrypted:
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
@@ -541,7 +541,7 @@ class BLED112Backend(object):
         Raises BLED112Error on failure.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Discover characteristics if not cached
         if not self._characteristics_cached:
@@ -556,6 +556,7 @@ class BLED112Backend(object):
             self._process_packets_until(
                 [self._lib.PacketType.ble_rsp_attclient_find_information,
                  self._lib.PacketType.ble_evt_connection_disconnected])
+            self._check_connection()
             if self._response_return != 0:
                 warning = "find_information failed " +\
                           get_return_message(self._response_return)
@@ -566,13 +567,9 @@ class BLED112Backend(object):
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_attclient_procedure_completed,
                  self._lib.PacketType.ble_evt_connection_disconnected])
+            self._check_connection()
             self._procedure_completed = False
-            if not self._connected:
-                warning = "find_information failed: disconnected " +\
-                          get_return_message(self._event_return)
-                self._logger.warn(warning)
-                raise BLED112Error(warning)
-            elif self._event_return != 0:
+            if self._event_return != 0:
                 warning = "find_information failed: " +\
                           get_return_message(self._event_return)
                 self._logger.warn(warning)
@@ -616,7 +613,7 @@ class BLED112Backend(object):
         Returns the RSSI as in integer in dBm.
         """
         # Make sure there is a connection
-        self._check_if_connected()
+        self._check_connection()
 
         # Get RSSI value
         self._logger.info("get_rssi")
@@ -627,6 +624,7 @@ class BLED112Backend(object):
         self._process_packets_until(
             [self._lib.PacketType.ble_rsp_connection_get_rssi,
              self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
         rssi_value = self._response_return
 
         return rssi_value
@@ -773,8 +771,11 @@ class BLED112Backend(object):
 
         Returns a list of (list of bytes containting the data received) on
         success.
-        Raises BLED112Error on failure.
+        Raises BLED112Error or NoResponseError on failure.
         """
+        # Make sure there is a connection
+        self._check_connection()
+
         # Log
         self._logger.debug("wait for %d packets from %04x" % (num_packets,
                            handle))
@@ -788,7 +789,8 @@ class BLED112Backend(object):
             self._process_packets_until(
                 [self._lib.PacketType.ble_evt_connection_disconnected,
                  self._lib.PacketType.ble_evt_attclient_attribute_value],
-                timeout=timeout)
+                timeout=timeout, exception_type=NoResponseError)
+            self._check_connection()
             self._logger.debug("len(self._notifications[handle]) = %d" %
                                len(self._notifications[handle]))
 
@@ -797,13 +799,24 @@ class BLED112Backend(object):
 
         return packet_values
 
-    def _check_if_connected(self):
+    def _check_connection(self, check_if_connected=True):
         """
-        Checks if there is a connection already established with a device.
+        Checks if there is/isn't a connection already established with a device.
+
+        check_if_connected -- If True, checks if connected, else checks if not
+                              connected.
+
+        Raises NotConnectedError on failure if check_if_connected == True.
+        Raised BLED112Error on failure if check_if_connected == False.
         """
-        if not self._connected:
-            self._logger.warn("Not connected")
-            raise BLED112Error("Not connected")
+        if (not self._connected) and check_if_connected:
+            warning = "Not connected"
+            self._logger.warn(warning)
+            raise NotConnectedError(warning)
+        elif self._connected and (not check_if_connected):
+            warning = "Already connected"
+            self._logger.warn(warning)
+            raise BLED112Error(warning)
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
@@ -902,7 +915,8 @@ class BLED112Backend(object):
                         data_dict[field_name] = bytearray(field_value)
         return dev_name, data_dict
 
-    def _process_packets_until(self, expected_packet_choices, timeout=None):
+    def _process_packets_until(self, expected_packet_choices, timeout=None,
+                               exception_type=BLED112Error):
         """
         Process packets until a packet of one of the expected types is found.
 
@@ -911,7 +925,9 @@ class BLED112Backend(object):
                                    the list, this function will return.
         timeout -- maximum time in seconds to process packets.
 
-        Raises BLED112Error if a timeout occurs.
+        exception_type -- the type of exception to raise if a timeout occurs.
+
+        Raises an exception of exception_type if a timeout occurs.
         """
         # Log
         epc_str = ""
@@ -922,7 +938,7 @@ class BLED112Backend(object):
         found = False
         while not found:
             # Read packet from serial
-            packet = self._recv_packet(timeout)
+            packet = self._recv_packet(timeout, exception_type)
             # Process packet
             self._logger.debug("got packet")
             packet_type, args = self._lib.decode_packet(packet)
@@ -938,14 +954,16 @@ class BLED112Backend(object):
         # Log
         self._logger.debug("done processing packets")
 
-    def _recv_packet(self, timeout):
+    def _recv_packet(self, timeout, exception_type):
         """
         Read from serial until a packet is received or a timeout occurs.
 
         timeout -- maximum time in seconds to process packets.
 
+        exception_type -- the type of exception to raise if a timeout occurs.
+
         Returns a list of bytes (the packet) on success.
-        Raises BLED112Error on failure.
+        Raises an exception of excption_type if a timeout occurs.
         """
         start_time = None
         if timeout is not None:
@@ -955,7 +973,7 @@ class BLED112Backend(object):
             if timeout is not None:
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= timeout:
-                    raise BLED112Error(
+                    raise exception_type(
                         "timed out after %d seconds" % elapsed_time)
             byte = self._ser.read()
             if len(byte) > 0:
