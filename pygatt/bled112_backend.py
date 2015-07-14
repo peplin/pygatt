@@ -415,16 +415,14 @@ class BLED112Backend(object):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_get_bonds,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [self._lib.PacketType.ble_rsp_sm_get_bonds])
         if self._num_bonds == 0:  # no bonds
             return
 
         # Wait for event
         while len(self._stored_bonds) < self._num_bonds:
             self._process_packets_until(
-                [self._lib.PacketType.ble_evt_sm_bond_status,
-                 self._lib.PacketType.ble_evt_connection_disconnected])
+                [self._lib.PacketType.ble_evt_sm_bond_status])
 
         # Delete bonds
         for b in reversed(self._stored_bonds):
@@ -434,8 +432,7 @@ class BLED112Backend(object):
 
             # Wait for response
             self._process_packets_until(
-                [self._lib.PacketType.ble_rsp_sm_delete_bonding,
-                 self._lib.PacketType.ble_evt_connection_disconnected])
+                [self._lib.PacketType.ble_rsp_sm_delete_bonding])
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
                                   get_return_message(self._response_return))

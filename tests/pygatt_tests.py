@@ -227,6 +227,13 @@ class BLED112_BackendTests(unittest.TestCase):
 
     # ------------------------ Packet Staging ----------------------------------
     @nottest
+    def _stage_ble_evt_connection_disconnected_by_remote_user(
+            self, bled112, connection_handle=0x00):
+        # Stage ble_evt_connection_disconnected (terminated by remote user)
+        bled112._ser.stage_output(self._ble_evt_connection_disconnected(
+            connection_handle, 0x0213))
+
+    @nottest
     def _stage_disconnect_packets(
             self, bled112, connected, fail, connection_handle=0x00):
         """Stage the packets for bled112.disconnect()."""
@@ -309,16 +316,25 @@ class BLED112_BackendTests(unittest.TestCase):
             0x0014, 0x0006, 0x0000, 0xFF))
 
     @nottest
-    def _stage_delete_stored_bonds_packets(self, bled112, bonds):
+    def _stage_delete_stored_bonds_packets(
+            self, bled112, bonds, disconnects=False):
         """bonds -- list of 8-bit integer bond handles"""
+        if disconnects:
+            self._stage_ble_evt_connection_disconnected_by_remote_user(bled112)
         # Stage ble_rsp_get_bonds
         bled112._ser.stage_output(self._ble_rsp_sm_get_bonds(len(bonds)))
         # Stage ble_evt_sm_bond_status (bond handle)
         for b in bonds:
+            if disconnects:
+                self._stage_ble_evt_connection_disconnected_by_remote_user(
+                    bled112)
             bled112._ser.stage_output(self._ble_evt_sm_bond_status(
                 b, 0x00, 0x00, 0x00))
         # Stage ble_rsp_sm_delete_bonding (success)
         for b in bonds:
+            if disconnects:
+                self._stage_ble_evt_connection_disconnected_by_remote_user(
+                    bled112)
             bled112._ser.stage_output(self._ble_rsp_sm_delete_bonding(0x0000))
 
     @nottest
@@ -619,4 +635,15 @@ class BLED112_BackendTests(unittest.TestCase):
         # Test delete stored bonds
         self._stage_delete_stored_bonds_packets(
             bled112, [0x00, 0x01, 0x02, 0x03, 0x04])
+        bled112.delete_stored_bonds()
+
+    def test_BLED112_Backend_delete_stored_bonds_disconnect(self):
+        """delete_stored_bonds shouldn't abort if disconnected."""
+        bled112 = BLED112Backend(
+            serial_port='dummy', logfile=self.null_file, run=False)
+        self._stage_run_packets(bled112)
+        bled112.run()
+        # Test delete stored bonds
+        self._stage_delete_stored_bonds_packets(
+            bled112, [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
         bled112.delete_stored_bonds()
