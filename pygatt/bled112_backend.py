@@ -88,7 +88,6 @@ class BLED112Backend(object):
         # State
         self._num_bonds = 0  # number of bonds stored on the BLED112
         self._stored_bonds = []  # bond handles stored on the BLED112
-        self._bond_handle = 0xFF  # handle for the device bond
         self._connection_handle = 0x00  # handle for the device connection
         self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
@@ -1098,7 +1097,6 @@ class BLED112Backend(object):
         """
         # Set flags, notify
         self._connection_handle = args['connection']
-        self._bond_handle = args['bonding']
         flags = ""
         if self._connection_status_flag(
                 args['flags'], connection_status_flag['connected']):
