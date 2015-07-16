@@ -602,6 +602,7 @@ class BLED112_BackendTests(unittest.TestCase):
         devs = bled112.get_devices_discovered()
         assert(addr_0_str in devs)
         assert(devs[addr_0_str].name == 'Hello!')
+        assert(devs[addr_0_str].rssi == -80)
 
     def test_BLED112_Backend_subscribe_and_wait_for_response(self):
         """subscribe/wait_for_response general functionality."""
