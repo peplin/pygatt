@@ -39,7 +39,7 @@ def reset_bluetooth_controller(hci_device='hci0', bled112=None):
         subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()
         subprocess.Popen(["sudo", "hciconfig", hci_device, "reset"]).wait()
     else:  # BLED112Backend object
-        bled112.disconnect()
+        bled112.disconnect(fail_quietly=True)
         bled112.delete_stored_bonds()
 
 
