@@ -46,6 +46,7 @@ class AdvertisingAndScanInfo(object):
     def __init__(self):
         self.name = ""
         self.address = ""
+        self.rssi = None
         self.packet_data = {
             # scan_response_packet_type[xxx]: data_dictionary,
         }
@@ -1181,6 +1182,7 @@ class BLED112Backend(object):
         if (packet_type not in dev.packet_data) or\
                 len(dev.packet_data[packet_type]) < len(data_dict):
             dev.packet_data[packet_type] = data_dict
+        dev.rssi = args['rssi']
 
         # Log
         self._logger.info("_ble_evt_gap_scan_response")
