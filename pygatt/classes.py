@@ -1,335 +1,262 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+from __future__ import print_function
 
-"""pygatt Class Definitions"""
-
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
-
-
+from binascii import unhexlify
 import logging
-import logging.handlers
-import string
 import time
-import threading
 
-from collections import defaultdict
-
-import pexpect
-
-import pygatt.constants
-import pygatt.exceptions
-import pygatt.util
+from constants import(
+    BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
+)
+from exceptions import BLED112Error
+from gatttool_classes import GATTToolBackend
 
 
 class BluetoothLEDevice(object):
-    logger = logging.getLogger('pygatt')
-    logger.setLevel(pygatt.constants.LOG_LEVEL)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(pygatt.constants.LOG_LEVEL)
-    formatter = logging.Formatter(pygatt.constants.LOG_FORMAT)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    """
+    Interface for a Bluetooth Low Energy device that can use either the Bluegiga
+    BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
+    """
+    def __init__(self, mac_address, logfile=None, hci_device='hci0',
+                 bled112=None):
+        """
+        Initialize.
 
-    GATTTOOL_PROMPT = r".*> "
+        mac_address -- a string containing the mac address of the BLE device in
+                       the following format: "XX:XX:XX:XX:XX:XX"
+        logfile -- the file in which to write the logs.
+        hci_device -- (GATTTOOL only) the hci_device for gattool to use.
+        bled112 -- (BLED112 only) the BLED112_backend object to use.
+        """
+        # Initialize
+        self._backend = None
+        self._backend_type = None
+        self._callbacks = {}  # Holds pairs of 'uuid_string', function_object
 
-    def __init__(self, mac_address, hci_device='hci0', logfile=None):
-        self.handles = {}
-        self.subscribed_handlers = {}
-        self.address = mac_address
+        # Set up logging
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(LOG_LEVEL)
+        if logfile is not None:
+            handler = logging.FileHandler(logfile)
+        else:  # print to stderr
+            handler = logging.StreamHandler()
+        formatter = logging.Formatter(fmt=LOG_FORMAT)
+        handler.setLevel(LOG_LEVEL)
+        handler.setFormatter(formatter)
+        self._logger.addHandler(handler)
 
-        self.running = True
-
-        self.lock = threading.Lock()
-
-        self.connection_lock = threading.RLock()
-
-        gatttool_cmd = ' '.join([
-            'gatttool',
-            '-b',
-            self.address,
-            '-i',
-            hci_device,
-            '-I'
-        ])
-
-        self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
-        self.con = pexpect.spawn(gatttool_cmd, logfile=logfile)
-
-        self.con.expect(r'\[LE\]>', timeout=1)
-
-        self.callbacks = defaultdict(set)
-
-        self.thread = threading.Thread(target=self.run)
-        self.thread.daemon = True
-        self.thread.start()
+        # Select backend, store mac address, optional delete bonds
+        if bled112 is not None:
+            self._logger.info("pygatt[BLED112]")
+            self._backend = bled112
+            self._backend_type = BACKEND['BLED112']
+            self._mac_address = bytearray(
+                [int(b, 16) for b in mac_address.split(":")])
+        else:
+            self._logger.info("pygatt[GATTTOOL]")
+            # TODO: how to pass pexpect logfile
+            self._backend = GATTToolBackend(mac_address, hci_device=hci_device,
+                                            loglevel=LOG_LEVEL,
+                                            loghandler=handler)
+            self._backend_type = BACKEND['GATTTOOL']
 
     def bond(self):
-        """Securely Bonds to the BLE device."""
-        self.logger.info('Bonding')
-        self.con.sendline('sec-level medium')
-        self.con.expect(self.GATTTOOL_PROMPT, timeout=1)
-
-    def connect(self, timeout=pygatt.constants.DEFAULT_CONNECT_TIMEOUT_S):
-        """Connect to the device."""
-        self.logger.info('Connecting with timeout=%s', timeout)
-        try:
-            with self.connection_lock:
-                self.con.sendline('connect')
-                self.con.expect(r'Connection successful.*\[LE\]>', timeout)
-        except pexpect.TIMEOUT:
-            message = ("Timed out connecting to %s after %s seconds."
-                       % (self.address, timeout))
-            self.logger.error(message)
-            raise pygatt.exceptions.NotConnectedError(message)
-
-    def get_handle(self, uuid):
         """
-        Look up and return the handle for an attribute by its UUID.
-
-        :param uuid: The UUID of the characteristic.
-        :type uuid: str
-        :return: None if the UUID was not found.
+        Securely Bonds to the BLE device.
         """
-        if uuid not in self.handles:
-            self.logger.debug("Looking up handle for characteristic %s", uuid)
-            with self.connection_lock:
-                self.con.sendline('characteristics')
+        self._logger.info("bond")
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.bond()
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            self._backend.bond()
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-                timeout = 2
-                while True:
-                    try:
-                        self.con.expect(
-                            r"handle: 0x([a-fA-F0-9]{4}), "
-                            "char properties: 0x[a-fA-F0-9]{2}, "
-                            "char value handle: 0x[a-fA-F0-9]{4}, "
-                            "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
-                            timeout=timeout)
-                    except pexpect.TIMEOUT:
-                        break
-                    except pexpect.EOF:
-                        break
-                    else:
-                        try:
-                            handle = int(self.con.match.group(1), 16)
-                            char_uuid = self.con.match.group(2).strip()
-                            self.handles[char_uuid] = handle
-                            self.logger.debug(
-                                "Found characteristic %s, handle: %d", uuid,
-                                handle)
-
-                            # The characteristics all print at once, so after
-                            # waiting 1-2 seconds for them to all fetch, you can
-                            # load the rest without much delay at all.
-                            timeout = .01
-                        except AttributeError:
-                            pass
-        handle = self.handles.get(uuid)
-        if handle is None:
-            message = "No characteristic found matching %s" % uuid
-            self.logger.warn(message)
-            raise pygatt.exceptions.BluetoothLEError(message)
-
-        self.logger.debug(
-            "Characteristic %s, handle: %d", uuid, handle)
-        return handle
-
-    def _expect(self, expected, timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
-        """We may (and often do) get an indication/notification before a
-        write completes, and so it can be lost if we "expect()"'d something
-        that came after it in the output, e.g.:
-
-        > char-write-req 0x1 0x2
-        Notification handle: xxx
-        Write completed successfully.
-        >
-
-        Anytime we expect something we have to expect noti/indication first for
-        a short time.
+    def connect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         """
-        with self.connection_lock:
-            patterns = [
-                expected,
-                'Notification handle = .*? \r',
-                'Indication   handle = .*? \r',
-                '.*Invalid file descriptor.*',
-                '.*Disconnected\r',
-            ]
-            while True:
-                try:
-                    matched_pattern_index = self.con.expect(patterns, timeout)
-                    if matched_pattern_index == 0:
-                        break
-                    elif matched_pattern_index in [1, 2]:
-                        self._handle_notification(self.con.after)
-                    elif matched_pattern_index in [3, 4]:
-                        if self.running:
-                            message = ("Unexpectedly disconnected - do you "
-                                       "need to clear bonds?")
-                            self.logger.error(message)
-                            self.running = False
-                        raise pygatt.exceptions.NotConnectedError()
-                except pexpect.TIMEOUT:
-                    raise pygatt.exceptions.NotificationTimeout(
-                        "Timed out waiting for a notification")
+        Connect to the BLE device.
 
-    def char_write(self, handle, value, wait_for_response=False):
+        timeout -- the length of time to try to establish a connection before
+                   returning.
+
         """
-        Writes a value to a given characteristic handle.
+        self._logger.info("connect")
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.connect(self._mac_address, timeout=timeout)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            self._backend.connect(timeout=timeout)
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-        :param handle:
-        :param value:
-        :param wait_for_response:
-        """
-        with self.connection_lock:
-            hexstring = ''.join('%02x' % byte for byte in value)
-
-            if wait_for_response:
-                cmd = 'req'
-            else:
-                cmd = 'cmd'
-
-            cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
-
-            self.logger.debug('Sending cmd=%s', cmd)
-            self.con.sendline(cmd)
-
-            if wait_for_response:
-                try:
-                    self._expect('Characteristic value written successfully')
-                except pygatt.exceptions.NoResponseError:
-                    self.logger.error("No response received", exc_info=True)
-                    raise
-
-            self.logger.info('Sent cmd=%s', cmd)
-
-    def char_read_uuid(self, uuid):
+    def char_read(self, uuid):
         """
         Reads a Characteristic by UUID.
 
-        :param uuid: UUID of Characteristic to read.
-        :type uuid: str
-        :return: bytearray of result.
-        :rtype: bytearray
+        uuid -- UUID of Characteristic to read as a string.
+
+        Returns a bytearray containing the characteristic value on success.
         """
-        with self.connection_lock:
-            self.con.sendline('char-read-uuid %s' % uuid)
-            self._expect('value: .*? \r')
+        self._logger.info("char_read %s", uuid)
+        if self._backend_type == BACKEND['BLED112']:
+            handle = self._get_handle(uuid)
+            ret = self._backend.char_read(handle)
+            return ret
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            return self._backend.char_read_uuid(uuid)
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-            rval = self.con.after.split()[1:]
-
-            return bytearray([int(x, 16) for x in rval])
-
-    def char_read_hnd(self, handle):
+    def char_write(self, uuid_write, value, wait_for_response=False,
+                   num_packets=1, uuid_recv=None, bled112_timeout=5):
         """
-        Reads a Characteristic by Handle.
+        Writes a value to a given characteristic handle.
 
-        :param handle: Handle of Characteristic to read.
-        :type handle: str
-        :return:
-        :rtype:
+        uuid -- the UUID of the characteristic to write to.
+        value -- the value as a bytearray to write to the characteristic.
+        wait_for_response -- wait for notifications/indications after writing.
+        num_packets -- (BLED112 only) the number of notification/indication BLE
+                       packets to wait for.
+        uuid_recv -- (BLED112 only) the UUID for the characteritic that will
+                     send the notification/indication packets.
+        bled112_timeout -- number of seconds to wait for notifications before
+                           timing out.
         """
-        with self.connection_lock:
-            self.con.sendline('char-read-hnd 0x%02x' % handle)
-            self._expect('descriptor: .*?\r')
+        self._logger.info("char_write %s", uuid_write)
+        # Write to the characteristic
+        if self._backend_type == BACKEND['BLED112']:
+            if wait_for_response and (num_packets <= 0):
+                raise ValueError("num_packets must be greater than 0")
+            handle_write = self._get_handle(uuid_write)
+            self._backend.char_write(handle_write, value)
+            if wait_for_response:
+                # Wait for num_packets notifications on the receive
+                #   characteristic
+                handle_recv = self._get_handle(uuid_recv)
+                notifications = self._backend.wait_for_response(
+                    handle_recv, num_packets, bled112_timeout)
+                # Assemble notification values into one bytearray
+                value_bytearray = bytearray()
+                for val in notifications:
+                    value_bytearray += val
+                # Callback for notifications
+                if uuid_recv in self._callbacks:
+                    for cb in self._callbacks[uuid_recv]:
+                        cb(value_bytearray)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            handle = self._backend.get_handle(uuid_write)
+            self._backend.char_write(handle, value,
+                                     wait_for_response=wait_for_response)
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-            rval = self.con.after.split()[1:]
+    def encrypt(self):
+        """
+        Form an encrypted, but not bonded, connection.
+        """
+        self._logger.info("encrypt")
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.encrypt()
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            raise NotImplementedError("pygatt[GATTOOL].encrypt")
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-            return [int(n, 16) for n in rval]
+    def get_rssi(self):
+        """
+        Get the receiver signal strength indicator (RSSI) value from the BLE
+        device (BLED112 only).
+
+        Returns the RSSI value in dBm on success.
+        Returns None on failure.
+        """
+        self._logger.info("get_rssi")
+        if self._backend_type == BACKEND['BLED112']:
+            # The BLED112 has some strange behavior where it will return 25 for
+            # the RSSI value sometimes... Try a maximum of 3 times.
+            for i in range(0, 3):
+                rssi = self._backend.get_rssi()
+                if rssi != 25:
+                    return rssi
+                time.sleep(0.1)
+            return BLED112Error("get rssi failed")
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            raise NotImplementedError("pygatt[GATTOOL].get_rssi")
+        else:
+            raise NotImplementedError("backend", self._backend_type)
+
+    def run(self):
+        """
+        Run a background thread to listen for notifications (GATTTOOL only).
+        """
+        self._logger.info("run")
+        if self._backend_type == BACKEND['BLED112']:
+            pass
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            self._backend.run()
+        else:
+            raise NotImplementedError("backend", self._backend_type)
+
+    def stop(self):
+        """
+        Stop the backgroud notification handler in preparation for a disconnect
+        (GATTTOOL only) or disconnect and stop the receiver thread (BLED112
+        only).
+        """
+        self._logger.info("stop")
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.disconnect(fail_quietly=True)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            self._backend.stop()
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
     def subscribe(self, uuid, callback=None, indication=False):
         """
         Enables subscription to a Characteristic with ability to call callback.
 
-        :param uuid:
-        :param callback:
-        :param indication:
-        :return:
-        :rtype:
+        uuid -- UUID as a string of the characteristic to subscribe to.
+        callback -- function to be called when a notification/indication is
+                    received on this characteristic.
+        indication -- use indications (requires application ACK) rather than
+                      notifications (does not requrie application ACK).
         """
-        self.logger.info(
-            'Subscribing to uuid=%s with callback=%s and indication=%s',
-            uuid, callback, indication)
-        definition_handle = self.get_handle(uuid)
-        # Expect notifications on the value handle...
-        value_handle = definition_handle + 1
-        # but write to the characteristic config to enable notifications
-        characteristic_config_handle = value_handle + 1
-
-        if indication:
-            properties = bytearray([0x02, 0x00])
-        else:
-            properties = bytearray([0x01, 0x00])
-
-        try:
-            self.lock.acquire()
-
+        self._logger.info("subscribe to %s with callback %s. indicate = %d",
+                          uuid, callback.__name__, indication)
+        if self._backend_type == BACKEND['BLED112']:
+            self._backend.subscribe(self._uuid_bytearray(uuid),
+                                    indicate=indication)
             if callback is not None:
-                self.callbacks[value_handle].add(callback)
+                if uuid not in self._callbacks:
+                    self._callbacks[uuid] = []
+                self._callbacks[uuid].append(callback)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            self._backend.subscribe(uuid, callback=callback,
+                                    indication=indication)
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-            if self.subscribed_handlers.get(value_handle, None) != properties:
-                self.char_write(
-                    characteristic_config_handle,
-                    properties,
-                    wait_for_response=False
-                )
-                self.logger.debug("Subscribed to uuid=%s", uuid)
-                self.subscribed_handlers[value_handle] = properties
-            else:
-                self.logger.debug("Already subscribed to uuid=%s", uuid)
-        finally:
-            self.lock.release()
-
-    def _handle_notification(self, msg):
+    def _get_handle(self, uuid):
         """
-        Receive a notification from the connected device and propagate the value
-        to all registered callbacks.
+        Get the handle associated with the UUID.
+
+        uuid -- a UUID in string format.
         """
-        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
-        handle = int(hex_handle, 16)
-        value = bytearray.fromhex(hex_value)
+        self._logger.info("_get_handle %s", uuid)
+        uuid = self._uuid_bytearray(uuid)
+        if self._backend_type == BACKEND['BLED112']:
+            return self._backend.get_handle(uuid)
+        elif self._backend_type == BACKEND['GATTTOOL']:
+            return self._backend.get_handle(uuid)
+        else:
+            raise NotImplementedError("backend", self._backend_type)
 
-        self.logger.info('Received notification on handle=%s, value=%s',
-                         hex_handle, hex_value)
-        try:
-            self.lock.acquire()
-
-            if handle in self.callbacks:
-                for callback in self.callbacks[handle]:
-                    callback(handle, value)
-        finally:
-            self.lock.release()
-
-    def stop(self):
-        """Stop the backgroud notification handler in preparation for a
-        disconnect.
+    def _uuid_bytearray(self, uuid):
         """
-        self.logger.info('Stopping')
-        self.running = False
+        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+        to a bytearray.
 
-        if self.con.isalive():
-            self.con.sendline('exit')
-            while True:
-                if not self.con.isalive():
-                    break
-                time.sleep(0.1)
-            self.con.close()
+        uuid -- the UUID to convert.
 
-    def run(self):
-        """Run a background thread to listen for notifications.
+        Returns a bytearray containing the UUID.
         """
-        self.logger.info('Running...')
-        while self.running:
-            with self.connection_lock:
-                try:
-                    self._expect("fooooooo", timeout=.1)
-                except pygatt.exceptions.NotificationTimeout:
-                    pass
-                except (pygatt.exceptions.NotConnectedError, pexpect.EOF):
-                    break
-            # TODO need some delay to avoid aggresively grabbing the lock,
-            # blocking out the others. worst case is 1 second delay for async
-            # not received as a part of another request
-            time.sleep(.01)
-        self.logger.info("Listener thread finished")
+        self._logger.info("_uuid_bytearray %s", uuid)
+        return unhexlify(uuid.replace("-", ""))

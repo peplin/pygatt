@@ -9,3 +9,9 @@ nosetests.xml
 pylint.log
 .idea/
 dist/
+# Vim
+*.swp
+# Log files
+*.log
+# test file
+pygatt/bluegiga/test.py

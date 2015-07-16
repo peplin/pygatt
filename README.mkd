@@ -1,0 +1,51 @@
+#pygatt - Python Module for Bluetooth LE Generic Attribute Profile (GATT).
+
+This Module allows reading and writing to GATT descriptors on devices such as
+fitness trackers, sensors, and anything implementing standard GATT Descriptor behavior.
+
+pygatt provides a Pythonic API by wrapping two different backends:
+* BlueZ's `gatttool` command-line utility.
+* Bluegiga's BGLib for the BLED112.
+
+
+##Motivation
+
+`gatttool` has an interactive mode but it is difficult to use programatically.
+Ideally we could use BlueZ directly, but that's a much bigger task.
+
+`gatttool` is not cross platform so using the BLED112 backend allows for a cross platform solution.
+
+
+## Dependencies
+* Currently the gatttool backend is currently only tested under Linux as it requires `gatttool` which is included with BlueZ which is a Linux library.
+* BlueZ >= 5.5
+    * Tested on 5.18 and 5.21
+    * Ubuntu is stuck on BlueZ 4.x and does not work - you need to build BlueZ
+      from source.
+* The BLED112 backend should work on Linux, Windows, and Mac OS.
+
+
+## Installation
+With BLED112 backend:
+* Install via pip: `$ pip install pygatt`
+
+With BLED112 backend + GATTTOOL backend:
+* Install via pip: `$ pip install pygatt[GATTTOOL]`
+
+
+##Author
+Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
+
+Derived from the work of several others, see NOTICE.
+
+
+##License
+Apache License, Version 2.0 and MIT License. See LICENSE.
+
+
+##Copyright
+Copyright 2015 Stratos Inc.
+
+
+##Source
+https://github.com/stratosinc/pygatt

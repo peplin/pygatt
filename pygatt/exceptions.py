@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Exceptions for pygatt Module.
 """
@@ -25,4 +22,8 @@ class NotificationTimeout(BluetoothLEError):
 
 
 class NoResponseError(BluetoothLEError):
+    pass
+
+
+class BLED112Error(BluetoothLEError):
     pass
