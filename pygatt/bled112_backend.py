@@ -1157,7 +1157,8 @@ class BLED112Backend(object):
         """
         # Parse packet
         packet_type = scan_response_packet_type[args['packet_type']]
-        address = ":".join(list(reversed([hex(b)[2:] for b in args['sender']])))
+        address = ":".join(list(reversed(
+            [format(b, '02x') for b in args['sender']])))
         address_type = "unknown"
         for name, value in ble_address_type.iteritems():
             if value == args['address_type']:
