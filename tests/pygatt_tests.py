@@ -213,8 +213,8 @@ class BLED112_BackendTests(unittest.TestCase):
         # the first byte of data must be the length of data
         assert((len(data) > 0) and (data[0] == len(data)))
         return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 10 + len(data),
-                    0x06, 0x00, rssi, packet_type, bd_addr[0], bd_addr[1],
-                    bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5], addr_type,
+                    0x06, 0x00, rssi, packet_type, bd_addr[5], bd_addr[4],
+                    bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], addr_type,
                     bond, b''.join(chr(i) for i in data))
 
     @nottest
