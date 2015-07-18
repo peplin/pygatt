@@ -2,8 +2,10 @@ from __future__ import print_function
 
 from binascii import hexlify
 import logging
+import Queue
 import serial
 import time
+import threading
 
 import bled112_bglib
 from bled112_error import get_return_message
@@ -15,7 +17,7 @@ from bled112_constants import(
     scan_response_packet_type
 )
 from constants import LOG_FORMAT, LOG_LEVEL
-from exceptions import BLED112Error, NotConnectedError, NoResponseError
+from exceptions import BLED112Error, NotConnectedError
 
 
 class Characteristic(object):
@@ -86,7 +88,18 @@ class BLED112Backend(object):
                                         loglevel=LOG_LEVEL)
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
+        self._recvr_thread = threading.Thread(target=self._recv_packets)
+        self._recvr_thread_stop = threading.Event()
+        self._recvr_queue = Queue.Queue()  # buffer for packets received
+
+        # State that is locked
+        self._lock = threading.Lock()
+        self._callbacks = {
+            # atttribute handle: callback function
+        }
+
         # State
+        self._expected_attribute_handle = None  # expected handle after a read
         self._num_bonds = 0  # number of bonds stored on the BLED112
         self._stored_bonds = []  # bond handles stored on the BLED112
         self._connection_handle = 0x00  # handle for the device connection
@@ -100,10 +113,6 @@ class BLED112Backend(object):
         }
         self._characteristics_cached = False  # characteristics already found
         self._current_characteristic = None  # used in char/descriptor discovery
-        self._expected_attribute_handle = None  # expected handle after a read
-        self._notifications = {  # stores notification packet contents
-            # handle: [value_bytearray0, ...]
-        }
 
         # Flags
         self._event_return = 0  # event return code
@@ -632,8 +641,11 @@ class BLED112Backend(object):
 
     def run(self):
         """
-        Put the BLED112 into a known state to start.
+        Put the BLED112 into a known state to start. And start the recvr thread.
         """
+        self._recvr_thread_stop.clear()
+        self._recvr_thread.start()
+
         # Disconnect any connections
         self.disconnect(fail_quietly=True)
 
@@ -735,19 +747,21 @@ class BLED112Backend(object):
                               get_return_message(self._response_return))
             raise BLED112Error("gap end procedure failed")
 
-    def subscribe(self, characteristic_uuid, indicate=False):
+    def subscribe(self, characteristic_uuid, callback=None, indicate=False):
         """
         Ask GATT server to receive notifications from the characteristic.
 
         This requires that a connection is already established with the device.
 
         characteristic_uuid -- the uuid of the characteristic to subscribe to.
+        callback -- funtion to call when notified/indicated.
         indicate -- receive indications (requires application ACK) rather than
                     notifications (does not require application ACK).
 
         Raises BLED112Error on failure.
         """
         # Get client_characteristic_configuration descriptor handle
+        uuid_handle = self.get_handle(characteristic_uuid)
         handle = self.get_handle(
             characteristic_uuid,
             gatt_characteristic_descriptor_uuid[
@@ -760,45 +774,11 @@ class BLED112Backend(object):
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(handle, config_val)
 
-    def wait_for_response(self, handle, num_packets, timeout):
-        """
-        Process packets until the specified number of  notification/indication
-        packets are received from the specified attribute handle.
+        if callback is not None:
+            self._callbacks[uuid_handle] = callback
 
-        handle -- attribute handle to receive packets from.
-        num_packets -- number of packets to wait to receive.
-        timeout -- how many seconds to wait before timing out if not enough
-                   packets received.
-
-        Returns a list of (list of bytes containting the data received) on
-        success.
-        Raises BLED112Error or NoResponseError on failure.
-        """
-        # Make sure there is a connection
-        self._check_connection()
-
-        # Log
-        self._logger.debug("wait for %d packets from %04x" % (num_packets,
-                           handle))
-
-        # Clear existing unhandled notifications on this handle
-        self._notifications[handle] = []
-
-        # Process packets until the desired number received
-        while (num_packets > len(self._notifications[handle])) and\
-              (self._connected):
-            self._process_packets_until(
-                [self._lib.PacketType.ble_evt_connection_disconnected,
-                 self._lib.PacketType.ble_evt_attclient_attribute_value],
-                timeout=timeout, exception_type=NoResponseError)
-            self._check_connection()
-            self._logger.debug("len(self._notifications[handle]) = %d" %
-                               len(self._notifications[handle]))
-
-        # Get the packet values
-        packet_values = self._notifications[handle]
-
-        return packet_values
+    def stop(self):
+        self._recvr_thread_stop.set()
 
     def _check_connection(self, check_if_connected=True):
         """
@@ -936,10 +916,19 @@ class BLED112Backend(object):
             epc_str += '{0} '.format(pt)
         self._logger.info("process packets until " + epc_str)
 
+        start_time = None
+        if timeout is not None:
+            start_time = time.time()
+
         found = False
         while not found:
-            # Read packet from serial
-            packet = self._recv_packet(timeout, exception_type)
+            if timeout is not None:
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= timeout:
+                    raise exception_type(
+                        "timed out after %d seconds" % elapsed_time)
+            # Get packet from queue
+            packet = self._recvr_queue.get(block=True, timeout=0.1)
             # Process packet
             self._logger.debug("got packet")
             packet_type, args = self._lib.decode_packet(packet)
@@ -955,32 +944,38 @@ class BLED112Backend(object):
         # Log
         self._logger.debug("done processing packets")
 
-    def _recv_packet(self, timeout, exception_type):
+    def _recv_packets(self):
         """
-        Read from serial until a packet is received or a timeout occurs.
-
-        timeout -- maximum time in seconds to process packets.
-
-        exception_type -- the type of exception to raise if a timeout occurs.
-
-        Returns a list of bytes (the packet) on success.
-        Raises an exception of excption_type if a timeout occurs.
+        Read bytes from serial and enqueue the packets if the packet is not a.
+        Stops if the self._recvr_thread_stop event is set.
         """
-        start_time = None
-        if timeout is not None:
-            start_time = time.time()
-        packet = None
-        while packet is None:
-            if timeout is not None:
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= timeout:
-                    raise exception_type(
-                        "timed out after %d seconds" % elapsed_time)
+        att_value = self._lib.PacketType.ble_evt_attclient_attribute_value
+        while not self._recvr_thread_stop.is_set():
             byte = self._ser.read()
             if len(byte) > 0:
                 byte = ord(byte)
                 packet = self._lib.parse_byte(byte)
-        return packet
+                if packet is not None:
+                    packet_type, args = self._lib.decode_packet(packet)
+                    self._lock.acquire()
+                    handles_subscribed_to = self._callbacks.keys()
+                    self._lock.release()
+                    if packet_type != att_value:
+                        self._recvr_queue.put(packet, block=True, timeout=0.1)
+                    elif args['atthandle'] in handles_subscribed_to:
+                        # This is a notification/indication. Handle now.
+                        self._lock.acquire()
+                        callback_exists = (args['atthandle'] in self._callbacks)
+                        self._lock.release()
+                        if callback_exists:
+                            self._logger.debug(
+                                "Calling callback " +
+                                self._callbacks[args['atthandle']].__name__)
+                            threading.Thread(
+                                target=self._callbacks[args['atthandle']],
+                                args=(bytearray(args['value']),)).start()
+                    else:
+                        self._recvr_queue.put(packet, block=True, timeout=0.1)
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, args):
@@ -1002,14 +997,9 @@ class BLED112Backend(object):
                 attribute handle ('atthandle'), attribute type ('type'),
                 and attribute value ('value')
         """
-        # Check if notification packet
-        if self._expected_attribute_handle != args['atthandle']:
-            self._notifications[args['atthandle']].append(
-                bytearray(args['value']))
-        else:
-            # Set flags, record info
-            self._attribute_value_received = True
-            self._attribute_value = args['value']
+        # Set flags, record info
+        self._attribute_value_received = True
+        self._attribute_value = args['value']
 
         # Log
         self._logger.info("_ble_evt_attclient_attriute_value")
@@ -1058,7 +1048,6 @@ class BLED112Backend(object):
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[hexlify(uuid)] = new_char
-            self._notifications[new_char.handle] = []
 
     def _ble_evt_attclient_procedure_completed(self, args):
         """
