@@ -922,13 +922,18 @@ class BLED112Backend(object):
 
         found = False
         while not found:
-            if timeout is not None:
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= timeout:
-                    raise exception_type(
-                        "timed out after %d seconds" % elapsed_time)
             # Get packet from queue
-            packet = self._recvr_queue.get(block=True, timeout=0.1)
+            packet = None
+            try:
+                packet = self._recvr_queue.get(block=True, timeout=0.1)
+            except Queue.Empty:
+                if timeout is not None:
+                    elapsed_time = time.time() - start_time
+                    if elapsed_time >= timeout:
+                        raise exception_type(
+                            "timed out after %d seconds" % elapsed_time)
+                    continue
+
             # Process packet
             self._logger.debug("got packet")
             packet_type, args = self._lib.decode_packet(packet)
