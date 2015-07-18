@@ -182,6 +182,7 @@ class BluetoothLEDevice(object):
         self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.disconnect(fail_quietly=True)
+            self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.stop()
         else:
