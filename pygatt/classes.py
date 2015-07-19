@@ -125,6 +125,11 @@ class BluetoothLEDevice(object):
                             timeout = .01
                         except AttributeError:
                             pass
+
+        if len(self.handles) == 0:
+            raise pygatt.exceptions.BluetoothLEError(
+                "No characteristics found - disconnected unexpectedly?")
+
         handle = self.handles.get(uuid)
         if handle is None:
             message = "No characteristic found matching %s" % uuid
@@ -169,7 +174,7 @@ class BluetoothLEDevice(object):
                                        "need to clear bonds?")
                             self.logger.error(message)
                             self.running = False
-                        raise pygatt.exceptions.NotConnectedError()
+                        raise pygatt.exceptions.NotConnectedError(message)
                 except pexpect.TIMEOUT:
                     raise pygatt.exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
