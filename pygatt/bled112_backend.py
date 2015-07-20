@@ -775,7 +775,9 @@ class BLED112Backend(object):
         self.char_write(handle, config_val)
 
         if callback is not None:
+            self._lock.acquire()
             self._callbacks[uuid_handle] = callback
+            self._lock.release()
 
     def stop(self):
         self._recvr_thread_stop.set()
@@ -962,22 +964,23 @@ class BLED112Backend(object):
                 packet = self._lib.parse_byte(byte)
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
+
                     self._lock.acquire()
-                    handles_subscribed_to = self._callbacks.keys()
+                    callbacks = dict(self._callbacks)
                     self._lock.release()
+                    handles_subscribed_to = callbacks.keys()
+
                     if packet_type != att_value:
                         self._recvr_queue.put(packet, block=True, timeout=0.1)
                     elif args['atthandle'] in handles_subscribed_to:
                         # This is a notification/indication. Handle now.
-                        self._lock.acquire()
-                        callback_exists = (args['atthandle'] in self._callbacks)
-                        self._lock.release()
+                        callback_exists = (args['atthandle'] in callbacks)
                         if callback_exists:
                             self._logger.debug(
                                 "Calling callback " +
-                                self._callbacks[args['atthandle']].__name__)
+                                callbacks[args['atthandle']].__name__)
                             threading.Thread(
-                                target=self._callbacks[args['atthandle']],
+                                target=callbacks[args['atthandle']],
                                 args=(bytearray(args['value']),)).start()
                     else:
                         self._recvr_queue.put(packet, block=True, timeout=0.1)
