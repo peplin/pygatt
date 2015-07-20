@@ -7,6 +7,8 @@ import platform
 import Queue
 import unittest
 from struct import pack
+import threading
+import time
 
 from pygatt.bled112_backend import BLED112Backend
 
@@ -34,7 +36,7 @@ class SerialMock(object):
         # Note: if we want to check the incoming packets, uncomment this
         # try:
         #    expected_packet = self._expected_input_queue.get_nowait()
-        #    assert(input_data == expected_packet)
+        #    assert_equal(input_data, expected_packet)
         # except Queue.Empty:
         #    raise Exception("MockSerial._expected_input_queue was empty")
 
@@ -211,8 +213,8 @@ class BLED112_BackendTests(unittest.TestCase):
         # the first byte of data must be the length of data
         assert((len(data) > 0) and (data[0] == len(data)))
         return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 10 + len(data),
-                    0x06, 0x00, rssi, packet_type, bd_addr[0], bd_addr[1],
-                    bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5], addr_type,
+                    0x06, 0x00, rssi, packet_type, bd_addr[5], bd_addr[4],
+                    bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], addr_type,
                     bond, b''.join(chr(i) for i in data))
 
     @nottest
@@ -411,7 +413,7 @@ class BLED112_BackendTests(unittest.TestCase):
                                        connection_handle=connection_handle)
 
     @nottest
-    def _stage_wait_for_response_packets(
+    def _stage_indication_packets(
             self, bled112, handle, packet_values, connection_handle=0x00):
         # Stage ble_evt_attclient_attribute_value
         for value in packet_values:
@@ -432,219 +434,275 @@ class BLED112_BackendTests(unittest.TestCase):
         """run general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        # Test run
-        self._stage_run_packets(bled112)
-        bled112.run()
+        try:
+            # Test run
+            self._stage_run_packets(bled112)
+            bled112.run()
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_connect(self):
         """connect general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        # Test connect
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test connect
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_disconnect_when_connected(self):
         """disconnect general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test disconnect (connected, not fail)
-        self._stage_disconnect_packets(bled112, True, False)
-        bled112.disconnect()
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test disconnect (connected, not fail)
+            self._stage_disconnect_packets(bled112, True, False)
+            bled112.disconnect()
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_char_read(self):
         """read general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        uuid_char = '01234567-0123-0123-0123-0123456789AB'
-        handle_char = 0x1234
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self._stage_get_handle_packets(bled112, [
-            uuid_char, handle_char,
-            uuid_desc, handle_desc])
-        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
-        # Test char_read
-        expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
-        self._stage_char_read_packets(bled112, handle, 0x00, expected_value)
-        value = bled112.char_read(handle)
-        assert(value == bytearray(expected_value))
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            uuid_char = '01234567-0123-0123-0123-0123456789AB'
+            handle_char = 0x1234
+            uuid_desc = '2902'
+            handle_desc = 0x5678
+            self._stage_get_handle_packets(bled112, [
+                uuid_char, handle_char,
+                uuid_desc, handle_desc])
+            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            # Test char_read
+            expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
+            self._stage_char_read_packets(bled112, handle, 0x00, expected_value)
+            value = bled112.char_read(handle)
+            assert(value == bytearray(expected_value))
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_char_write(self):
         """char_write general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        uuid_char = '01234567-0123-0123-0123-0123456789AB'
-        handle_char = 0x1234
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self._stage_get_handle_packets(bled112, [
-            uuid_char, handle_char,
-            uuid_desc, handle_desc])
-        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
-        # Test char_write
-        value = [0xF0, 0x0F, 0x00]
-        self._stage_char_write_packets(bled112, handle, value)
-        bled112.char_write(handle, bytearray(value))
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            uuid_char = '01234567-0123-0123-0123-0123456789AB'
+            handle_char = 0x1234
+            uuid_desc = '2902'
+            handle_desc = 0x5678
+            self._stage_get_handle_packets(bled112, [
+                uuid_char, handle_char,
+                uuid_desc, handle_desc])
+            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            # Test char_write
+            value = [0xF0, 0x0F, 0x00]
+            self._stage_char_write_packets(bled112, handle, value)
+            bled112.char_write(handle, bytearray(value))
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_encrypt(self):
         """encrypt general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test encrypt
-        self._stage_encrypt_packets(
-            bled112, address, ['connected', 'encrypted'])
-        bled112.encrypt()
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test encrypt
+            self._stage_encrypt_packets(
+                bled112, address, ['connected', 'encrypted'])
+            bled112.encrypt()
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_bond(self):
         """bond general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test encrypt
-        self._stage_bond_packets(
-            bled112, address, ['connected', 'encrypted',
-                               'parameters_change'])
-        bled112.bond()
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test encrypt
+            self._stage_bond_packets(
+                bled112, address, ['connected', 'encrypted',
+                                   'parameters_change'])
+            bled112.bond()
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_get_rssi(self):
         """get_rssi general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test get_rssi
-        self._stage_get_rssi_packets(bled112)
-        assert(bled112.get_rssi() == -80)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test get_rssi
+            self._stage_get_rssi_packets(bled112)
+            assert(bled112.get_rssi() == -80)
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_get_handle(self):
         """get_handle general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test get_handle
-        uuid_char = '01234567-0123-0123-0123-0123456789AB'
-        handle_char = 0x1234
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self._stage_get_handle_packets(bled112, [
-            uuid_char, handle_char,
-            uuid_desc, handle_desc])
-        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
-        assert(handle == handle_char)
-        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
-                                    self._uuid_str_to_bytearray(uuid_desc))
-        assert(handle == handle_desc)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test get_handle
+            uuid_char = '01234567-0123-0123-0123-0123456789AB'
+            handle_char = 0x1234
+            uuid_desc = '2902'
+            handle_desc = 0x5678
+            self._stage_get_handle_packets(bled112, [
+                uuid_char, handle_char,
+                uuid_desc, handle_desc])
+            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            assert(handle == handle_char)
+            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
+                                        self._uuid_str_to_bytearray(uuid_desc))
+            assert(handle == handle_desc)
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_scan_and_get_devices_discovered(self):
         """scan/get_devices_discovered general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        # Test scan
-        scan_responses = []
-        addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        addr_0_str = ":".join([hex(b)[2:] for b in addr_0])
-        scan_responses.append({
-            'rssi': -80,
-            'packet_type': 0,
-            'bd_addr': addr_0,
-            'addr_type': 0x00,
-            'bond': 0xFF,
-            'data': [0x07, 0x09, ord('H'), ord('e'), ord('l'),
-                     ord('l'), ord('o'), ord('!')]
-        })
-        self._stage_scan_packets(bled112, scan_responses=scan_responses)
-        bled112.scan()
-        devs = bled112.get_devices_discovered()
-        assert(addr_0_str in devs)
-        assert(devs[addr_0_str].name == 'Hello!')
-        assert(devs[addr_0_str].rssi == -80)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test scan
+            scan_responses = []
+            addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            addr_0_str = ":".join([hex(b)[2:] for b in addr_0])
+            scan_responses.append({
+                'rssi': -80,
+                'packet_type': 0,
+                'bd_addr': addr_0,
+                'addr_type': 0x00,
+                'bond': 0xFF,
+                'data': [0x07, 0x09, ord('H'), ord('e'), ord('l'),
+                         ord('l'), ord('o'), ord('!')]
+            })
+            self._stage_scan_packets(bled112, scan_responses=scan_responses)
+            bled112.scan()
+            devs = bled112.get_devices_discovered()
+            assert(addr_0_str in devs)
+            assert(devs[addr_0_str].name == 'Hello!')
+            assert(devs[addr_0_str].rssi == -80)
+        finally:
+            bled112.stop()
 
-    def test_BLED112_Backend_subscribe_and_wait_for_response(self):
-        """subscribe/wait_for_response general functionality."""
+    def test_BLED112_Backend_subscribe_with_notify(self):
+        """subscribe with notify general functionality."""
+        class NotificationHandler(object):
+            def __init__(self, expected_value_bytearray):
+                self.expected_value_bytearray = expected_value_bytearray
+                self.received_value_bytearray = None
+                self.called = threading.Event()
+
+            def handle(self, received_value_bytearray):
+                self.received_value_bytearray = received_value_bytearray
+                self.called.set()
+
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self._stage_connect_packets(
-            bled112, address, ['connected', 'completed'])
-        bled112.connect(bytearray(address))
-        # Test subscribe
-        handle = 0x1234
-        uuid = '01234567-0123-0123-0123-0123456789AB'
-        self._stage_subscribe_packets(bled112, uuid, handle)
-        bled112.subscribe(self._uuid_str_to_bytearray(uuid))
-        # Test wait for response
-        packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
-        self._stage_wait_for_response_packets(
-            bled112, handle, packet_values)
-        packet_values_received = bled112.wait_for_response(
-            handle, len(packet_values), 5)
-        assert(packet_values_received == packet_values)
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_connect_packets(
+                bled112, address, ['connected', 'completed'])
+            bled112.connect(bytearray(address))
+            # Test subscribe with indications
+            packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
+            my_handler = NotificationHandler(packet_values[0])
+            handle = 0x1234
+            uuid = '01234567-0123-0123-0123-0123456789AB'
+            self._stage_subscribe_packets(bled112, uuid, handle)
+            bled112.subscribe(self._uuid_str_to_bytearray(uuid),
+                              callback=my_handler.handle, indicate=True)
+            start_time = time.time()
+            self._stage_indication_packets(bled112, handle, packet_values)
+            while not my_handler.called.is_set():
+                elapsed_time = start_time - time.time()
+                if elapsed_time >= 5:
+                    raise Exception("Callback wasn't called after {0} seconds."
+                                    .format(elapsed_time))
+            print([b for b in my_handler.expected_value_bytearray])
+            print([b for b in my_handler.received_value_bytearray])
+            assert(my_handler.expected_value_bytearray ==
+                   my_handler.received_value_bytearray)
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_delete_stored_bonds(self):
         """delete_stored_bonds general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        # Test delete stored bonds
-        self._stage_delete_stored_bonds_packets(
-            bled112, [0x00, 0x01, 0x02, 0x03, 0x04])
-        bled112.delete_stored_bonds()
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test delete stored bonds
+            self._stage_delete_stored_bonds_packets(
+                bled112, [0x00, 0x01, 0x02, 0x03, 0x04])
+            bled112.delete_stored_bonds()
+        finally:
+            bled112.stop()
 
     def test_BLED112_Backend_delete_stored_bonds_disconnect(self):
         """delete_stored_bonds shouldn't abort if disconnected."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        self._stage_run_packets(bled112)
-        bled112.run()
-        # Test delete stored bonds
-        self._stage_delete_stored_bonds_packets(
-            bled112, [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
-        bled112.delete_stored_bonds()
+        try:
+            self._stage_run_packets(bled112)
+            bled112.run()
+            # Test delete stored bonds
+            self._stage_delete_stored_bonds_packets(
+                bled112, [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
+            bled112.delete_stored_bonds()
+        finally:
+            bled112.stop()

@@ -30,7 +30,6 @@ class BluetoothLEDevice(object):
         # Initialize
         self._backend = None
         self._backend_type = None
-        self._callbacks = {}  # Holds pairs of 'uuid_string', function_object
 
         # Set up logging
         self._logger = logging.getLogger(__name__)
@@ -105,42 +104,21 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    def char_write(self, uuid_write, value, wait_for_response=False,
-                   num_packets=1, uuid_recv=None, bled112_timeout=5):
+    def char_write(self, uuid_write, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
 
         uuid -- the UUID of the characteristic to write to.
         value -- the value as a bytearray to write to the characteristic.
-        wait_for_response -- wait for notifications/indications after writing.
-        num_packets -- (BLED112 only) the number of notification/indication BLE
-                       packets to wait for.
-        uuid_recv -- (BLED112 only) the UUID for the characteritic that will
-                     send the notification/indication packets.
-        bled112_timeout -- number of seconds to wait for notifications before
-                           timing out.
+        wait_for_response -- wait for response after writing (GATTTOOL only).
         """
         self._logger.info("char_write %s", uuid_write)
         # Write to the characteristic
         if self._backend_type == BACKEND['BLED112']:
-            if wait_for_response and (num_packets <= 0):
-                raise ValueError("num_packets must be greater than 0")
+            if wait_for_response:
+                raise NotImplementedError("bled112 subscribe wait for response")
             handle_write = self._get_handle(uuid_write)
             self._backend.char_write(handle_write, value)
-            if wait_for_response:
-                # Wait for num_packets notifications on the receive
-                #   characteristic
-                handle_recv = self._get_handle(uuid_recv)
-                notifications = self._backend.wait_for_response(
-                    handle_recv, num_packets, bled112_timeout)
-                # Assemble notification values into one bytearray
-                value_bytearray = bytearray()
-                for val in notifications:
-                    value_bytearray += val
-                # Callback for notifications
-                if uuid_recv in self._callbacks:
-                    for cb in self._callbacks[uuid_recv]:
-                        cb(value_bytearray)
         elif self._backend_type == BACKEND['GATTTOOL']:
             handle = self._backend.get_handle(uuid_write)
             self._backend.char_write(handle, value,
@@ -204,6 +182,7 @@ class BluetoothLEDevice(object):
         self._logger.info("stop")
         if self._backend_type == BACKEND['BLED112']:
             self._backend.disconnect(fail_quietly=True)
+            self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.stop()
         else:
@@ -223,11 +202,7 @@ class BluetoothLEDevice(object):
                           uuid, callback.__name__, indication)
         if self._backend_type == BACKEND['BLED112']:
             self._backend.subscribe(self._uuid_bytearray(uuid),
-                                    indicate=indication)
-            if callback is not None:
-                if uuid not in self._callbacks:
-                    self._callbacks[uuid] = []
-                self._callbacks[uuid].append(callback)
+                                    callback=callback, indicate=indication)
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.subscribe(uuid, callback=callback,
                                     indication=indication)
