@@ -116,7 +116,8 @@ class BluetoothLEDevice(object):
                             char_uuid = self.con.match.group(2).strip()
                             self.handles[char_uuid] = handle
                             self.logger.debug(
-                                "Found characteristic %s, handle: %d", uuid,
+                                "Found characteristic %s, handle: %d",
+                                char_uuid,
                                 handle)
 
                             # The characteristics all print at once, so after
