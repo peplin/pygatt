@@ -617,7 +617,7 @@ class BLED112_BackendTests(unittest.TestCase):
             # Test scan
             scan_responses = []
             addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-            addr_0_str = ":".join([hex(b)[2:] for b in addr_0])
+            addr_0_str = ':'.join('%02x' % b for b in addr_0)
             scan_responses.append({
                 'rssi': -80,
                 'packet_type': 0,
