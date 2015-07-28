@@ -74,10 +74,9 @@ class GATTToolBackend(object):
             '-I'
         ])
         self._logger.debug('gatttool_cmd=%s', gatttool_cmd)
-        if gatttool_logfile is None:
-            self._con = pexpect.spawn(gatttool_cmd)
-        else:
-            self._con = pexpect.spawn(gatttool_cmd, logfile=gatttool_logfile)
+        self._con = pexpect.spawn(
+            gatttool_cmd,
+            logfile=gatttool_logfile if gatttool_logfile else None)
         # Wait for response
         self._con.expect(r'\[LE\]>', timeout=1)
 
