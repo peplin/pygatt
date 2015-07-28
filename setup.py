@@ -1,18 +1,11 @@
-"""
-Setup for the APRS Python Module.
-Source:: https://github.com/ampledata/aprs
-"""
-
+import os
+import sys
 
 __title__ = 'pygatt'
 __version__ = '1.0.1'
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
 __copyright__ = 'Copyright 2015 Orion Labs'
-
-
-import os
-import sys
 
 try:
     from setuptools import setup
@@ -28,7 +21,6 @@ def publish():
 
 
 publish()
-
 
 setup(
     name='pygatt',
