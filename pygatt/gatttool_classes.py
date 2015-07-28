@@ -147,7 +147,7 @@ class GATTToolBackend(object):
                         except AttributeError:
                             pass
 
-        if len(self.handles) == 0:
+        if len(self._handles) == 0:
             raise exceptions.BluetoothLEError(
                 "No characteristics found - disconnected unexpectedly?")
 
