@@ -170,6 +170,7 @@ class BluetoothLEDevice(object):
                     elif matched_pattern_index in [1, 2]:
                         self._handle_notification(self.con.after)
                     elif matched_pattern_index in [3, 4]:
+                        message = ""
                         if self.running:
                             message = ("Unexpectedly disconnected - do you "
                                        "need to clear bonds?")
