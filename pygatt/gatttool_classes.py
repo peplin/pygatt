@@ -211,6 +211,11 @@ class GATTToolBackend(object):
         with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
 
+            # The "write" handle as numbered in gatttol is the base handle
+            # number + 1 - this may or may not be gatttool/BlueZ specific. IF it
+            # is, this logic can be moved up 1 level.
+            handle += 1
+
             if wait_for_response:
                 cmd = 'req'
             else:
