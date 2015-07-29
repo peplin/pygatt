@@ -74,7 +74,7 @@ Apache License, Version 2.0. See LICENSE.
 
 Copyright
 ----
-Copyright 2015 Orion Labs
+Copyright 2015 Orion Labs, Inc.
 
 
 Source

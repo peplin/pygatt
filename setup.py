@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-Setup for the APRS Python Module.
-Source:: https://github.com/ampledata/aprs
+Setup for the PYGatt Python Module.
+Source:: https://github.com/ampledata/pygatt
 """
 
 
 __title__ = 'pygatt'
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
+__copyright__ = 'Copyright 2015 Orion Labs, Inc.'
 
 
 import os

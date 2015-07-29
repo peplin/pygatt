@@ -1,5 +1,6 @@
 This version of pygatt is derived from the work of:
 
+- blark @blark https://github.com/blark
 - Christopher Peplin @peplin https://github.com/stratosinc/pygatt
 - Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi

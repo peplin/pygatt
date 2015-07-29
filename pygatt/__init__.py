@@ -9,7 +9,7 @@ pygatt Python Module.
 
 
 :author: Greg Albrecht <gba@orionlabs.co>
-:copyright: Copyright 2015 Orion Labs
+:copyright: Copyright 2015 Orion Labs, Inc.
 :license: Apache License, Version 2.0
 :source: <https://github.com/ampledata/pygatt>
 
