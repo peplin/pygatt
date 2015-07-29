@@ -38,7 +38,7 @@ class BluetoothLEDevice(object):
     logger.addHandler(console_handler)
     logger.propagate = False
 
-    def __init__(self, mac_address, hci_device='hci0'):
+    def __init__(self, mac_address, hci_device='hci0', app_options=''):
         self.handles = {}
         self.subscribed_handlers = {}
 
@@ -48,14 +48,15 @@ class BluetoothLEDevice(object):
 
         self.connection_lock = threading.RLock()
 
-        gatttool_cmd = ' '.join([
+        gatttool_cmd = ' '.join(filter(None, [
             'gatttool',
+            app_options,
             '-b',
             mac_address,
             '-i',
             hci_device,
             '-I'
-        ])
+        ]))
 
         self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
         self.con = pexpect.spawn(gatttool_cmd)
@@ -93,6 +94,11 @@ class BluetoothLEDevice(object):
         except pexpect.TIMEOUT:
             raise pygatt.exceptions.BluetoothLEError(
                 "Timed-out connecting to device after %s seconds." % timeout)
+
+    def disconnect(self):
+        """Send gatttool disconnect command"""
+        self.logger.info('Disconnecting...')
+        self.con.sendline('disconnect')
 
     def get_handle(self, uuid):
         """
@@ -182,7 +188,7 @@ class BluetoothLEDevice(object):
 
             self.logger.debug('Sent cmd=%s', cmd)
 
-    def char_read_uuid(self, uuid):
+    def char_read_uuid(self, uuid, timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """
         Reads a Characteristic by UUID.
 
@@ -193,13 +199,14 @@ class BluetoothLEDevice(object):
         """
         with self.connection_lock:
             self.con.sendline('char-read-uuid %s' % uuid)
-            self._expect('value: .*? \r')
+            self._expect('value: .*? \r', timeout)
 
             rval = self.con.after.split()[1:]
 
             return bytearray([int(x, 16) for x in rval])
 
-    def char_read_hnd(self, handle):
+    def char_read_hnd(self, handle,
+                      timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """
         Reads a Characteristic by Handle.
 
@@ -210,7 +217,7 @@ class BluetoothLEDevice(object):
         """
         with self.connection_lock:
             self.con.sendline('char-read-hnd 0x%02x' % handle)
-            self._expect('descriptor: .*?\r')
+            self._expect('descriptor: .*?\r', timeout)
 
             rval = self.con.after.split()[1:]
 
