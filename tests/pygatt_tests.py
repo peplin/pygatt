@@ -33,12 +33,6 @@ class SerialMock(object):
 
     def write(self, input_data):
         pass
-        # Note: if we want to check the incoming packets, uncomment this
-        # try:
-        #    expected_packet = self._expected_input_queue.get_nowait()
-        #    assert_equal(input_data, expected_packet)
-        # except Queue.Empty:
-        #    raise Exception("MockSerial._expected_input_queue was empty")
 
     def read(self):
         if self._active_packet is None:
@@ -56,10 +50,6 @@ class SerialMock(object):
 
     def stage_output(self, next_output):
         self._output_queue.put(next_output)
-
-    # Note: if we want to check the incoming packets, uncomment this
-    # def expect_input(self, next_input):
-    #    self._expected_input_queue.put(next_input)
 
 
 class BGAPIBackendTests(unittest.TestCase):
