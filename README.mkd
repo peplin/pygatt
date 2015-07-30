@@ -4,9 +4,9 @@ This Module allows reading and writing to GATT descriptors on devices such as
 fitness trackers, sensors, and anything implementing standard GATT Descriptor behavior.
 
 pygatt provides a Pythonic API by wrapping two different backends:
+
 * BlueZ's `gatttool` command-line utility.
 * Bluegiga's BGLib for the BLED112.
-
 
 ##Motivation
 
