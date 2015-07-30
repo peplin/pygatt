@@ -72,13 +72,11 @@ class BGAPIBackend(object):
         run -- begin reveiving packets immediately.
         logfile -- the file to log to.
         """
-        # Set up logging
         self._logger = logging.getLogger(__name__)
         self._logger.setLevel(LOG_LEVEL)
-        if logfile is not None:
-            handler = logging.FileHandler(logfile)
-        else:  # print to stderr
-            handler = logging.StreamHandler()
+        handler = (logging.FileHandler(logfile)
+                   if logfile is not None
+                   else logging.NullHandler())
         formatter = logging.Formatter(fmt=LOG_FORMAT)
         handler.setLevel(LOG_LEVEL)
         handler.setFormatter(formatter)
