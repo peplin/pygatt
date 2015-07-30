@@ -105,7 +105,3 @@ gatt_characteristic_type_uuid = {
     'peripheral_preferred_connection_parameters': bytearray([0x2A, 0x04]),
     'service_changed': bytearray([0x2A, 0x05]),
 }
-
-# Bluegiga BLED112 USB device information
-BLED112_VENDOR_ID = 0x2458
-BLED112_PRODUCT_ID = 0x0001
