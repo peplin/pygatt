@@ -4,20 +4,18 @@ from binascii import unhexlify
 import logging
 import time
 
-from constants import(
-    BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
-)
-from exceptions import BLED112Error
-from gatttool_classes import GATTToolBackend
+from constants import BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
+from pygatt.backends.bgapi.bgapi import BGAPIError
+from pygatt.backends import GATTToolBackend
 
 
 class BluetoothLEDevice(object):
     """
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
-    BLED112 (cross platform) or GATTTOOL (Linux only) as the backend.
+    BGAPI (cross platform) or GATTTOOL (Linux only) as the backend.
     """
     def __init__(self, mac_address, logfile=None, hci_device='hci0',
-                 bled112=None):
+                 bgapi=None):
         """
         Initialize.
 
@@ -25,13 +23,13 @@ class BluetoothLEDevice(object):
                        the following format: "XX:XX:XX:XX:XX:XX"
         logfile -- the file in which to write the logs.
         hci_device -- (GATTTOOL only) the hci_device for gattool to use.
-        bled112 -- (BLED112 only) the BLED112_backend object to use.
+        bgapi -- (BGAPI only) the BGAPI_backend object to use.
 
         Example:
 
-            dongle = pygatt.bled112_backend.BLED112Backend('/dev/ttyAMC0')
+            dongle = pygatt.backends.BGAPIBackend('/dev/ttyAMC0')
             my_ble_device = pygatt.classes.BluetoothLEDevice(
-                '01:23:45:67:89:ab', bled112=dongle)
+                '01:23:45:67:89:ab', bgapi=dongle)
         """
         # Initialize
         self._backend = None
@@ -50,10 +48,10 @@ class BluetoothLEDevice(object):
         self._logger.addHandler(handler)
 
         # Select backend, store mac address, optional delete bonds
-        if bled112 is not None:
-            self._logger.info("pygatt[BLED112]")
-            self._backend = bled112
-            self._backend_type = BACKEND['BLED112']
+        if bgapi is not None:
+            self._logger.info("pygatt[BGAPI]")
+            self._backend = bgapi
+            self._backend_type = BACKEND['BGAPI']
             self._mac_address = bytearray(
                 [int(b, 16) for b in mac_address.split(":")])
         else:
@@ -70,7 +68,7 @@ class BluetoothLEDevice(object):
         current connection bonded and encrypted.
         """
         self._logger.info("bond")
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             self._backend.bond()
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.bond()
@@ -90,7 +88,7 @@ class BluetoothLEDevice(object):
 
         """
         self._logger.info("connect")
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             self._backend.connect(self._mac_address, timeout=timeout)
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.connect(timeout=timeout)
@@ -110,7 +108,7 @@ class BluetoothLEDevice(object):
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
         self._logger.info("char_read %s", uuid)
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             handle = self._get_handle(uuid)
             ret = self._backend.char_read(handle)
             return ret
@@ -133,9 +131,9 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("char_write %s", uuid)
         # Write to the characteristic
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             if wait_for_response:
-                raise NotImplementedError("bled112 subscribe wait for response")
+                raise NotImplementedError("bgapi subscribe wait for response")
             handle_write = self._get_handle(uuid)
             self._backend.char_write(handle_write, value)
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -153,7 +151,7 @@ class BluetoothLEDevice(object):
         # TODO instead of checking if the backend supports encryption in this
         # class, defer that decision to the backend: let the gatttool backedn
         # raise the NotImplementedError.
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             self._backend.encrypt()
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("pygatt[GATTOOL].encrypt")
@@ -163,21 +161,23 @@ class BluetoothLEDevice(object):
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
-        device (BLED112 only).
+        device (BGAPI only).
 
         Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
         self._logger.info("get_rssi")
-        if self._backend_type == BACKEND['BLED112']:
-            # The BLED112 has some strange behavior where it will return 25 for
+        if self._backend_type == BACKEND['BGAPI']:
+            # The BGAPI has some strange behavior where it will return 25 for
             # the RSSI value sometimes... Try a maximum of 3 times.
             for i in range(0, 3):
                 rssi = self._backend.get_rssi()
                 if rssi != 25:
                     return rssi
                 time.sleep(0.1)
-            return BLED112Error("get rssi failed")
+            # TODO this is an exception - shouldn't it be raised and not
+            # returned?
+            return BGAPIError("get rssi failed")
         elif self._backend_type == BACKEND['GATTTOOL']:
             raise NotImplementedError("pygatt[GATTOOL].get_rssi")
         else:
@@ -188,7 +188,7 @@ class BluetoothLEDevice(object):
         Run a background thread to listen for notifications (GATTTOOL only).
         """
         self._logger.info("run")
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             pass
         elif self._backend_type == BACKEND['GATTTOOL']:
             self._backend.run()
@@ -198,11 +198,11 @@ class BluetoothLEDevice(object):
     def stop(self):
         """
         Stop the backgroud notification handler in preparation for a disconnect
-        (GATTTOOL only) or disconnect and stop the receiver thread (BLED112
+        (GATTTOOL only) or disconnect and stop the receiver thread (BGAPI
         only).
         """
         self._logger.info("stop")
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             self._backend.disconnect(fail_quietly=True)
             self._backend.stop()
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -222,7 +222,7 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("subscribe to %s with callback %s. indicate = %d",
                           uuid, callback.__name__, indication)
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             self._backend.subscribe(self._uuid_bytearray(uuid),
                                     callback=callback, indicate=indication)
         elif self._backend_type == BACKEND['GATTTOOL']:
@@ -239,7 +239,7 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("_get_handle %s", uuid)
         uuid = self._uuid_bytearray(uuid)
-        if self._backend_type == BACKEND['BLED112']:
+        if self._backend_type == BACKEND['BGAPI']:
             return self._backend.get_handle(uuid)
         elif self._backend_type == BACKEND['GATTTOOL']:
             return self._backend.get_handle(uuid)

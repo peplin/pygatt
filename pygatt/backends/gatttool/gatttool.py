@@ -13,11 +13,9 @@ except Exception as e:
     if platform.system() != 'Windows':
         print("WARNING:", e, file=sys.stderr)
 
-import constants
-import exceptions
+from pygatt import constants
+from pygatt import exceptions
 
-
-"""MODIFIED pygatt Class Definitions"""
 
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'

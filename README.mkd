@@ -7,7 +7,7 @@ behavior.
 pygatt provides a Pythonic API by wrapping two different backends:
 
 * BlueZ's `gatttool` command-line utility.
-* Bluegiga's BGLib for the BLED112.
+* Bluegiga's BGAPI, compatble with dongles like the BLED112.
 
 ## Motivation
 
@@ -20,9 +20,8 @@ works in Linux.
 
 pygatt consists of a front end that provies an API and two interchangable
 backends that implement the Bluetooth communication using differently. The
-backend can either use gatttool/BlueZ or the Bluegiga BLED112. gatttool/BlueZ is
-Linux only whereas the Bluegiga BLED112 is cross platform (assuming you have
-purchased the dongle).
+backend can either use gatttool/BlueZ or a Bluegiga BGAPI compatible inteface.
+gatttool/BlueZ is Linux only whereas the BGAPI is cross platform.
 
 ### Front end
 
@@ -30,26 +29,28 @@ The front end class pygatt.pygatt.BluetoothLEDevice represents a remote BLE
 device. The API provides the methods -- connect, char_read, char_write,
 subscribe -- that you need to interact with the device. When a BluetoothLEDevice
 object is created, there is an optional argument "backend" that allows for
-selection of the backend used. The default is gattool but the BLED112 can be
+selection of the backend used. The default is gattool but the BGAPI can be
 used by setting the optional bled112 arguement to an instance of a
-BLED112Backend. Note that there are optional arguments for some of the methods
+BGAPIBackend. Note that there are optional arguments for some of the methods
 of BluetoothLEDevice that must be specified when using one backend and not the
 other.
 
-### BLED112 Backend
+### BGAPI Backend
 
-This backend uses the Bluegigga BLED112 and a minimalist implementation of
-Bluegigga BGLib to execute the Bluetooth communication. In this case, the class
-used by BluetoothLEDevice is pygatt.bled112_backend.BLED112Backend.
-BLED112Backend in turn uses pygatt.bled112_bglib.BGLib to communicate with the
+This backend uses a minimalist implementation of Bluegiga's BGAPI to execute the
+Bluetooth communication. In this case, the class used by BluetoothLEDevice is
+pygatt.backends.BGAPIBackend.
+
+BGAPIBackend in turn uses pygatt.backends.bgapi.bglib to communicate with the
 BLED112 dongle. BGLib's job is to construct comands for the dongle and parse the
-bytes received from the dongle into packets. BLED112Backend's job is to manage
+bytes received from the dongle into packets. BGAPIBackend's job is to manage
 the timing of commands, handling of the data, and keep track of the state of the
 dongle and connection to the remote device.
 
 #### Dependencies
 
-* The BLED112 backend should work on Linux, Windows, and Mac OS.
+* The BGAPI backend should work on Linux, Windows, and Mac OS and has no other
+    external dependencies.
 
 ### GATTTool Backend
 

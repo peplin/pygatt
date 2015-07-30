@@ -10,7 +10,7 @@ from struct import pack
 import threading
 import time
 
-from pygatt.bled112_backend import BLED112Backend
+from pygatt.backends import BGAPIBackend
 
 
 class SerialMock(object):
@@ -62,20 +62,24 @@ class SerialMock(object):
     #    self._expected_input_queue.put(next_input)
 
 
-class BLED112_BackendTests(unittest.TestCase):
+class BGAPIBackendTests(unittest.TestCase):
     """
-    Test the functionality of the BLED112Backend class.
+    Test the functionality of the BGAPIBackend class.
     """
     def setUp(self):
         self.patchers = []
         patcher = patch('serial.Serial', return_value=SerialMock('dummy', 0.25))
         patcher.start()
         self.patchers.append(patcher)
-        # Where to write BLED112 logfiles
+        # Where to write BGAPIBackend logfiles
         system = platform.system()
         self.null_file = '/dev/null'
         if system.lower() == 'windows':
             self.null_file = 'nul'
+
+        self.backend = BGAPIBackend(serial_port='dummy',
+                                    logfile=self.null_file,
+                                    run=False)
 
     def tearDown(self):
         for patcher in self.patchers:
@@ -230,390 +234,378 @@ class BLED112_BackendTests(unittest.TestCase):
     # ------------------------ Packet Staging ----------------------------------
     @nottest
     def _stage_ble_evt_connection_disconnected_by_remote_user(
-            self, bled112, connection_handle=0x00):
+            self, backend, connection_handle=0x00):
         # Stage ble_evt_connection_disconnected (terminated by remote user)
-        bled112._ser.stage_output(self._ble_evt_connection_disconnected(
+        backend._ser.stage_output(self._ble_evt_connection_disconnected(
             connection_handle, 0x0213))
 
     @nottest
     def _stage_disconnect_packets(
-            self, bled112, connected, fail, connection_handle=0x00):
-        """Stage the packets for bled112.disconnect()."""
+            self, backend, connected, fail, connection_handle=0x00):
+        """Stage the packets for backend.disconnect()."""
         if connected:
             if fail:
                 raise NotImplementedError()
             else:
                 # Stage ble_rsp_connection_disconnect (success)
-                bled112._ser.stage_output(self._ble_rsp_connection_disconnect(
+                backend._ser.stage_output(self._ble_rsp_connection_disconnect(
                     connection_handle, 0x0000))
                 # Stage ble_evt_connection_disconnected (success by local user)
-                bled112._ser.stage_output(
+                backend._ser.stage_output(
                     self._ble_evt_connection_disconnected(
                         connection_handle, 0x0000))
         else:  # not connected always fails
             # Stage ble_rsp_connection_disconnect (fail, not connected)
-            bled112._ser.stage_output(
+            backend._ser.stage_output(
                 self._ble_rsp_connection_disconnect(
                     connection_handle, 0x0186))
 
     @nottest
-    def _stage_run_packets(self, bled112, connection_handle=0x00):
+    def _stage_run_packets(self, backend, connection_handle=0x00):
         # Stage ble_rsp_connection_disconnect (not connected, fail)
-        self._stage_disconnect_packets(bled112, False, True)
+        self._stage_disconnect_packets(backend, False, True)
         # Stage ble_rsp_gap_set_mode (success)
-        bled112._ser.stage_output(self._ble_rsp_gap_set_mode(0x0000))
+        backend._ser.stage_output(self._ble_rsp_gap_set_mode(0x0000))
         # Stage ble_rsp_gap_end_procedure (fail, device in wrong state)
-        bled112._ser.stage_output(self._ble_rsp_gap_end_procedure(0x0181))
+        backend._ser.stage_output(self._ble_rsp_gap_end_procedure(0x0181))
         # Stage ble_rsp_sm_set_bondable_mode (always success)
-        bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
+        backend._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
 
     @nottest
-    def _stage_connect_packets(self, bled112, addr, flags,
+    def _stage_connect_packets(self, backend, addr, flags,
                                connection_handle=0x00):
         # Stage ble_rsp_gap_connect_direct (success)
-        bled112._ser.stage_output(self._ble_rsp_gap_connect_direct(
+        backend._ser.stage_output(self._ble_rsp_gap_connect_direct(
             connection_handle, 0x0000))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        bled112._ser.stage_output(self._ble_evt_connection_status(
+        backend._ser.stage_output(self._ble_evt_connection_status(
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
     @nottest
-    def _stage_get_rssi_packets(self, bled112, connection_handle=0x00,
+    def _stage_get_rssi_packets(self, backend, connection_handle=0x00,
                                 rssi=-80):
         # Stage ble_rsp_connection_get_rssi
-        bled112._ser.stage_output(
+        backend._ser.stage_output(
             self._ble_rsp_connection_get_rssi(connection_handle, rssi))
 
     @nottest
-    def _stage_encrypt_packets(self, bled112, addr, flags,
+    def _stage_encrypt_packets(self, backend, addr, flags,
                                connection_handle=0x00):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
-        bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
+        backend._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
-        bled112._ser.stage_output(self._ble_rsp_sm_encrypt_start(
+        backend._ser.stage_output(self._ble_rsp_sm_encrypt_start(
             connection_handle, 0x0000))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        bled112._ser.stage_output(self._ble_evt_connection_status(
+        backend._ser.stage_output(self._ble_evt_connection_status(
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
     @nottest
-    def _stage_bond_packets(self, bled112, addr, flags,
+    def _stage_bond_packets(self, backend, addr, flags,
                             connection_handle=0x00, bond_handle=0x01):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
-        bled112._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
+        backend._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
-        bled112._ser.stage_output(self._ble_rsp_sm_encrypt_start(
+        backend._ser.stage_output(self._ble_rsp_sm_encrypt_start(
             connection_handle, 0x0000))
         # Stage ble_evt_sm_bond_status
-        bled112._ser.stage_output(self._ble_evt_sm_bond_status(
+        backend._ser.stage_output(self._ble_evt_sm_bond_status(
             bond_handle, 0x00, 0x00, 0x00))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        bled112._ser.stage_output(self._ble_evt_connection_status(
+        backend._ser.stage_output(self._ble_evt_connection_status(
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
     @nottest
     def _stage_delete_stored_bonds_packets(
-            self, bled112, bonds, disconnects=False):
+            self, backend, bonds, disconnects=False):
         """bonds -- list of 8-bit integer bond handles"""
         if disconnects:
-            self._stage_ble_evt_connection_disconnected_by_remote_user(bled112)
+            self._stage_ble_evt_connection_disconnected_by_remote_user(backend)
         # Stage ble_rsp_get_bonds
-        bled112._ser.stage_output(self._ble_rsp_sm_get_bonds(len(bonds)))
+        backend._ser.stage_output(self._ble_rsp_sm_get_bonds(len(bonds)))
         # Stage ble_evt_sm_bond_status (bond handle)
         for b in bonds:
             if disconnects:
                 self._stage_ble_evt_connection_disconnected_by_remote_user(
-                    bled112)
-            bled112._ser.stage_output(self._ble_evt_sm_bond_status(
+                    backend)
+            backend._ser.stage_output(self._ble_evt_sm_bond_status(
                 b, 0x00, 0x00, 0x00))
         # Stage ble_rsp_sm_delete_bonding (success)
         for b in bonds:
             if disconnects:
                 self._stage_ble_evt_connection_disconnected_by_remote_user(
-                    bled112)
-            bled112._ser.stage_output(self._ble_rsp_sm_delete_bonding(0x0000))
+                    backend)
+            backend._ser.stage_output(self._ble_rsp_sm_delete_bonding(0x0000))
 
     @nottest
-    def _stage_scan_packets(self, bled112, scan_responses=[]):
+    def _stage_scan_packets(self, backend, scan_responses=[]):
         # Stage ble_rsp_gap_set_scan_parameters (success)
-        bled112._ser.stage_output(self._ble_rsp_gap_set_scan_parameters(0x0000))
+        backend._ser.stage_output(self._ble_rsp_gap_set_scan_parameters(0x0000))
         # Stage ble_rsp_gap_discover (success)
-        bled112._ser.stage_output(self._ble_rsp_gap_discover(0x0000))
+        backend._ser.stage_output(self._ble_rsp_gap_discover(0x0000))
         for srp in scan_responses:
             # Stage ble_evt_gap_scan_response
-            bled112._ser.stage_output(self._ble_evt_gap_scan_response(
+            backend._ser.stage_output(self._ble_evt_gap_scan_response(
                 srp['rssi'], srp['packet_type'], srp['bd_addr'],
                 srp['addr_type'], srp['bond'],
                 [len(srp['data'])+1]+srp['data']))
         # Stage ble_rsp_gap_end_procedure (success)
-        bled112._ser.stage_output(self._ble_rsp_gap_end_procedure(0x0000))
+        backend._ser.stage_output(self._ble_rsp_gap_end_procedure(0x0000))
 
     @nottest
     def _stage_get_handle_packets(
-            self, bled112, uuid_handle_list, connection_handle=0x00):
+            self, backend, uuid_handle_list, connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
-        bled112._ser.stage_output(self._ble_rsp_attclient_find_information(
+        backend._ser.stage_output(self._ble_rsp_attclient_find_information(
             connection_handle, 0x0000))
         for i in range(0, len(uuid_handle_list)/2):
             uuid = self._uuid_str_to_bytearray(uuid_handle_list[2*i])
             handle = uuid_handle_list[2*i + 1]
             # Stage ble_evt_attclient_find_information_found
             u = [len(uuid) + 1]
-            bled112._ser.stage_output(
+            backend._ser.stage_output(
                 self._ble_evt_attclient_find_information_found(
                     connection_handle, handle,
                     (u+list(reversed([ord(b) for b in uuid])))))
         # Stage ble_evt_attclient_procedure_completed (success)
-        bled112._ser.stage_output(self._ble_evt_attclient_procedure_completed(
+        backend._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             connection_handle, 0x0000, 0xFFFF))
 
     @nottest
     def _stage_char_read_packets(
-            self, bled112, att_handle, att_type, value, connection_handle=0x00):
+            self, backend, att_handle, att_type, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_read_by_handle (success)
-        bled112._ser.stage_output(self._ble_rsp_attclient_read_by_handle(
+        backend._ser.stage_output(self._ble_rsp_attclient_read_by_handle(
             connection_handle, 0x0000))
         # Stage ble_evt_attclient_attribute_value
-        bled112._ser.stage_output(self._ble_evt_attclient_attribute_value(
+        backend._ser.stage_output(self._ble_evt_attclient_attribute_value(
             connection_handle, att_handle, att_type, [len(value)+1]+value))
 
     @nottest
     def _stage_char_write_packets(
-            self, bled112, handle, value, connection_handle=0x00):
+            self, backend, handle, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_attribute_write (success)
-        bled112._ser.stage_output(self._ble_rsp_attclient_attribute_write(
+        backend._ser.stage_output(self._ble_rsp_attclient_attribute_write(
             connection_handle, 0x0000))
         # Stage ble_evt_attclient_procedure_completed
-        bled112._ser.stage_output(self._ble_evt_attclient_procedure_completed(
+        backend._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             connection_handle, 0x0000, handle))
 
     @nottest
-    def _stage_subscribe_packets(self, bled112, uuid_char, handle_char,
+    def _stage_subscribe_packets(self, backend, uuid_char, handle_char,
                                  indications=False, connection_handle=0x00):
         # Stage get_handle packets
         uuid_desc = '2902'
         handle_desc = 0x5678
-        self._stage_get_handle_packets(bled112, [
+        self._stage_get_handle_packets(backend, [
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
+        handle = backend.get_handle(self._uuid_str_to_bytearray(uuid_char),
                                     self._uuid_str_to_bytearray(uuid_desc))
         # Stage char_write packets
         if indications:
             value = [0x02, 0x00]
         else:
             value = [0x01, 0x00]
-        self._stage_char_write_packets(bled112, handle, value,
+        self._stage_char_write_packets(backend, handle, value,
                                        connection_handle=connection_handle)
 
     @nottest
     def _stage_indication_packets(
-            self, bled112, handle, packet_values, connection_handle=0x00):
+            self, backend, handle, packet_values, connection_handle=0x00):
         # Stage ble_evt_attclient_attribute_value
         for value in packet_values:
             val = list(value)
-            bled112._ser.stage_output(self._ble_evt_attclient_attribute_value(
+            backend._ser.stage_output(self._ble_evt_attclient_attribute_value(
                 connection_handle, handle, 0x00,
                 value=[len(val)+1]+val))
 
-    # --------------------------- Tests ----------------------------------------
-    def test_create_BLED112_Backend(self):
+    def test_create_backend(self):
         """__init__ general functionality."""
-        bled112 = None
-        bled112 = BLED112Backend(
+        backend = None
+        backend = BGAPIBackend(
             serial_port='dummy', logfile=self.null_file, run=False)
-        assert(bled112 is not None)
+        # TODO this isn't testing anything - the constructor will always return
+        # something unless it raised an exception, and if it raised an exception
+        # this assertion line will never get called
+        assert(backend is not None)
 
-    def test_BLED112_Backend_run(self):
+    def test_run_backend(self):
         """run general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
             # Test run
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
         finally:
-            bled112.stop()
+            # TODO This is in every test - is it necessary? can it be moved to
+            # tearDown?
+            self.backend.stop()
 
-    def test_BLED112_Backend_connect(self):
+    def test_connect(self):
         """connect general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             # Test connect
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_disconnect_when_connected(self):
+    def test_disconnect_when_connected(self):
         """disconnect general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
-            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+            self._stage_run_packets(self.backend)
+            self.backend.run()
+            address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
-            # Test disconnect (connected, not fail)
-            self._stage_disconnect_packets(bled112, True, False)
-            bled112.disconnect()
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
+            # test disconnect (connected, not fail)
+            self._stage_disconnect_packets(self.backend, True, False)
+            self.backend.disconnect()
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_char_read(self):
+    def test_char_read(self):
         """read general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             uuid_char = '01234567-0123-0123-0123-0123456789AB'
             handle_char = 0x1234
             uuid_desc = '2902'
             handle_desc = 0x5678
-            self._stage_get_handle_packets(bled112, [
+            self._stage_get_handle_packets(self.backend, [
                 uuid_char, handle_char,
                 uuid_desc, handle_desc])
-            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            handle = self.backend.get_handle(
+                self._uuid_str_to_bytearray(uuid_char))
             # Test char_read
             expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
-            self._stage_char_read_packets(bled112, handle, 0x00, expected_value)
-            value = bled112.char_read(handle)
+            self._stage_char_read_packets(
+                self.backend, handle, 0x00, expected_value)
+            value = self.backend.char_read(handle)
             assert(value == bytearray(expected_value))
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_char_write(self):
+    def test_char_write(self):
         """char_write general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             uuid_char = '01234567-0123-0123-0123-0123456789AB'
             handle_char = 0x1234
             uuid_desc = '2902'
             handle_desc = 0x5678
-            self._stage_get_handle_packets(bled112, [
+            self._stage_get_handle_packets(self.backend, [
                 uuid_char, handle_char,
                 uuid_desc, handle_desc])
-            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            handle = self.backend.get_handle(
+                self._uuid_str_to_bytearray(uuid_char))
             # Test char_write
             value = [0xF0, 0x0F, 0x00]
-            self._stage_char_write_packets(bled112, handle, value)
-            bled112.char_write(handle, bytearray(value))
+            self._stage_char_write_packets(self.backend, handle, value)
+            self.backend.char_write(handle, bytearray(value))
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_encrypt(self):
+    def test_encrypt(self):
         """encrypt general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             # Test encrypt
             self._stage_encrypt_packets(
-                bled112, address, ['connected', 'encrypted'])
-            bled112.encrypt()
+                self.backend, address, ['connected', 'encrypted'])
+            self.backend.encrypt()
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_bond(self):
+    def test_bond(self):
         """bond general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
-            # Test encrypt
-            self._stage_bond_packets(
-                bled112, address, ['connected', 'encrypted',
-                                   'parameters_change'])
-            bled112.bond()
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
+            self._stage_bond_packets(self.backend, address,
+                                     ['connected', 'encrypted',
+                                      'parameters_change'])
+            self.backend.bond()
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_get_rssi(self):
+    def test_get_rssi(self):
         """get_rssi general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             # Test get_rssi
-            self._stage_get_rssi_packets(bled112)
-            assert(bled112.get_rssi() == -80)
+            self._stage_get_rssi_packets(self.backend)
+            assert(self.backend.get_rssi() == -80)
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_get_handle(self):
+    def test_get_handle(self):
         """get_handle general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             # Test get_handle
             uuid_char = '01234567-0123-0123-0123-0123456789AB'
             handle_char = 0x1234
             uuid_desc = '2902'
             handle_desc = 0x5678
-            self._stage_get_handle_packets(bled112, [
+            self._stage_get_handle_packets(self.backend, [
                 uuid_char, handle_char,
                 uuid_desc, handle_desc])
-            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char))
+            handle = self.backend.get_handle(
+                self._uuid_str_to_bytearray(uuid_char))
             assert(handle == handle_char)
-            handle = bled112.get_handle(self._uuid_str_to_bytearray(uuid_char),
-                                        self._uuid_str_to_bytearray(uuid_desc))
+            handle = self.backend.get_handle(
+                self._uuid_str_to_bytearray(uuid_char),
+                self._uuid_str_to_bytearray(uuid_desc))
             assert(handle == handle_desc)
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_scan_and_get_devices_discovered(self):
+    def test_scan_and_get_devices_discovered(self):
         """scan/get_devices_discovered general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             # Test scan
             scan_responses = []
             addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -627,16 +619,17 @@ class BLED112_BackendTests(unittest.TestCase):
                 'data': [0x07, 0x09, ord('H'), ord('e'), ord('l'),
                          ord('l'), ord('o'), ord('!')]
             })
-            self._stage_scan_packets(bled112, scan_responses=scan_responses)
-            bled112.scan()
-            devs = bled112.get_devices_discovered()
+            self._stage_scan_packets(self.backend,
+                                     scan_responses=scan_responses)
+            self.backend.scan()
+            devs = self.backend.get_devices_discovered()
             assert_in(addr_0_str, devs)
             eq_('Hello!', devs[addr_0_str].name)
             eq_(-80, devs[addr_0_str].rssi)
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_subscribe_with_notify(self):
+    def test_subscribe_with_notify(self):
         """subscribe with notify general functionality."""
         class NotificationHandler(object):
             def __init__(self, expected_value_bytearray):
@@ -648,25 +641,23 @@ class BLED112_BackendTests(unittest.TestCase):
                 self.received_value_bytearray = received_value_bytearray
                 self.called.set()
 
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
             self._stage_connect_packets(
-                bled112, address, ['connected', 'completed'])
-            bled112.connect(bytearray(address))
+                self.backend, address, ['connected', 'completed'])
+            self.backend.connect(bytearray(address))
             # Test subscribe with indications
             packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
             my_handler = NotificationHandler(packet_values[0])
             handle = 0x1234
             uuid = '01234567-0123-0123-0123-0123456789AB'
-            self._stage_subscribe_packets(bled112, uuid, handle)
-            bled112.subscribe(self._uuid_str_to_bytearray(uuid),
-                              callback=my_handler.handle, indicate=True)
+            self._stage_subscribe_packets(self.backend, uuid, handle)
+            self.backend.subscribe(self._uuid_str_to_bytearray(uuid),
+                                   callback=my_handler.handle, indicate=True)
             start_time = time.time()
-            self._stage_indication_packets(bled112, handle, packet_values)
+            self._stage_indication_packets(self.backend, handle, packet_values)
             while not my_handler.called.is_set():
                 elapsed_time = start_time - time.time()
                 if elapsed_time >= 5:
@@ -677,32 +668,28 @@ class BLED112_BackendTests(unittest.TestCase):
             assert(my_handler.expected_value_bytearray ==
                    my_handler.received_value_bytearray)
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_delete_stored_bonds(self):
+    def test_delete_stored_bonds(self):
         """delete_stored_bonds general functionality."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             # Test delete stored bonds
             self._stage_delete_stored_bonds_packets(
-                bled112, [0x00, 0x01, 0x02, 0x03, 0x04])
-            bled112.delete_stored_bonds()
+                self.backend, [0x00, 0x01, 0x02, 0x03, 0x04])
+            self.backend.delete_stored_bonds()
         finally:
-            bled112.stop()
+            self.backend.stop()
 
-    def test_BLED112_Backend_delete_stored_bonds_disconnect(self):
+    def test_delete_stored_bonds_disconnect(self):
         """delete_stored_bonds shouldn't abort if disconnected."""
-        bled112 = BLED112Backend(
-            serial_port='dummy', logfile=self.null_file, run=False)
         try:
-            self._stage_run_packets(bled112)
-            bled112.run()
+            self._stage_run_packets(self.backend)
+            self.backend.run()
             # Test delete stored bonds
             self._stage_delete_stored_bonds_packets(
-                bled112, [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
-            bled112.delete_stored_bonds()
+                self.backend, [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
+            self.backend.delete_stored_bonds()
         finally:
-            bled112.stop()
+            self.backend.stop()
