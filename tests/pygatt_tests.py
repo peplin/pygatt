@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from binascii import unhexlify
 from mock import patch
-from nose.tools import nottest, eq_, assert_in
+from nose.tools import eq_, assert_in
 import platform
 import Queue
 import unittest
@@ -80,7 +80,6 @@ class BGAPIBackendTests(unittest.TestCase):
             except RuntimeError:
                 pass
 
-    @nottest
     def _get_connection_status_flags_byte(self, flags):
         flags_byte = 0x00
         if 'connected' in flags:
@@ -93,79 +92,63 @@ class BGAPIBackendTests(unittest.TestCase):
             flags_byte |= 0x08
         return flags_byte
 
-    @nottest
     def _uuid_str_to_bytearray(self, uuid_str):
         """Convert a UUID string to a bytearray."""
         return unhexlify(uuid_str.replace('-', ''))
 
     # ------------------------ Packet Building ---------------------------------
-    @nottest
     def _ble_rsp_attclient_attribute_write(
             self, connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x04, 0x05, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_rsp_attclient_find_information(
             self, connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x04, 0x03, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_rsp_attclient_read_by_handle(self, connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x04, 0x04, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_rsp_connection_disconnect(self, connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x03, 0x00, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_rsp_connection_get_rssi(self, connection_handle, rssi_value):
         return pack('<4BBb', 0x00, 0x02, 0x03, 0x01, connection_handle,
                     rssi_value)
 
-    @nottest
     def _ble_rsp_gap_connect_direct(self, connection_handle, return_code):
         return pack('<4BHB', 0x00, 0x03, 0x06, 0x03, return_code,
                     connection_handle)
 
-    @nottest
     def _ble_rsp_gap_discover(self, return_code):
         return pack('<4BH', 0x00, 0x02, 0x06, 0x02, return_code)
 
-    @nottest
     def _ble_rsp_gap_end_procedure(self, return_code):
         return pack('<4BH', 0x00, 0x02, 0x06, 0x04, return_code)
 
-    @nottest
     def _ble_rsp_gap_set_mode(self, return_code):
         return pack('<4BH', 0x00, 0x02, 0x06, 0x01, return_code)
 
-    @nottest
     def _ble_rsp_gap_set_scan_parameters(self, return_code):
         return pack('<4BH', 0x00, 0x02, 0x06, 0x07, return_code)
 
-    @nottest
     def _ble_rsp_sm_delete_bonding(self, return_code):
         return pack('<4BH', 0x00, 0x02, 0x05, 0x02, return_code)
 
-    @nottest
     def _ble_rsp_sm_encrypt_start(self, connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x05, 0x00, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_rsp_sm_get_bonds(self, num_bonds):
         assert((num_bonds >= 0) and (num_bonds <= 8))  # hardware constraint
         return pack('<4BB', 0x00, 0x01, 0x05, 0x05, num_bonds)
 
-    @nottest
     def _ble_rsp_sm_set_bondable_mode(self):
         return pack('<4B', 0x00, 0x00, 0x05, 0x01)
 
-    @nottest
     def _ble_evt_attclient_attribute_value(
             self, connection_handle, att_handle, att_type, value):
         # the first byte of value must be the length of value
@@ -174,7 +157,6 @@ class BGAPIBackendTests(unittest.TestCase):
                     0x04, 0x05, connection_handle, att_handle, att_type,
                     b''.join(chr(i) for i in value))
 
-    @nottest
     def _ble_evt_attclient_find_information_found(
             self, connection_handle, chr_handle, uuid):
         # the first byte of uuid must be the length of uuid
@@ -183,13 +165,11 @@ class BGAPIBackendTests(unittest.TestCase):
                     0x04, connection_handle, chr_handle,
                     b''.join(chr(i) for i in uuid))
 
-    @nottest
     def _ble_evt_attclient_procedure_completed(
             self, connection_handle, return_code, chr_handle):
         return pack('<4BB2H', 0x80, 0x05, 0x04, 0x01, connection_handle,
                     return_code, chr_handle)
 
-    @nottest
     def _ble_evt_connection_status(
             self, addr, flags, connection_handle, address_type,
             connection_interval, timeout, latency, bonding):
@@ -198,12 +178,10 @@ class BGAPIBackendTests(unittest.TestCase):
             addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], address_type,
             connection_interval, timeout, latency, bonding)
 
-    @nottest
     def _ble_evt_connection_disconnected(self, connection_handle, return_code):
         return pack('<4BBH', 0x80, 0x03, 0x03, 0x04, connection_handle,
                     return_code)
 
-    @nottest
     def _ble_evt_gap_scan_response(
             self, rssi, packet_type, bd_addr, addr_type, bond, data):
         # the first byte of data must be the length of data
@@ -213,25 +191,21 @@ class BGAPIBackendTests(unittest.TestCase):
                     bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], addr_type,
                     bond, b''.join(chr(i) for i in data))
 
-    @nottest
     def _ble_evt_sm_bond_status(self, bond_handle, keysize, mitm, keys):
         return pack('<4B4B', 0x80, 0x04, 0x05, 0x04, bond_handle, keysize, mitm,
                     keys)
 
-    @nottest
     def _ble_evt_sm_bonding_fail(self, connection_handle, return_code):
         return pack('<4BBH', 0x80, 0x03, 0x05, 0x01, connection_handle,
                     return_code)
 
     # ------------------------ Packet Staging ----------------------------------
-    @nottest
     def _stage_ble_evt_connection_disconnected_by_remote_user(
             self, backend, connection_handle=0x00):
         # Stage ble_evt_connection_disconnected (terminated by remote user)
         backend._ser.stage_output(self._ble_evt_connection_disconnected(
             connection_handle, 0x0213))
 
-    @nottest
     def _stage_disconnect_packets(
             self, backend, connected, fail, connection_handle=0x00):
         """Stage the packets for backend.disconnect()."""
@@ -252,7 +226,6 @@ class BGAPIBackendTests(unittest.TestCase):
                 self._ble_rsp_connection_disconnect(
                     connection_handle, 0x0186))
 
-    @nottest
     def _stage_run_packets(self, backend, connection_handle=0x00):
         # Stage ble_rsp_connection_disconnect (not connected, fail)
         self._stage_disconnect_packets(backend, False, True)
@@ -263,7 +236,6 @@ class BGAPIBackendTests(unittest.TestCase):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
         backend._ser.stage_output(self._ble_rsp_sm_set_bondable_mode())
 
-    @nottest
     def _stage_connect_packets(self, backend, addr, flags,
                                connection_handle=0x00):
         # Stage ble_rsp_gap_connect_direct (success)
@@ -275,14 +247,12 @@ class BGAPIBackendTests(unittest.TestCase):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    @nottest
     def _stage_get_rssi_packets(self, backend, connection_handle=0x00,
                                 rssi=-80):
         # Stage ble_rsp_connection_get_rssi
         backend._ser.stage_output(
             self._ble_rsp_connection_get_rssi(connection_handle, rssi))
 
-    @nottest
     def _stage_encrypt_packets(self, backend, addr, flags,
                                connection_handle=0x00):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
@@ -296,7 +266,6 @@ class BGAPIBackendTests(unittest.TestCase):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    @nottest
     def _stage_bond_packets(self, backend, addr, flags,
                             connection_handle=0x00, bond_handle=0x01):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
@@ -313,7 +282,6 @@ class BGAPIBackendTests(unittest.TestCase):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    @nottest
     def _stage_delete_stored_bonds_packets(
             self, backend, bonds, disconnects=False):
         """bonds -- list of 8-bit integer bond handles"""
@@ -335,7 +303,6 @@ class BGAPIBackendTests(unittest.TestCase):
                     backend)
             backend._ser.stage_output(self._ble_rsp_sm_delete_bonding(0x0000))
 
-    @nottest
     def _stage_scan_packets(self, backend, scan_responses=[]):
         # Stage ble_rsp_gap_set_scan_parameters (success)
         backend._ser.stage_output(self._ble_rsp_gap_set_scan_parameters(0x0000))
@@ -350,7 +317,6 @@ class BGAPIBackendTests(unittest.TestCase):
         # Stage ble_rsp_gap_end_procedure (success)
         backend._ser.stage_output(self._ble_rsp_gap_end_procedure(0x0000))
 
-    @nottest
     def _stage_get_handle_packets(
             self, backend, uuid_handle_list, connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
@@ -369,7 +335,6 @@ class BGAPIBackendTests(unittest.TestCase):
         backend._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             connection_handle, 0x0000, 0xFFFF))
 
-    @nottest
     def _stage_char_read_packets(
             self, backend, att_handle, att_type, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_read_by_handle (success)
@@ -379,7 +344,6 @@ class BGAPIBackendTests(unittest.TestCase):
         backend._ser.stage_output(self._ble_evt_attclient_attribute_value(
             connection_handle, att_handle, att_type, [len(value)+1]+value))
 
-    @nottest
     def _stage_char_write_packets(
             self, backend, handle, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_attribute_write (success)
@@ -389,7 +353,6 @@ class BGAPIBackendTests(unittest.TestCase):
         backend._ser.stage_output(self._ble_evt_attclient_procedure_completed(
             connection_handle, 0x0000, handle))
 
-    @nottest
     def _stage_subscribe_packets(self, backend, uuid_char, handle_char,
                                  indications=False, connection_handle=0x00):
         # Stage get_handle packets
@@ -408,7 +371,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self._stage_char_write_packets(backend, handle, value,
                                        connection_handle=connection_handle)
 
-    @nottest
     def _stage_indication_packets(
             self, backend, handle, packet_values, connection_handle=0x00):
         # Stage ble_evt_attclient_attribute_value
