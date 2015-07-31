@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import logging
 
-from constants import BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
+from constants import DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 from pygatt.backends import GATTToolBackend
 
 
@@ -13,16 +13,14 @@ class BluetoothLEDevice(object):
 
     TODO pass the instantiated backend in as an argument
     """
-    def __init__(self, mac_address, logfile=None, hci_device='hci0',
-                 bgapi=None):
+    def __init__(self, mac_address, backend, logfile=None):
         """
         Initialize.
 
         mac_address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
+        backend -- an instantiated instance of a BLEBacked.
         logfile -- the file in which to write the logs.
-        hci_device -- (GATTTOOL only) the hci_device for gattool to use.
-        bgapi -- (BGAPI only) the BGAPI_backend object to use.
 
         Example:
 
@@ -30,9 +28,8 @@ class BluetoothLEDevice(object):
             my_ble_device = pygatt.classes.BluetoothLEDevice(
                 '01:23:45:67:89:ab', bgapi=dongle)
         """
-        # Initialize
-        self._backend = None
-        self._backend_type = None
+        self._backend = backend
+        self._mac_address = mac_address
 
         # Set up logging
         self._logger = logging.getLogger(__name__)
@@ -45,21 +42,6 @@ class BluetoothLEDevice(object):
         handler.setLevel(LOG_LEVEL)
         handler.setFormatter(formatter)
         self._logger.addHandler(handler)
-
-        # Select backend, store mac address, optional delete bonds
-        if bgapi is not None:
-            self._logger.info("pygatt[BGAPI]")
-            self._backend = bgapi
-            self._backend_type = BACKEND['BGAPI']
-            self._mac_address = bytearray(
-                [int(b, 16) for b in mac_address.split(":")])
-        else:
-            self._logger.info("pygatt[GATTTOOL]")
-            # TODO: how to pass pexpect logfile
-            self._backend = GATTToolBackend(mac_address, hci_device=hci_device,
-                                            loglevel=LOG_LEVEL,
-                                            loghandler=handler)
-            self._backend_type = BACKEND['GATTTOOL']
 
     def bond(self):
         """
@@ -141,7 +123,7 @@ class BluetoothLEDevice(object):
         self._logger.info("run")
         # TODO This is an odd architecture, why does the backend have to bleed
         # up to this level?
-        if self._backend_type == BACKEND['GATTTOOL']:
+        if isinstance(self._backend, GATTToolBackend):
             self._backend.run()
 
     def stop(self):
