@@ -1,51 +1,97 @@
-#pygatt - Python Module for Bluetooth LE Generic Attribute Profile (GATT).
+# pygatt - Python Module for Bluetooth LE Generic Attribute Profile (GATT).
 
 This Module allows reading and writing to GATT descriptors on devices such as
-fitness trackers, sensors, and anything implementing standard GATT Descriptor behavior.
+fitness trackers, sensors, and anything implementing standard GATT Descriptor
+behavior.
 
 pygatt provides a Pythonic API by wrapping two different backends:
+
 * BlueZ's `gatttool` command-line utility.
 * Bluegiga's BGLib for the BLED112.
 
+## Motivation
 
-##Motivation
+Despite the popularilty of BLE, we have yet to find a good programming interface
+for it on desktop computers. Since most peripherals are designed to work with
+smartphones, this space is neglected. One interactive interface, BlueZ's
+`gatttool`, is functional but difficult to use programatically. BlueZ itself
+obviously works, but the interface leaves something to be desired only
+works in Linux.
 
-`gatttool` has an interactive mode but it is difficult to use programatically.
-Ideally we could use BlueZ directly, but that's a much bigger task.
+pygatt consists of a front end that provies an API and two interchangable
+backends that implement the Bluetooth communication using differently. The
+backend can either use gatttool/BlueZ or the Bluegiga BLED112. gatttool/BlueZ is
+Linux only whereas the Bluegiga BLED112 is cross platform (assuming you have
+purchased the dongle).
 
-`gatttool` is not cross platform so using the BLED112 backend allows for a cross platform solution.
+### Front end
 
+The front end class pygatt.pygatt.BluetoothLEDevice represents a remote BLE
+device. The API provides the methods -- connect, char_read, char_write,
+subscribe -- that you need to interact with the device. When a BluetoothLEDevice
+object is created, there is an optional argument "backend" that allows for
+selection of the backend used. The default is gattool but the BLED112 can be
+used by setting the optional bled112 arguement to an instance of a
+BLED112Backend. Note that there are optional arguments for some of the methods
+of BluetoothLEDevice that must be specified when using one backend and not the
+other.
 
-## Dependencies
-* Currently the gatttool backend is currently only tested under Linux as it requires `gatttool` which is included with BlueZ which is a Linux library.
+### BLED112 Backend
+
+This backend uses the Bluegigga BLED112 and a minimalist implementation of
+Bluegigga BGLib to execute the Bluetooth communication. In this case, the class
+used by BluetoothLEDevice is pygatt.bled112_backend.BLED112Backend.
+BLED112Backend in turn uses pygatt.bled112_bglib.BGLib to communicate with the
+BLED112 dongle. BGLib's job is to construct comands for the dongle and parse the
+bytes received from the dongle into packets. BLED112Backend's job is to manage
+the timing of commands, handling of the data, and keep track of the state of the
+dongle and connection to the remote device.
+
+#### Dependencies
+
+* The BLED112 backend should work on Linux, Windows, and Mac OS.
+
+### GATTTool Backend
+
+This backend uses gatttool/BlueZ on Linux to execute the Bluetooth
+communication. In this case, the class used by BluetoothLEDevice is
+pygatt.gatttool_classes.GATTToolBackend. GATTToolBackend uses the python module
+pexpect to execute gatttool commannds as if a user were entering them on the
+comand line.
+
+#### Dependencies
+
+* Currently the gatttool backend is currently only tested under Linux as it
+    requires `gatttool` which is included with BlueZ which is a Linux library.
 * BlueZ >= 5.5
     * Tested on 5.18 and 5.21
     * Ubuntu is stuck on BlueZ 4.x and does not work - you need to build BlueZ
       from source.
-* The BLED112 backend should work on Linux, Windows, and Mac OS.
-
 
 ## Installation
-With BLED112 backend:
-* Install via pip: `$ pip install pygatt`
 
-With BLED112 backend + GATTTOOL backend:
-* Install via pip: `$ pip install pygatt[GATTTOOL]`
+Install `pygatt` with pip:
 
+    $ pip install https://github.com/stratosinc/pygatt
 
-##Author
-Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
+The BlueZ backend is not supported by default as it requires `pexpect`, which
+can only be installed in a UNIX-based environment. If you wish to use that
+backend, install the optional dependencies with:
 
+    $ pip install pygatt[GATTTOOL]
+
+## Authors
+
+- Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
+- Greg Albrecht @ampledata https://github.com/ampledata/pygatt
+- Christopher Peplin @peplin https://github.com/stratosinc/pygatt
+- Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
+- Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
+- Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
 Derived from the work of several others, see NOTICE.
 
+## License
 
-##License
-Apache License, Version 2.0 and MIT License. See LICENSE.
-
-
-##Copyright
 Copyright 2015 Stratos Inc.
 
-
-##Source
-https://github.com/stratosinc/pygatt
+Apache License, Version 2.0 and MIT License. See LICENSE.

@@ -26,6 +26,12 @@ class BluetoothLEDevice(object):
         logfile -- the file in which to write the logs.
         hci_device -- (GATTTOOL only) the hci_device for gattool to use.
         bled112 -- (BLED112 only) the BLED112_backend object to use.
+
+        Example:
+
+            dongle = pygatt.bled112_backend.BLED112Backend('/dev/ttyAMC0')
+            my_ble_device = pygatt.classes.BluetoothLEDevice(
+                '01:23:45:67:89:ab', bled112=dongle)
         """
         # Initialize
         self._backend = None
@@ -60,7 +66,8 @@ class BluetoothLEDevice(object):
 
     def bond(self):
         """
-        Securely Bonds to the BLE device.
+        Create a new bond or use an existing bond with the device and make the
+        current connection bonded and encrypted.
         """
         self._logger.info("bond")
         if self._backend_type == BACKEND['BLED112']:
@@ -76,6 +83,10 @@ class BluetoothLEDevice(object):
 
         timeout -- the length of time to try to establish a connection before
                    returning.
+
+        Example:
+
+            my_ble_device.connect(timeout=5)
 
         """
         self._logger.info("connect")
@@ -93,6 +104,10 @@ class BluetoothLEDevice(object):
         uuid -- UUID of Characteristic to read as a string.
 
         Returns a bytearray containing the characteristic value on success.
+        Returns None on failure.
+
+        Example:
+            my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
         self._logger.info("char_read %s", uuid)
         if self._backend_type == BACKEND['BLED112']:
@@ -104,23 +119,27 @@ class BluetoothLEDevice(object):
         else:
             raise NotImplementedError("backend", self._backend_type)
 
-    def char_write(self, uuid_write, value, wait_for_response=False):
+    def char_write(self, uuid, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
 
         uuid -- the UUID of the characteristic to write to.
         value -- the value as a bytearray to write to the characteristic.
         wait_for_response -- wait for response after writing (GATTTOOL only).
+
+        Example:
+            my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
+                                     bytearray([0x00, 0xFF]))
         """
-        self._logger.info("char_write %s", uuid_write)
+        self._logger.info("char_write %s", uuid)
         # Write to the characteristic
         if self._backend_type == BACKEND['BLED112']:
             if wait_for_response:
                 raise NotImplementedError("bled112 subscribe wait for response")
-            handle_write = self._get_handle(uuid_write)
+            handle_write = self._get_handle(uuid)
             self._backend.char_write(handle_write, value)
         elif self._backend_type == BACKEND['GATTTOOL']:
-            handle = self._backend.get_handle(uuid_write)
+            handle = self._backend.get_handle(uuid)
             self._backend.char_write(handle, value,
                                      wait_for_response=wait_for_response)
         else:
@@ -131,6 +150,9 @@ class BluetoothLEDevice(object):
         Form an encrypted, but not bonded, connection.
         """
         self._logger.info("encrypt")
+        # TODO instead of checking if the backend supports encryption in this
+        # class, defer that decision to the backend: let the gatttool backedn
+        # raise the NotImplementedError.
         if self._backend_type == BACKEND['BLED112']:
             self._backend.encrypt()
         elif self._backend_type == BACKEND['GATTTOOL']:

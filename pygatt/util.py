@@ -25,6 +25,10 @@ __copyright__ = 'Copyright 2015 Orion Labs'
 
 logger = logging.getLogger(__name__)
 
+# TODO since adding support for multiple backends, the interface in this
+# utilities module got a little weird. we need to create an abstraction for a
+# BleAdapter and move these functions there.
+
 
 def reset_bluetooth_controller(hci_device='hci0', bled112=None):
     """
