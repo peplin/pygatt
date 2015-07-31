@@ -74,10 +74,9 @@ class GATTToolBackend(object):
             '-I'
         ])
         self._logger.debug('gatttool_cmd=%s', gatttool_cmd)
-        if gatttool_logfile is None:
-            self._con = pexpect.spawn(gatttool_cmd)
-        else:
-            self._con = pexpect.spawn(gatttool_cmd, logfile=gatttool_logfile)
+        self._con = pexpect.spawn(
+            gatttool_cmd,
+            logfile=gatttool_logfile if gatttool_logfile else None)
         # Wait for response
         self._con.expect(r'\[LE\]>', timeout=1)
 
@@ -92,8 +91,7 @@ class GATTToolBackend(object):
         self._con.sendline('sec-level medium')
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
 
-    def connect(self,
-                timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
+    def connect(self, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
         self._logger.info('Connecting with timeout=%s', timeout)
         try:
@@ -137,7 +135,8 @@ class GATTToolBackend(object):
                             char_uuid = self._con.match.group(2).strip()
                             self._handles[char_uuid] = handle
                             self._logger.debug(
-                                "Found characteristic %s, handle: %d", uuid,
+                                "Found characteristic %s, handle: %d",
+                                char_uuid,
                                 handle)
 
                             # The characteristics all print at once, so after
@@ -146,6 +145,11 @@ class GATTToolBackend(object):
                             timeout = .01
                         except AttributeError:
                             pass
+
+        if len(self._handles) == 0:
+            raise exceptions.BluetoothLEError(
+                "No characteristics found - disconnected unexpectedly?")
+
         handle = self._handles.get(uuid)
         if handle is None:
             message = "No characteristic found matching %s" % uuid
@@ -185,12 +189,13 @@ class GATTToolBackend(object):
                     elif matched_pattern_index in [1, 2]:
                         self._handle_notification(self._con.after)
                     elif matched_pattern_index in [3, 4]:
+                        message = ""
                         if self._running:
                             message = ("Unexpectedly disconnected - do you "
                                        "need to clear bonds?")
                             self._logger.error(message)
                             self._running = False
-                        raise exceptions.NotConnectedError()
+                        raise exceptions.NotConnectedError(message)
                 except pexpect.TIMEOUT:
                     raise exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
@@ -204,6 +209,11 @@ class GATTToolBackend(object):
         """
         with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
+
+            # The "write" handle as numbered in gatttol is the base handle
+            # number + 1 - this may or may not be gatttool/BlueZ specific. IF it
+            # is, this logic can be moved up 1 level.
+            handle += 1
 
             if wait_for_response:
                 cmd = 'req'

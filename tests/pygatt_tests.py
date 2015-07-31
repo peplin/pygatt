@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from binascii import unhexlify
 from mock import patch
-from nose.tools import nottest
+from nose.tools import nottest, eq_, assert_in
 import platform
 import Queue
 import unittest
@@ -617,7 +617,7 @@ class BLED112_BackendTests(unittest.TestCase):
             # Test scan
             scan_responses = []
             addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-            addr_0_str = ":".join([hex(b)[2:] for b in addr_0])
+            addr_0_str = ':'.join('%02x' % b for b in addr_0)
             scan_responses.append({
                 'rssi': -80,
                 'packet_type': 0,
@@ -630,9 +630,9 @@ class BLED112_BackendTests(unittest.TestCase):
             self._stage_scan_packets(bled112, scan_responses=scan_responses)
             bled112.scan()
             devs = bled112.get_devices_discovered()
-            assert(addr_0_str in devs)
-            assert(devs[addr_0_str].name == 'Hello!')
-            assert(devs[addr_0_str].rssi == -80)
+            assert_in(addr_0_str, devs)
+            eq_('Hello!', devs[addr_0_str].name)
+            eq_(-80, devs[addr_0_str].rssi)
         finally:
             bled112.stop()
 
