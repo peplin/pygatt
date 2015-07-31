@@ -15,6 +15,7 @@ except Exception as e:
 
 from pygatt import constants
 from pygatt import exceptions
+from pygatt.backends.backend import BLEBackend
 
 
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
@@ -22,19 +23,17 @@ __license__ = 'Apache License, Version 2.0'
 __copyright__ = 'Copyright 2015 Orion Labs'
 
 
-class GATTToolBackend(object):
+class GATTToolBackend(BLEBackend):
     """
     Backend to pygatt that uses gatttool/bluez on the linux command line.
     """
     _GATTTOOL_PROMPT = r".*> "
 
-    def __init__(self, mac_address, hci_device='hci0', loghandler=None,
+    def __init__(self, hci_device='hci0', loghandler=None,
                  loglevel=logging.DEBUG, gatttool_logfile=None):
         """
         Initialize.
 
-        mac_address -- the mac address of the BLE device to connect to in the
-                       following format: "XX:XX:XX:XX:XX:XX"
         hci_device -- the hci_device to use with GATTTool.
         loghandler -- logging.handler object to use for the logger.
         loglevel -- log level for this module's logger.
@@ -52,7 +51,6 @@ class GATTToolBackend(object):
         self._logger.addHandler(loghandler)
 
         # Internal state
-        self._address = mac_address
         self._handles = {}
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
@@ -65,8 +63,6 @@ class GATTToolBackend(object):
         # Start gatttool interactive session for device
         gatttool_cmd = ' '.join([
             'gatttool',
-            '-b',
-            self._address,
             '-i',
             hci_device,
             '-I'
@@ -89,12 +85,13 @@ class GATTToolBackend(object):
         self._con.sendline('sec-level medium')
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
 
-    def connect(self, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
+    def connect(self, address, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
         self._logger.info('Connecting with timeout=%s', timeout)
+        self._address = address
         try:
             with self._connection_lock:
-                self._con.sendline('connect')
+                self._con.sendline('connect %s' % self._address)
                 self._con.expect(r'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."
@@ -102,7 +99,7 @@ class GATTToolBackend(object):
             self._logger.error(message)
             raise exceptions.NotConnectedError(message)
 
-    def get_handle(self, uuid):
+    def get_handle(self, uuid, descriptor_uuid=None):
         """
         Look up and return the handle for an attribute by its UUID.
         :param uuid: The UUID of the characteristic.

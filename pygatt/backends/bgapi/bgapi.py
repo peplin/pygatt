@@ -1,14 +1,15 @@
 from __future__ import print_function
 
-from binascii import hexlify
 import logging
 import Queue
 import serial
 import time
 import threading
+from binascii import hexlify, unhexlify
 
 from pygatt.constants import LOG_FORMAT, LOG_LEVEL
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
+from pygatt.backends.backend import BLEBackend
 
 from . import bglib
 from . import constants
@@ -53,7 +54,7 @@ class AdvertisingAndScanInfo(object):
         }
 
 
-class BGAPIBackend(object):
+class BGAPIBackend(BLEBackend):
     """
     Pygatt BLE device backend using a Bluegiga BGAPI compatible dongle.
 
@@ -260,7 +261,7 @@ class BGAPIBackend(object):
             self._logger.warn(warning)
             raise BGAPIError(warning)
 
-    def char_write(self, handle, value):
+    def char_write(self, handle, value, wait_for_response=False):
         """
         Write a value to a characteristic on the device.
 
@@ -271,6 +272,9 @@ class BGAPIBackend(object):
 
         Raises BGAPIError on failure.
         """
+        if wait_for_response:
+            raise NotImplementedError("bgapi subscribe wait for response")
+
         # Make sure there is a connection
         self._check_connection()
 
@@ -304,7 +308,11 @@ class BGAPIBackend(object):
             self._logger.warn(warning)
             raise BGAPIError(warning)
 
-    def char_read(self, handle):
+    def char_read_uuid(self, uuid):
+        handle = self.get_handle(uuid)
+        return self._char_read(handle)
+
+    def _char_read(self, handle):
         """
         Read a value from a characteristic on the device.
 
@@ -382,7 +390,7 @@ class BGAPIBackend(object):
         supervision_timeout = 20  # 20/10 ms
         latency = 0  # intervals that can be skipped
         self._logger.info("gap_connect_direct")
-        self._logger.info("address = %s", '0x'+hexlify(address))
+        self._logger.info("address = 0x%s", hexlify(address))
         self._logger.debug("interval_min = %f ms", interval_min/1.25)
         self._logger.debug("interval_max = %f ms", interval_max/1.25)
         self._logger.debug("timeout = %d ms", timeout/10)
@@ -614,6 +622,16 @@ class BGAPIBackend(object):
         return desc_handle
 
     def get_rssi(self):
+        # The BGAPI has some strange behavior where it will return 25 for
+        # the RSSI value sometimes... Try a maximum of 3 times.
+        for i in range(0, 3):
+            rssi = self._get_rssi_once()
+            if rssi != 25:
+                return rssi
+            time.sleep(0.1)
+        raise BGAPIError("get rssi failed")
+
+    def _get_rssi_once(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the device.
 
@@ -748,23 +766,24 @@ class BGAPIBackend(object):
                               get_return_message(self._response_return))
             raise BGAPIError("gap end procedure failed")
 
-    def subscribe(self, characteristic_uuid, callback=None, indicate=False):
+    def subscribe(self, uuid, callback=None, indicate=False):
         """
         Ask GATT server to receive notifications from the characteristic.
 
         This requires that a connection is already established with the device.
 
-        characteristic_uuid -- the uuid of the characteristic to subscribe to.
+        uuid -- the uuid of the characteristic to subscribe to.
         callback -- funtion to call when notified/indicated.
         indicate -- receive indications (requires application ACK) rather than
                     notifications (does not require application ACK).
 
         Raises BGAPIError on failure.
         """
-        # Get client_characteristic_configuration descriptor handle
-        uuid_handle = self.get_handle(characteristic_uuid)
-        handle = self.get_handle(
-            characteristic_uuid,
+
+        uuid_bytes = self._uuid_bytearray(uuid)
+        characteristic_handle = self.get_handle(uuid_bytes)
+        characteristic_config_handle = self.get_handle(
+            uuid_bytes,
             constants.gatt_characteristic_descriptor_uuid[
                 'client_characteristic_configuration'
             ])
@@ -773,14 +792,15 @@ class BGAPIBackend(object):
         config_val = [0x01, 0x00]  # Enable notifications 0x0001
         if indicate:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
-        self.char_write(handle, config_val)
+        self.char_write(characteristic_config_handle, config_val)
 
         if callback is not None:
             self._lock.acquire()
-            self._callbacks[uuid_handle] = callback
+            self._callbacks[characteristic_handle] = callback
             self._lock.release()
 
     def stop(self):
+        self.disconnect(fail_quietly=True)
         self._recvr_thread_stop.set()
 
     def _check_connection(self, check_if_connected=True):
@@ -1456,3 +1476,15 @@ class BGAPIBackend(object):
         """
         # Log
         self._logger.info("_ble_rsp_set_bondable_mode")
+
+    def _uuid_bytearray(self, uuid):
+        """
+        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+        to a bytearray.
+
+        uuid -- the UUID to convert.
+
+        Returns a bytearray containing the UUID.
+        """
+        self._logger.info("_uuid_bytearray %s", uuid)
+        return unhexlify(uuid.replace("-", ""))

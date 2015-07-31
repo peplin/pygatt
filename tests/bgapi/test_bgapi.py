@@ -22,6 +22,10 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def tearDown(self):
         self.mock_device.stop()
+        # TODO if we call stop without staging another disconnect packet, the
+        # bglib explodes because of a packet == None and you get a runaway
+        # process. what we can do about that?
+        self.mock_device.stage_disconnect_packets(True, False)
         self.backend.stop()
 
     def test_run_backend(self):
@@ -71,7 +75,7 @@ class BGAPIBackendTests(unittest.TestCase):
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self.mock_device.stage_char_read_packets(
             handle, 0x00, expected_value)
-        value = self.backend.char_read(handle)
+        value = self.backend._char_read(handle)
         assert(value == bytearray(expected_value))
 
     def test_char_write(self):
@@ -224,8 +228,7 @@ class BGAPIBackendTests(unittest.TestCase):
         handle = 0x1234
         uuid = '01234567-0123-0123-0123-0123456789AB'
         self.stage_subscribe_packets(uuid, handle)
-        self.backend.subscribe(uuid_to_bytearray(uuid),
-                               callback=my_handler.handle, indicate=True)
+        self.backend.subscribe(uuid, callback=my_handler.handle, indicate=True)
         start_time = time.time()
         self.mock_device.stage_indication_packets(handle, packet_values)
         while not my_handler.called.is_set():
