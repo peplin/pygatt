@@ -7,22 +7,21 @@ import serial
 import time
 import threading
 
-import bled112_bglib
-from bled112_error import get_return_message
-from bled112_constants import(
-    ble_address_type, bondable, bonding, connection_status_flag,
-    gap_discover_mode, gap_discoverable_mode, gap_connectable_mode,
-    gatt_attribute_type_uuid, gatt_characteristic_descriptor_uuid,
-    gatt_characteristic_type_uuid, gatt_service_uuid, scan_response_data_type,
-    scan_response_packet_type
-)
-from constants import LOG_FORMAT, LOG_LEVEL
-from exceptions import BLED112Error, NotConnectedError
+from pygatt.constants import LOG_FORMAT, LOG_LEVEL
+from pygatt.exceptions import BluetoothLEError, NotConnectedError
+
+from . import bglib
+from . import constants
+from .error_codes import get_return_message
+
+
+class BGAPIError(BluetoothLEError):
+    pass
 
 
 class Characteristic(object):
     """
-    GATT characteristic. For internal use within BLED112Backend.
+    GATT characteristic. For internal use within BGAPIBackend.
     """
     def __init__(self, name, handle):
         """
@@ -54,19 +53,21 @@ class AdvertisingAndScanInfo(object):
         }
 
 
-class BLED112Backend(object):
+class BGAPIBackend(object):
     """
-    Pygatt BLE device backend using the Bluegiga BLED112.
+    Pygatt BLE device backend using a Bluegiga BGAPI compatible dongle.
+
     Only supports 1 device connection at a time.
+
     This object is NOT threadsafe.
     """
     def __init__(self, serial_port, run=True, logfile=None):
         """
-        Initialize the BLED112 to be ready for use with a BLE device, i.e.,
+        Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
         the receiver thread, and optionally delete any stored bonds.
 
-        serial_port -- The name of the serial port that the BLED112 is connected
+        serial_port -- The name of the serial port that the dongle is connected
                        to.
         run -- begin reveiving packets immediately.
         logfile -- the file to log to.
@@ -84,8 +85,7 @@ class BLED112Backend(object):
         self._logger.addHandler(handler)
 
         # Initialization
-        self._lib = bled112_bglib.BGLib(loghandler=handler,
-                                        loglevel=LOG_LEVEL)
+        self._lib = bglib.BGLib(loghandler=handler, loglevel=LOG_LEVEL)
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
         self._recvr_thread = threading.Thread(target=self._recv_packets)
@@ -100,8 +100,8 @@ class BLED112Backend(object):
 
         # State
         self._expected_attribute_handle = None  # expected handle after a read
-        self._num_bonds = 0  # number of bonds stored on the BLED112
-        self._stored_bonds = []  # bond handles stored on the BLED112
+        self._num_bonds = 0  # number of bonds stored on the dongle
+        self._stored_bonds = []  # bond handles stored on the dongle
         self._connection_handle = 0x00  # handle for the device connection
         self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
@@ -128,7 +128,7 @@ class BLED112Backend(object):
         # Packet handlers
         self._packet_handlers = {
             # Formatted as follows:
-            # BGLib.PacketType.<PACKET_NAME>, BLED112Backend.handler_function
+            # BGLib.PacketType.<PACKET_NAME>, BGAPIBackend.handler_function
         }
         # Set default packet handler
         for i in range(self._lib.PacketType.before_first_value+1,
@@ -203,7 +203,7 @@ class BLED112Backend(object):
             self._ble_evt_sm_bonding_fail
 
         # Start logging
-        self._logger.info("BLED112Backend on %s", serial_port)
+        self._logger.info("BGAPIBackend on %s", serial_port)
 
         # Run the receiver thread
         if run:
@@ -221,7 +221,7 @@ class BLED112Backend(object):
         # Set to bondable mode
         self._bond_expected = True
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(bondable['yes'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['yes'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -233,8 +233,8 @@ class BLED112Backend(object):
         # Begin encryption and bonding
         self._bonding_fail = False
         self._logger.info("encrypt_start")
-        cmd = self._lib.ble_cmd_sm_encrypt_start(self._connection_handle,
-                                                 bonding['create_bonding'])
+        cmd = self._lib.ble_cmd_sm_encrypt_start(
+            self._connection_handle, constants.bonding['create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -246,7 +246,7 @@ class BLED112Backend(object):
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
         # Wait for event
         while (not self._bonding_fail) and self._connected and\
@@ -260,7 +260,7 @@ class BLED112Backend(object):
             warning = "encrypt_start failed: " +\
                       get_return_message(self._event_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
     def char_write(self, handle, value):
         """
@@ -271,7 +271,7 @@ class BLED112Backend(object):
         handle -- the characteristic/descriptor handle (integer) to write to.
         value -- a bytearray holding the value to write.
 
-        Raises BLED112Error on failure.
+        Raises BGAPIError on failure.
         """
         # Make sure there is a connection
         self._check_connection()
@@ -292,7 +292,7 @@ class BLED112Backend(object):
             warning = "attribute_write failed: " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
         # Wait for event
         self._process_packets_until(
@@ -304,7 +304,7 @@ class BLED112Backend(object):
             warning = "attribute_write failed: " +\
                       get_return_message(self._event_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
     def char_read(self, handle):
         """
@@ -315,7 +315,7 @@ class BLED112Backend(object):
         handle -- the characteristic handle (integer) to read from.
 
         Returns a bytearray containing the value read, on success.
-        Raised BLED112Error on failure.
+        Raised BGAPIError on failure.
         """
         # Make sure there is a connection
         self._check_connection()
@@ -336,7 +336,7 @@ class BLED112Backend(object):
             warning = "read_by_handle failed: " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
         # Reset flags
         self._attribute_value_received = False  # reset the flag
@@ -353,25 +353,26 @@ class BLED112Backend(object):
             warning = "read_by_handle failed: " +\
                       get_return_message(self._event_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
         if self._attribute_value_received:
             self._attribute_value_received = False  # reset the flag
             # Return characteristic value
             return bytearray(self._attribute_value)
 
     def connect(self, address, timeout=5,
-                addr_type=ble_address_type['gap_address_type_public']):
+                addr_type=constants.ble_address_type[
+                    'gap_address_type_public']):
         """
         Connnect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
 
-        Requires that the BLED112 is not connected to a device already.
+        Requires that the dongle is not connected to a device already.
 
         address -- a bytearray containing the device mac address.
         timeout -- number of seconds to wait before returning if not connected.
         addr_type -- one of the ble_address_type constants.
 
-        Raises BLED112Error or NotConnectedError on failure.
+        Raises BGAPIError or NotConnectedError on failure.
         """
         # Make sure there is NOT a connection
         self._check_connection(check_if_connected=False)
@@ -399,7 +400,7 @@ class BLED112Backend(object):
         if self._response_return != 0:
             self._logger.warn("connect_direct failed: %s",
                               get_return_message(self._response_return))
-            raise BLED112Error("Connection command failed")
+            raise BGAPIError("Connection command failed")
 
         # Wait for event
         self._process_packets_until(
@@ -408,7 +409,7 @@ class BLED112Backend(object):
 
     def delete_stored_bonds(self):
         """
-        Delete the bonds stored on the BLED112.
+        Delete the bonds stored on the dongle.
 
         Note: this does not delete the corresponding bond stored on the remote
               device.
@@ -442,7 +443,7 @@ class BLED112Backend(object):
             if self._response_return != 0:
                 self._logger.warn("delete_bonding: %s",
                                   get_return_message(self._response_return))
-                raise BLED112Error("Can't delete bonding")
+                raise BGAPIError("Can't delete bonding")
 
     def disconnect(self, fail_quietly=False):
         """
@@ -464,7 +465,7 @@ class BLED112Backend(object):
             if fail_quietly:
                 return
             else:
-                raise BLED112Error("disconnect failed")
+                raise BGAPIError("disconnect failed")
 
         # Wait for event
         self._process_packets_until(
@@ -480,14 +481,14 @@ class BLED112Backend(object):
 
         This requires that a connection is already established with the device.
 
-        Raises BLED112Error on failure.
+        Raises BGAPIError on failure.
         """
         # Make sure there is a connection
         self._check_connection()
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(bondable['no'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -499,7 +500,7 @@ class BLED112Backend(object):
         # Start encryption
         self._logger.info("encrypt_start")
         cmd = self._lib.ble_cmd_sm_encrypt_start(
-            self._connection_handle, bonding['do_not_create_bonding'])
+            self._connection_handle, constants.bonding['do_not_create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -511,7 +512,7 @@ class BLED112Backend(object):
             warning = "encrypt_start failed " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
         # Wait for event
         self._process_packets_until(
@@ -522,7 +523,7 @@ class BLED112Backend(object):
             warning = "encrypt_start failed: " +\
                       get_return_message(self._response_return)
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
     def get_devices_discovered(self):
         """
@@ -548,7 +549,7 @@ class BLED112Backend(object):
                            gatt_characteristic_descriptor_uuid constant.
 
         Returns an integer containing the handle on success.
-        Raises BLED112Error on failure.
+        Raises BGAPIError on failure.
         """
         # Make sure there is a connection
         self._check_connection()
@@ -571,7 +572,7 @@ class BLED112Backend(object):
                 warning = "find_information failed " +\
                           get_return_message(self._response_return)
                 self._logger.warn(warning)
-                raise BLED112Error(warning)
+                raise BGAPIError(warning)
 
             # Wait for event
             self._process_packets_until(
@@ -583,7 +584,7 @@ class BLED112Backend(object):
                 warning = "find_information failed: " +\
                           get_return_message(self._event_return)
                 self._logger.warn(warning)
-                raise BLED112Error(warning)
+                raise BGAPIError(warning)
             self._characteristics_cached = True
 
             # Log
@@ -602,7 +603,7 @@ class BLED112Backend(object):
         if not (char_uuid_str in self._characteristics):
             warning = "No such characteristic"
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
         char = self._characteristics[char_uuid_str]
         if descriptor_uuid is None:
             return char.handle
@@ -610,7 +611,7 @@ class BLED112Backend(object):
         if not (desc_uuid_str in char.descriptors):
             warning = "No such descriptor"
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
         desc_handle = char.descriptors[desc_uuid_str]
         return desc_handle
 
@@ -641,7 +642,8 @@ class BLED112Backend(object):
 
     def run(self):
         """
-        Put the BLED112 into a known state to start. And start the recvr thread.
+        Put the interface into a known state to start. And start the recvr
+        thread.
         """
         self._recvr_thread_stop.clear()
         self._recvr_thread.start()
@@ -652,8 +654,8 @@ class BLED112Backend(object):
         # Stop advertising
         self._logger.info("gap_set_mode")
         cmd = self._lib.ble_cmd_gap_set_mode(
-            gap_discoverable_mode['non_discoverable'],
-            gap_connectable_mode['non_connectable'])
+            constants.gap_discoverable_mode['non_discoverable'],
+            constants.gap_connectable_mode['non_connectable'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -677,7 +679,7 @@ class BLED112Backend(object):
 
         # Set not bondable
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(bondable['no'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -685,7 +687,8 @@ class BLED112Backend(object):
             [self._lib.PacketType.ble_rsp_sm_set_bondable_mode])
 
     def scan(self, scan_interval=75, scan_window=50, active=True,
-             scan_time=1000, discover_mode=gap_discover_mode['generic']):
+             scan_time=1000,
+             discover_mode=constants.gap_discover_mode['generic']):
         """
         Perform a scan to discover BLE devices.
 
@@ -715,7 +718,7 @@ class BLED112Backend(object):
         if self._response_return != 0:
             self._logger.warn("set_scan_parameters failed: %s",
                               get_return_message(self._response_return))
-            raise BLED112Error("set scan parmeters failed")
+            raise BGAPIError("set scan parmeters failed")
 
         # Begin scanning
         self._logger.info("gap_discover")
@@ -728,7 +731,7 @@ class BLED112Backend(object):
         if self._response_return != 0:
             self._logger.warn("gap_discover failed: %s",
                               get_return_message(self._response_return))
-            raise BLED112Error("gap discover failed")
+            raise BGAPIError("gap discover failed")
 
         # Wait for scan_time
         self._logger.debug("Wait for %d ms", scan_time)
@@ -745,7 +748,7 @@ class BLED112Backend(object):
         if self._response_return != 0:
             self._logger.warn("gap_end_procedure failed: %s",
                               get_return_message(self._response_return))
-            raise BLED112Error("gap end procedure failed")
+            raise BGAPIError("gap end procedure failed")
 
     def subscribe(self, characteristic_uuid, callback=None, indicate=False):
         """
@@ -758,13 +761,13 @@ class BLED112Backend(object):
         indicate -- receive indications (requires application ACK) rather than
                     notifications (does not require application ACK).
 
-        Raises BLED112Error on failure.
+        Raises BGAPIError on failure.
         """
         # Get client_characteristic_configuration descriptor handle
         uuid_handle = self.get_handle(characteristic_uuid)
         handle = self.get_handle(
             characteristic_uuid,
-            gatt_characteristic_descriptor_uuid[
+            constants.gatt_characteristic_descriptor_uuid[
                 'client_characteristic_configuration'
             ])
 
@@ -790,7 +793,7 @@ class BLED112Backend(object):
                               connected.
 
         Raises NotConnectedError on failure if check_if_connected == True.
-        Raised BLED112Error on failure if check_if_connected == False.
+        Raised BGAPIError on failure if check_if_connected == False.
         """
         if (not self._connected) and check_if_connected:
             warning = "Not connected"
@@ -799,7 +802,7 @@ class BLED112Backend(object):
         elif self._connected and (not check_if_connected):
             warning = "Already connected"
             self._logger.warn(warning)
-            raise BLED112Error(warning)
+            raise BGAPIError(warning)
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
@@ -831,19 +834,20 @@ class BLED112Backend(object):
         if len(uuid) == 16:  # 128-bit --> 16 byte
             self._logger.debug("match custom")
             return 0
-        for name, u in gatt_service_uuid.iteritems():
+        for name, u in constants.gatt_service_uuid.iteritems():
             if u == uuid:
                 self._logger.debug("match %s", name + ": 0x" + hexlify(u))
                 return 1
-        for name, u in gatt_attribute_type_uuid.iteritems():
+        for name, u in constants.gatt_attribute_type_uuid.iteritems():
             if u == uuid:
                 self._logger.debug("match %s", name + ": 0x" + hexlify(u))
                 return 2
-        for name, u in gatt_characteristic_descriptor_uuid.iteritems():
+        for name, u in (
+                constants.gatt_characteristic_descriptor_uuid.iteritems()):
             if u == uuid:
                 self._logger.debug("match %s", name + ": 0x" + hexlify(u))
                 return 3
-        for name, u in gatt_characteristic_type_uuid.iteritems():
+        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
             if u == uuid:
                 self._logger.debug("match %s", name + ": 0x" + hexlify(u))
                 return 4
@@ -880,7 +884,8 @@ class BLED112Backend(object):
                 bytes_left_in_field -= 1
                 if bytes_left_in_field == 0:
                     # End of field
-                    field_name = scan_response_data_type[field_value[0]]
+                    field_name = (
+                        constants.scan_response_data_type[field_value[0]])
                     field_value = field_value[1:]
                     # Field type specific formats
                     if field_name == 'complete_local_name' or\
@@ -899,7 +904,7 @@ class BLED112Backend(object):
         return dev_name, data_dict
 
     def _process_packets_until(self, expected_packet_choices, timeout=None,
-                               exception_type=BLED112Error):
+                               exception_type=BGAPIError):
         """
         Process packets until a packet of one of the expected types is found.
 
@@ -989,7 +994,7 @@ class BLED112Backend(object):
     def _generic_handler(self, args):
         """
         Generic event/response handler. Used for receiving packets from the
-        BLED112 that don't need any specific action taken.
+        interface that don't need any specific action taken.
 
         args -- dictionary containing the parameters for the event/response
                 given in the Bluegia Bluetooth Smart Software API.
@@ -999,7 +1004,7 @@ class BLED112Backend(object):
     # Event handlers -----------------------------------------------------------
     def _ble_evt_attclient_attribute_value(self, args):
         """
-        Handles the BLED112 event for values of characteristics.
+        Handles the event for values of characteristics.
 
         args -- dictionary containing the connection handle ('connection'),
                 attribute handle ('atthandle'), attribute type ('type'),
@@ -1100,7 +1105,7 @@ class BLED112Backend(object):
 
     def _ble_evt_connection_status(self, args):
         """
-        Handles the event for the BLED112 reporting connection parameters.
+        Handles the event for reporting connection parameters.
 
         args -- dictionary containing the connection handle ('connection'),
                 connection status flags ('flags'), device address ('address'),
@@ -1112,18 +1117,19 @@ class BLED112Backend(object):
         self._connection_handle = args['connection']
         flags = ""
         if self._connection_status_flag(
-                args['flags'], connection_status_flag['connected']):
+                args['flags'], constants.connection_status_flag['connected']):
             self._connected = True
             flags += 'connected, '
         if self._connection_status_flag(
-                args['flags'], connection_status_flag['encrypted']):
+                args['flags'], constants.connection_status_flag['encrypted']):
             self._encrypted = True
             flags += 'encrypted, '
         if self._connection_status_flag(
-                args['flags'], connection_status_flag['completed']):
+                args['flags'], constants.connection_status_flag['completed']):
             flags += 'completed, '
         if self._connection_status_flag(
-                args['flags'], connection_status_flag['parameters_change']):
+                args['flags'],
+                constants.connection_status_flag['parameters_change']):
             flags += 'parameters_change, '
 
         # Log
@@ -1133,10 +1139,10 @@ class BLED112Backend(object):
         addr_str = "0x"+hexlify(bytearray(args['address']))
         self._logger.debug("address = %s", addr_str)
         if (args['address_type'] ==
-                ble_address_type['gap_address_type_public']):
+                constants.ble_address_type['gap_address_type_public']):
             address_type = "public"
         elif (args['address_type'] ==
-                ble_address_type['gap_address_type_random']):
+                constants.ble_address_type['gap_address_type_random']):
             address_type = "random"
         else:
             address_type = "Bad type"
@@ -1159,11 +1165,11 @@ class BLED112Backend(object):
                 scan resonse data list ('data')
         """
         # Parse packet
-        packet_type = scan_response_packet_type[args['packet_type']]
+        packet_type = constants.scan_response_packet_type[args['packet_type']]
         address = ":".join(list(reversed(
             [format(b, '02x') for b in args['sender']])))
         address_type = "unknown"
-        for name, value in ble_address_type.iteritems():
+        for name, value in constants.ble_address_type.iteritems():
             if value == args['address_type']:
                 address_type = name
                 break

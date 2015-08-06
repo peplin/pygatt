@@ -19,7 +19,7 @@ limitations under the License.
 
 
 
-pygatt.pygatt.bled112_bglib:
+pygatt.backends.bgapi.bglib:
 
 Copyright 2014 Jeff Rowberg
 

@@ -23,9 +23,5 @@ DEFAULT_CONNECT_TIMEOUT_S = 5.0
 # Backends
 BACKEND = {
     'GATTTOOL': 0,
-    'BLED112': 1,
+    'BGAPI': 1,
 }
-
-# Bluegiga BLED112 USB device information
-BLED112_VENDOR_ID = 0x2458
-BLED112_PRODUCT_ID = 0x0001
