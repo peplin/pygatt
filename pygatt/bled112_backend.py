@@ -782,6 +782,7 @@ class BLED112Backend(object):
 
     def stop(self):
         self._recvr_thread_stop.set()
+        self._ser.close()
 
     def _check_connection(self, check_if_connected=True):
         """
