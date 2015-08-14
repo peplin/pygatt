@@ -89,6 +89,7 @@ class BGAPIBackend(object):
         self._ser = serial.Serial(serial_port, timeout=0.25)
 
         self._recvr_thread = threading.Thread(target=self._recv_packets)
+        self._recvr_thread.daemon = True
         self._recvr_thread_stop = threading.Event()
         self._recvr_queue = Queue.Queue()  # buffer for packets received
 
@@ -984,9 +985,11 @@ class BGAPIBackend(object):
                             self._logger.debug(
                                 "Calling callback " +
                                 callbacks[args['atthandle']].__name__)
-                            threading.Thread(
+                            callback_thread = threading.Thread(
                                 target=callbacks[args['atthandle']],
-                                args=(bytearray(args['value']),)).start()
+                                args=(bytearray(args['value']),))
+                            callback_thread.daemon = True
+                            callback_thread.start()
                     else:
                         self._recvr_queue.put(packet, block=True, timeout=0.1)
 
