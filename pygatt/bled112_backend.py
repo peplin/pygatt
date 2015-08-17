@@ -86,11 +86,12 @@ class BLED112Backend(object):
         # Initialization
         self._lib = bled112_bglib.BGLib(loghandler=handler,
                                         loglevel=LOG_LEVEL)
-        self._ser = serial.Serial(serial_port, timeout=0.25)
+        self._serial_port = serial_port
+        self._ser = None
 
-        self._recvr_thread = threading.Thread(target=self._recv_packets)
-        self._recvr_thread.daemon = True
+        self._recvr_thread = None
         self._recvr_thread_stop = threading.Event()
+        self._recvr_thread_is_done = threading.Event()
         self._recvr_queue = Queue.Queue()  # buffer for packets received
 
         # State that is locked
@@ -644,7 +645,13 @@ class BLED112Backend(object):
         """
         Put the BLED112 into a known state to start. And start the recvr thread.
         """
+        self._ser = serial.Serial(self._serial_port, timeout=0.25)
+
+        self._recvr_thread = threading.Thread(target=self._recv_packets)
+        self._recvr_thread.daemon = True
+
         self._recvr_thread_stop.clear()
+        self._recvr_thread_is_done.clear()
         self._recvr_thread.start()
 
         # Disconnect any connections
@@ -782,7 +789,10 @@ class BLED112Backend(object):
 
     def stop(self):
         self._recvr_thread_stop.set()
+        self._recvr_thread_is_done.wait()
         self._ser.close()
+        self._ser = None
+        self._recvr_thread = None
 
     def _check_connection(self, check_if_connected=True):
         """
@@ -988,6 +998,8 @@ class BLED112Backend(object):
                             callback_thread.start()
                     else:
                         self._recvr_queue.put(packet, block=True, timeout=0.1)
+
+        self._recvr_thread_is_done.set()
 
     # Generic event/response handler -------------------------------------------
     def _generic_handler(self, args):
