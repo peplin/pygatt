@@ -20,9 +20,21 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend = BGAPIBackend(
             serial_port=self.mock_device.serial_port_name, run=False)
 
+        self.address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
+        self.address_string = ":".join("%02x" % b for b in self.address)
+
     def tearDown(self):
         self.mock_device.stop()
+        # TODO if we call stop without staging another disconnect packet, the
+        # bglib explodes because of a packet == None and you get a runaway
+        # process. what we can do about that?
+        self.mock_device.stage_disconnect_packets(True, False)
         self.backend.stop()
+
+    def _connect(self):
+        self.mock_device.stage_connect_packets(
+            self.address, ['connected', 'completed'])
+        self.backend.connect(self.address_string)
 
     def test_run_backend(self):
         """run general functionality."""
@@ -33,20 +45,13 @@ class BGAPIBackendTests(unittest.TestCase):
         """connect general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        # Test connect
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
 
     def test_disconnect_when_connected(self):
         """disconnect general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         # test disconnect (connected, not fail)
         self.mock_device.stage_disconnect_packets(True, False)
         self.backend.disconnect()
@@ -55,10 +60,7 @@ class BGAPIBackendTests(unittest.TestCase):
         """read general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
         handle_char = 0x1234
         uuid_desc = '2902'
@@ -71,17 +73,14 @@ class BGAPIBackendTests(unittest.TestCase):
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self.mock_device.stage_char_read_packets(
             handle, 0x00, expected_value)
-        value = self.backend.char_read(handle)
+        value = self.backend._char_read(handle)
         assert(value == bytearray(expected_value))
 
     def test_char_write(self):
         """char_write general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
         handle_char = 0x1234
         uuid_desc = '2902'
@@ -99,35 +98,26 @@ class BGAPIBackendTests(unittest.TestCase):
         """encrypt general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         # Test encrypt
         self.mock_device.stage_encrypt_packets(
-            address, ['connected', 'encrypted'])
+            self.address, ['connected', 'encrypted'])
         self.backend.encrypt()
 
     def test_bond(self):
         """bond general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         self.mock_device.stage_bond_packets(
-            address, ['connected', 'encrypted', 'parameters_change'])
+            self.address, ['connected', 'encrypted', 'parameters_change'])
         self.backend.bond()
 
     def test_get_rssi(self):
         """get_rssi general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         # Test get_rssi
         self.mock_device.stage_get_rssi_packets()
         assert(self.backend.get_rssi() == -80)
@@ -136,10 +126,7 @@ class BGAPIBackendTests(unittest.TestCase):
         """get_handle general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         # Test get_handle
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
         handle_char = 0x1234
@@ -214,18 +201,14 @@ class BGAPIBackendTests(unittest.TestCase):
 
         self.mock_device.stage_run_packets()
         self.backend.run()
-        address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        self.mock_device.stage_connect_packets(
-            address, ['connected', 'completed'])
-        self.backend.connect(bytearray(address))
+        self._connect()
         # Test subscribe with indications
         packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
         my_handler = NotificationHandler(packet_values[0])
         handle = 0x1234
         uuid = '01234567-0123-0123-0123-0123456789AB'
         self.stage_subscribe_packets(uuid, handle)
-        self.backend.subscribe(uuid_to_bytearray(uuid),
-                               callback=my_handler.handle, indicate=True)
+        self.backend.subscribe(uuid, callback=my_handler.handle, indicate=True)
         start_time = time.time()
         self.mock_device.stage_indication_packets(handle, packet_values)
         while not my_handler.called.is_set():

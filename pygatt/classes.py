@@ -1,11 +1,8 @@
 from __future__ import print_function
 
-from binascii import unhexlify
 import logging
-import time
 
-from constants import BACKEND, DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
-from pygatt.backends.bgapi.bgapi import BGAPIError
+from constants import DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 from pygatt.backends import GATTToolBackend
 
 
@@ -13,17 +10,17 @@ class BluetoothLEDevice(object):
     """
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BGAPI (cross platform) or GATTTOOL (Linux only) as the backend.
+
+    TODO pass the instantiated backend in as an argument
     """
-    def __init__(self, mac_address, logfile=None, hci_device='hci0',
-                 bgapi=None):
+    def __init__(self, mac_address, backend, logfile=None):
         """
         Initialize.
 
         mac_address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
+        backend -- an instantiated instance of a BLEBacked.
         logfile -- the file in which to write the logs.
-        hci_device -- (GATTTOOL only) the hci_device for gattool to use.
-        bgapi -- (BGAPI only) the BGAPI_backend object to use.
 
         Example:
 
@@ -31,9 +28,8 @@ class BluetoothLEDevice(object):
             my_ble_device = pygatt.classes.BluetoothLEDevice(
                 '01:23:45:67:89:ab', bgapi=dongle)
         """
-        # Initialize
-        self._backend = None
-        self._backend_type = None
+        self._backend = backend
+        self._mac_address = mac_address
 
         # Set up logging
         self._logger = logging.getLogger(__name__)
@@ -47,33 +43,13 @@ class BluetoothLEDevice(object):
         handler.setFormatter(formatter)
         self._logger.addHandler(handler)
 
-        # Select backend, store mac address, optional delete bonds
-        if bgapi is not None:
-            self._logger.info("pygatt[BGAPI]")
-            self._backend = bgapi
-            self._backend_type = BACKEND['BGAPI']
-            self._mac_address = bytearray(
-                [int(b, 16) for b in mac_address.split(":")])
-        else:
-            self._logger.info("pygatt[GATTTOOL]")
-            # TODO: how to pass pexpect logfile
-            self._backend = GATTToolBackend(mac_address, hci_device=hci_device,
-                                            loglevel=LOG_LEVEL,
-                                            loghandler=handler)
-            self._backend_type = BACKEND['GATTTOOL']
-
     def bond(self):
         """
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.
         """
         self._logger.info("bond")
-        if self._backend_type == BACKEND['BGAPI']:
-            self._backend.bond()
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            self._backend.bond()
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        self._backend.bond()
 
     def connect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         """
@@ -88,12 +64,7 @@ class BluetoothLEDevice(object):
 
         """
         self._logger.info("connect")
-        if self._backend_type == BACKEND['BGAPI']:
-            self._backend.connect(self._mac_address, timeout=timeout)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            self._backend.connect(timeout=timeout)
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        self._backend.connect(self._mac_address, timeout=timeout)
 
     def char_read(self, uuid):
         """
@@ -108,14 +79,7 @@ class BluetoothLEDevice(object):
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
         self._logger.info("char_read %s", uuid)
-        if self._backend_type == BACKEND['BGAPI']:
-            handle = self._get_handle(uuid)
-            ret = self._backend.char_read(handle)
-            return ret
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            return self._backend.char_read_uuid(uuid)
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        return self._backend.char_read_uuid(uuid)
 
     def char_write(self, uuid, value, wait_for_response=False):
         """
@@ -130,85 +94,44 @@ class BluetoothLEDevice(object):
                                      bytearray([0x00, 0xFF]))
         """
         self._logger.info("char_write %s", uuid)
-        # Write to the characteristic
-        if self._backend_type == BACKEND['BGAPI']:
-            if wait_for_response:
-                raise NotImplementedError("bgapi subscribe wait for response")
-            handle_write = self._get_handle(uuid)
-            self._backend.char_write(handle_write, value)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            handle = self._backend.get_handle(uuid)
-            self._backend.char_write(handle, value,
-                                     wait_for_response=wait_for_response)
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        handle = self._backend.get_handle(uuid)
+        self._backend.char_write(handle, value,
+                                 wait_for_response=wait_for_response)
 
     def encrypt(self):
         """
         Form an encrypted, but not bonded, connection.
         """
         self._logger.info("encrypt")
-        # TODO instead of checking if the backend supports encryption in this
-        # class, defer that decision to the backend: let the gatttool backedn
-        # raise the NotImplementedError.
-        if self._backend_type == BACKEND['BGAPI']:
-            self._backend.encrypt()
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("pygatt[GATTOOL].encrypt")
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        self._backend.encrypt()
 
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
-        device (BGAPI only).
+        device.
 
         Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
         self._logger.info("get_rssi")
-        if self._backend_type == BACKEND['BGAPI']:
-            # The BGAPI has some strange behavior where it will return 25 for
-            # the RSSI value sometimes... Try a maximum of 3 times.
-            for i in range(0, 3):
-                rssi = self._backend.get_rssi()
-                if rssi != 25:
-                    return rssi
-                time.sleep(0.1)
-            # TODO this is an exception - shouldn't it be raised and not
-            # returned?
-            return BGAPIError("get rssi failed")
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            raise NotImplementedError("pygatt[GATTOOL].get_rssi")
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        return self._backend.get_rssi()
 
     def run(self):
         """
         Run a background thread to listen for notifications (GATTTOOL only).
         """
         self._logger.info("run")
-        if self._backend_type == BACKEND['BGAPI']:
-            pass
-        elif self._backend_type == BACKEND['GATTTOOL']:
+        # TODO This is an odd architecture, why does the backend have to bleed
+        # up to this level?
+        if isinstance(self._backend, GATTToolBackend):
             self._backend.run()
-        else:
-            raise NotImplementedError("backend", self._backend_type)
 
     def stop(self):
         """
-        Stop the backgroud notification handler in preparation for a disconnect
-        (GATTTOOL only) or disconnect and stop the receiver thread (BGAPI
-        only).
+        Stop the any background threads and disconnect.
         """
         self._logger.info("stop")
-        if self._backend_type == BACKEND['BGAPI']:
-            self._backend.disconnect(fail_quietly=True)
-            self._backend.stop()
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            self._backend.stop()
-        else:
-            raise NotImplementedError("backend", self._backend_type)
+        self._backend.stop()
 
     def subscribe(self, uuid, callback=None, indication=False):
         """
@@ -222,38 +145,4 @@ class BluetoothLEDevice(object):
         """
         self._logger.info("subscribe to %s with callback %s. indicate = %d",
                           uuid, callback.__name__, indication)
-        if self._backend_type == BACKEND['BGAPI']:
-            self._backend.subscribe(self._uuid_bytearray(uuid),
-                                    callback=callback, indicate=indication)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            self._backend.subscribe(uuid, callback=callback,
-                                    indication=indication)
-        else:
-            raise NotImplementedError("backend", self._backend_type)
-
-    def _get_handle(self, uuid):
-        """
-        Get the handle associated with the UUID.
-
-        uuid -- a UUID in string format.
-        """
-        self._logger.info("_get_handle %s", uuid)
-        uuid = self._uuid_bytearray(uuid)
-        if self._backend_type == BACKEND['BGAPI']:
-            return self._backend.get_handle(uuid)
-        elif self._backend_type == BACKEND['GATTTOOL']:
-            return self._backend.get_handle(uuid)
-        else:
-            raise NotImplementedError("backend", self._backend_type)
-
-    def _uuid_bytearray(self, uuid):
-        """
-        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-        to a bytearray.
-
-        uuid -- the UUID to convert.
-
-        Returns a bytearray containing the UUID.
-        """
-        self._logger.info("_uuid_bytearray %s", uuid)
-        return unhexlify(uuid.replace("-", ""))
+        self._backend.subscribe(uuid, callback=callback, indication=indication)
