@@ -34,7 +34,8 @@ setup(
     long_description=open('README.mkd').read(),
     url='https://github.com/ampledata/pygatt',
     install_requires=[
-        'pyserial'
+        'pyserial',
+        'enum34',
     ],
     extras_require={
         'GATTTOOL': ["pexpect"],
