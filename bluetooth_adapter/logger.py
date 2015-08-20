@@ -4,6 +4,7 @@ import logging
 import logging.config
 
 
+# TODO: actually use verbose option
 def init_logging(verbose=False):
     logging.config.dictConfig({
         'version': 1,
@@ -29,7 +30,7 @@ def init_logging(verbose=False):
         'loggers': {
             'bluetooth_adapter': {
                 'handlers': ['console_handler', 'file_handler'],
-                'level': logging.INFO,
+                'level': logging.DEBUG,
             },
         },
     })
