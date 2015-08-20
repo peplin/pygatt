@@ -36,6 +36,7 @@ setup(
     install_requires=[
         'pyserial',
         'enum34',
+        'click',
     ],
     extras_require={
         'GATTTOOL': ["pexpect"],
