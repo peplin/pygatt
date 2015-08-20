@@ -5,7 +5,7 @@ import unittest
 import threading
 import time
 
-from pygatt.backends import BGAPIBackend
+from bluetooth_adapter.backends import BGAPIBackend
 
 from .mocker import MockBGAPISerialDevice
 from .util import uuid_to_bytearray
