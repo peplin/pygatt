@@ -1,6 +1,6 @@
 import logging
 
-from .backends import BackendEnum, BgapiBackend
+from .backends import BackendEnum, BGAPIBackend
 from .device import BleDevice
 
 
@@ -15,7 +15,7 @@ class BluetoothAdapter(object):
 
     def __init__(self, backend):
         log.debug("Creating BluetoothAdapter with backend %s",
-                  backend.__name__)
+                  backend.name)
         self._backend = self._get_backend(backend)
         self._enabled = False
         log.debug("BluetoothAdapter created")
@@ -80,12 +80,12 @@ class BluetoothAdapter(object):
     # TODO: this factory method should probably be moved to a backend related
     #       file (BluetoothAdapter shouldn't have to know how to make a backend)
     def _get_backend(self, backend):
-        log.debug("Getting backend instance for %s", backend.__name__)
+        log.debug("Getting backend instance for %s", backend.name)
         backend_instance = None
         if backend == BackendEnum.bgapi:
             # TODO: auto-discover serial port and stuff
             serial_port = '/dev/ttyACM0'
-            backend_instance = BgapiBackend(serial_port)
+            backend_instance = BGAPIBackend(serial_port)
         else:
             msg = "{0} is not a valid backend".format(backend)
             log.error(msg)
