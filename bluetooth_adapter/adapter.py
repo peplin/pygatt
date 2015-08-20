@@ -43,6 +43,7 @@ class BluetoothAdapter(object):
         """Stop all ongoing procedures and enter a known, stable state."""
         log.debug("Resetting BluetoothAdapter")
         self._require_enabled()
+        raise NotImplementedError()
         self._backend.stop()
         self._backend.start()
         log.debug("BluetoothAdapter reset")
