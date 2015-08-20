@@ -37,26 +37,14 @@ import logging
 from struct import pack, unpack
 
 
+log = logging.getLogger(__name__)
+
+
 class BGLib(object):
     """
     Modified version of jrowberg's BGLib implementation.
     """
-    def __init__(self, loghandler=None, loglevel=logging.debug):
-        """
-        Set up logging for this module.
-
-        loghandler -- the logging.handler object to register with the logger.
-        loglevel -- the log level to use for this module.
-        """
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(loglevel)
-        if loghandler is None:
-            loghandler = logging.StreamHandler()  # prints to stderr
-            formatter = logging.Formatter(
-                '%(asctime)s %(name)s %(levelname)s - %(message)s')
-            loghandler.setLevel(loglevel)
-            loghandler.setFormatter(formatter)
-        self._logger.addHandler(loghandler)
+    def __init__(self):
         self.bgapi_rx_buffer = []
         self.bgapi_rx_expected_length = 0
         # Packet message types
@@ -66,174 +54,174 @@ class BGLib(object):
         self._wifi_response = 0x08
 
     def ble_cmd_system_reset(self, boot_in_dfu):
-        self._logger.info("construct command ble_cmd_system_reset")
+        log.debug("construct command ble_cmd_system_reset")
         return pack('<4BB', 0, 1, 0, 0, boot_in_dfu)
 
     def ble_cmd_system_hello(self):
-        self._logger.info("construct command ble_cmd_system_hello")
+        log.debug("construct command ble_cmd_system_hello")
         return pack('<4B', 0, 0, 0, 1)
 
     def ble_cmd_system_address_get(self):
-        self._logger.info("construct command ble_cmd_system_address_get")
+        log.debug("construct command ble_cmd_system_address_get")
         return pack('<4B', 0, 0, 0, 2)
 
     def ble_cmd_system_reg_write(self, address, value):
-        self._logger.info("construct command ble_cmd_system_reg_write")
+        log.debug("construct command ble_cmd_system_reg_write")
         return pack('<4BHB', 0, 3, 0, 3, address, value)
 
     def ble_cmd_system_reg_read(self, address):
-        self._logger.info("construct command ble_cmd_system_reg_read")
+        log.debug("construct command ble_cmd_system_reg_read")
         return pack('<4BH', 0, 2, 0, 4, address)
 
     def ble_cmd_system_get_counters(self):
-        self._logger.info("construct command ble_cmd_system_get_counters")
+        log.debug("construct command ble_cmd_system_get_counters")
         return pack('<4B', 0, 0, 0, 5)
 
     def ble_cmd_system_get_connections(self):
-        self._logger.info("construct command ble_cmd_system_get_connections")
+        log.debug("construct command ble_cmd_system_get_connections")
         return pack('<4B', 0, 0, 0, 6)
 
     def ble_cmd_system_read_memory(self, address, length):
-        self._logger.info("construct command ble_cmd_system_read_memory")
+        log.debug("construct command ble_cmd_system_read_memory")
         return pack('<4BIB', 0, 5, 0, 7, address, length)
 
     def ble_cmd_system_get_info(self):
-        self._logger.info("construct command ble_cmd_system_get_info")
+        log.debug("construct command ble_cmd_system_get_info")
         return pack('<4B', 0, 0, 0, 8)
 
     def ble_cmd_system_endpoint_tx(self, endpoint, data):
-        self._logger.info("construct command ble_cmd_system_endpoint_tx")
+        log.debug("construct command ble_cmd_system_endpoint_tx")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 0, 9,
                     endpoint, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_system_whitelist_append(self, address, address_type):
-        self._logger.info("construct command ble_cmd_system_whitelist_append")
+        log.debug("construct command ble_cmd_system_whitelist_append")
         return pack('<4B6sB', 0, 7, 0, 10, b''.join(chr(i) for i in address),
                     address_type)
 
     def ble_cmd_system_whitelist_remove(self, address, address_type):
-        self._logger.info("construct command ble_cmd_system_whitelist_remove")
+        log.debug("construct command ble_cmd_system_whitelist_remove")
         return pack('<4B6sB', 0, 7, 0, 11, b''.join(chr(i) for i in address),
                     address_type)
 
     def ble_cmd_system_whitelist_clear(self):
-        self._logger.info("construct command ble_cmd_system_whitelist_clear")
+        log.debug("construct command ble_cmd_system_whitelist_clear")
         return pack('<4B', 0, 0, 0, 12)
 
     def ble_cmd_system_endpoint_rx(self, endpoint, size):
-        self._logger.info("construct command ble_cmd_system_endpoint_rx")
+        log.debug("construct command ble_cmd_system_endpoint_rx")
         return pack('<4BBB', 0, 2, 0, 13, endpoint, size)
 
     def ble_cmd_system_endpoint_set_watermarks(self, endpoint, rx, tx):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_system_endpoint_set_watermarks")
         return pack('<4BBBB', 0, 3, 0, 14, endpoint, rx, tx)
 
     def ble_cmd_flash_ps_defrag(self):
-        self._logger.info("construct command ble_cmd_flash_ps_defrag")
+        log.debug("construct command ble_cmd_flash_ps_defrag")
         return pack('<4B', 0, 0, 1, 0)
 
     def ble_cmd_flash_ps_dump(self):
-        self._logger.info("construct command ble_cmd_flash_ps_dump")
+        log.debug("construct command ble_cmd_flash_ps_dump")
         return pack('<4B', 0, 0, 1, 1)
 
     def ble_cmd_flash_ps_erase_all(self):
-        self._logger.info("construct command ble_cmd_flash_ps_erase_all")
+        log.debug("construct command ble_cmd_flash_ps_erase_all")
         return pack('<4B', 0, 0, 1, 2)
 
     def ble_cmd_flash_ps_save(self, key, value):
-        self._logger.info("construct command ble_cmd_flash_ps_save")
+        log.debug("construct command ble_cmd_flash_ps_save")
         return pack('<4BHB' + str(len(value)) + 's', 0, 3 + len(value), 1, 3,
                     key, len(value), b''.join(chr(i) for i in value))
 
     def ble_cmd_flash_ps_load(self, key):
-        self._logger.info("construct command ble_cmd_flash_ps_load")
+        log.debug("construct command ble_cmd_flash_ps_load")
         return pack('<4BH', 0, 2, 1, 4, key)
 
     def ble_cmd_flash_ps_erase(self, key):
-        self._logger.info("construct command ble_cmd_flash_ps_erase")
+        log.debug("construct command ble_cmd_flash_ps_erase")
         return pack('<4BH', 0, 2, 1, 5, key)
 
     def ble_cmd_flash_erase_page(self, page):
-        self._logger.info("construct command ble_cmd_flash_ps_erase_page")
+        log.debug("construct command ble_cmd_flash_ps_erase_page")
         return pack('<4BB', 0, 1, 1, 6, page)
 
     def ble_cmd_flash_write_words(self, address, words):
-        self._logger.info("construct command ble_cmd_flash_write_words")
+        log.debug("construct command ble_cmd_flash_write_words")
         return pack('<4BHB' + str(len(words)) + 's', 0, 3 + len(words), 1, 7,
                     address, len(words), b''.join(chr(i) for i in words))
 
     def ble_cmd_attributes_write(self, handle, offset, value):
-        self._logger.info("construct command ble_cmd_attributes_write")
+        log.debug("construct command ble_cmd_attributes_write")
         return pack('<4BHBB' + str(len(value)) + 's', 0, 4 + len(value), 2, 0,
                     handle, offset, len(value), b''.join(chr(i) for i in value))
 
     def ble_cmd_attributes_read(self, handle, offset):
-        self._logger.info("construct command ble_cmd_attributes_read")
+        log.debug("construct command ble_cmd_attributes_read")
         return pack('<4BHH', 0, 4, 2, 1, handle, offset)
 
     def ble_cmd_attributes_read_type(self, handle):
-        self._logger.info("construct command ble_cmd_attributes_read_type")
+        log.debug("construct command ble_cmd_attributes_read_type")
         return pack('<4BH', 0, 2, 2, 2, handle)
 
     def ble_cmd_attributes_user_read_response(self, connection, att_error,
                                               value):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attributes_user_read_response")
         return pack('<4BBBB' + str(len(value)) + 's', 0, 3 + len(value), 2, 3,
                     connection, att_error, len(value),
                     b''.join(chr(i) for i in value))
 
     def ble_cmd_attributes_user_write_response(self, connection, att_error):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attributes_user_write_response")
         return pack('<4BBB', 0, 2, 2, 4, connection, att_error)
 
     def ble_cmd_connection_disconnect(self, connection):
-        self._logger.info("construct command ble_cmd_connection_disconnnect")
+        log.debug("construct command ble_cmd_connection_disconnnect")
         return pack('<4BB', 0, 1, 3, 0, connection)
 
     def ble_cmd_connection_get_rssi(self, connection):
-        self._logger.info("construct command ble_cmd_connection_get_rssi")
+        log.debug("construct command ble_cmd_connection_get_rssi")
         return pack('<4BB', 0, 1, 3, 1, connection)
 
     def ble_cmd_connection_update(self, connection, interval_min, interval_max,
                                   latency, timeout):
-        self._logger.info("construct command ble_cmd_connection_update")
+        log.debug("construct command ble_cmd_connection_update")
         return pack('<4BBHHHH', 0, 9, 3, 2, connection, interval_min,
                     interval_max, latency, timeout)
 
     def ble_cmd_connection_version_update(self, connection):
-        self._logger.info("construct command ble_cmd_connection_version_update")
+        log.debug("construct command ble_cmd_connection_version_update")
         return pack('<4BB', 0, 1, 3, 3, connection)
 
     def ble_cmd_connection_channel_map_get(self, connection):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_connection_channel_map_get")
         return pack('<4BB', 0, 1, 3, 4, connection)
 
     def ble_cmd_connection_channel_map_set(self, connection, map):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_connection_channel_map_set")
         return pack('<4BBB' + str(len(map)) + 's', 0, 2 + len(map), 3, 5,
                     connection, len(map), b''.join(chr(i) for i in map))
 
     def ble_cmd_connection_features_get(self, connection):
-        self._logger.info("construct command ble_cmd_connection_features_get")
+        log.debug("construct command ble_cmd_connection_features_get")
         return pack('<4BB', 0, 1, 3, 6, connection)
 
     def ble_cmd_connection_get_status(self, connection):
-        self._logger.info("construct command ble_cmd_connection_get_status")
+        log.debug("construct command ble_cmd_connection_get_status")
         return pack('<4BB', 0, 1, 3, 7, connection)
 
     def ble_cmd_connection_raw_tx(self, connection, data):
-        self._logger.info("construct command ble_cmd_connection_raw_tx")
+        log.debug("construct command ble_cmd_connection_raw_tx")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 3, 8,
                     connection, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_find_by_type_value(self, connection, start, end, uuid,
                                              value):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attclient_find_by_type_value")
         return pack('<4BBHHHB' + str(len(value)) + 's', 0, 8 + len(value), 4, 0,
                     connection, start, end, uuid, len(value),
@@ -241,244 +229,244 @@ class BGLib(object):
 
     def ble_cmd_attclient_read_by_group_type(self, connection, start, end,
                                              uuid):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attclient_read_by_group_type")
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 1,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
 
     def ble_cmd_attclient_read_by_type(self, connection, start, end, uuid):
-        self._logger.info("construct command ble_cmd_attclient_read_by_type")
+        log.debug("construct command ble_cmd_attclient_read_by_type")
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
 
     def ble_cmd_attclient_find_information(self, connection, start, end):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attclient_find_information")
         return pack('<4BBHH', 0, 5, 4, 3, connection, start, end)
 
     def ble_cmd_attclient_read_by_handle(self, connection, chrhandle):
-        self._logger.info("construct command ble_cmd_attclient_read_by_handle")
+        log.debug("construct command ble_cmd_attclient_read_by_handle")
         return pack('<4BBH', 0, 3, 4, 4, connection, chrhandle)
 
     def ble_cmd_attclient_attribute_write(self, connection, atthandle, data):
-        self._logger.info("construct command ble_cmd_attclient_attribute_write")
+        log.debug("construct command ble_cmd_attclient_attribute_write")
         return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 5,
                     connection, atthandle, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_write_command(self, connection, atthandle, data):
-        self._logger.info("construct command ble_cmd_attclient_write_command")
+        log.debug("construct command ble_cmd_attclient_write_command")
         return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 6,
                     connection, atthandle, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_indicate_confirm(self, connection):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_attclient_indicate_confirm")
         return pack('<4BB', 0, 1, 4, 7, connection)
 
     def ble_cmd_attclient_read_long(self, connection, chrhandle):
-        self._logger.info("construct command ble_cmd_attclient_read_long")
+        log.debug("construct command ble_cmd_attclient_read_long")
         return pack('<4BBH', 0, 3, 4, 8, connection, chrhandle)
 
     def ble_cmd_attclient_prepare_write(self, connection, atthandle, offset,
                                         data):
-        self._logger.info("construct command ble_cmd_attclient_prepare_write")
+        log.debug("construct command ble_cmd_attclient_prepare_write")
         return pack('<4BBHHB' + str(len(data)) + 's', 0, 6 + len(data), 4, 9,
                     connection, atthandle, offset, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_execute_write(self, connection, commit):
-        self._logger.info("construct command ble_cmd_attclient_execute_write")
+        log.debug("construct command ble_cmd_attclient_execute_write")
         return pack('<4BBB', 0, 2, 4, 10, connection, commit)
 
     def ble_cmd_attclient_read_multiple(self, connection, handles):
-        self._logger.info("construct command ble_cmd_attclient_read_multiple")
+        log.debug("construct command ble_cmd_attclient_read_multiple")
         return pack('<4BBB' + str(len(handles)) + 's', 0, 2 + len(handles), 4,
                     11, connection, len(handles),
                     b''.join(chr(i) for i in handles))
 
     def ble_cmd_sm_encrypt_start(self, handle, bonding):
-        self._logger.info("construct command ble_cmd_sm_encrypt_start")
+        log.debug("construct command ble_cmd_sm_encrypt_start")
         return pack('<4BBB', 0, 2, 5, 0, handle, bonding)
 
     def ble_cmd_sm_set_bondable_mode(self, bondable):
-        self._logger.info("construct command ble_cmd_sm_set_bondable_mode")
+        log.debug("construct command ble_cmd_sm_set_bondable_mode")
         return pack('<4BB', 0, 1, 5, 1, bondable)
 
     def ble_cmd_sm_delete_bonding(self, handle):
-        self._logger.info("construct command ble_cmd_sm_delete_bonding")
+        log.debug("construct command ble_cmd_sm_delete_bonding")
         return pack('<4BB', 0, 1, 5, 2, handle)
 
     def ble_cmd_sm_set_parameters(self, mitm, min_key_size, io_capabilities):
-        self._logger.info("construct command ble_cmd_sm_set_parameters")
+        log.debug("construct command ble_cmd_sm_set_parameters")
         return pack('<4BBBB', 0, 3, 5, 3, mitm, min_key_size, io_capabilities)
 
     def ble_cmd_sm_passkey_entry(self, handle, passkey):
-        self._logger.info("construct command ble_cmd_sm_passkey_entry")
+        log.debug("construct command ble_cmd_sm_passkey_entry")
         return pack('<4BBI', 0, 5, 5, 4, handle, passkey)
 
     def ble_cmd_sm_get_bonds(self):
-        self._logger.info("construct command ble_cmd_sm_get_bonds")
+        log.debug("construct command ble_cmd_sm_get_bonds")
         return pack('<4B', 0, 0, 5, 5)
 
     def ble_cmd_sm_set_oob_data(self, oob):
-        self._logger.info("construct command ble_cmd_sm_oob_data")
+        log.debug("construct command ble_cmd_sm_oob_data")
         return pack('<4BB' + str(len(oob)) + 's', 0, 1 + len(oob), 5, 6,
                     len(oob), b''.join(chr(i) for i in oob))
 
     def ble_cmd_gap_set_privacy_flags(self, peripheral_privacy,
                                       central_privacy):
-        self._logger.info("construct command ble_cmd_gap_set_privacy_flags")
+        log.debug("construct command ble_cmd_gap_set_privacy_flags")
         return pack('<4BBB', 0, 2, 6, 0, peripheral_privacy, central_privacy)
 
     def ble_cmd_gap_set_mode(self, discover, connect):
-        self._logger.info("construct command ble_cmd_gap_set_mode")
+        log.debug("construct command ble_cmd_gap_set_mode")
         return pack('<4BBB', 0, 2, 6, 1, discover, connect)
 
     def ble_cmd_gap_discover(self, mode):
-        self._logger.info("construct command ble_cmd_gap_discover")
+        log.debug("construct command ble_cmd_gap_discover")
         return pack('<4BB', 0, 1, 6, 2, mode)
 
     def ble_cmd_gap_connect_direct(self, address, addr_type, conn_interval_min,
                                    conn_interval_max, timeout, latency):
-        self._logger.info("construct command ble_cmd_gap_connect_direct")
+        log.debug("construct command ble_cmd_gap_connect_direct")
         return pack('<4B6sBHHHH', 0, 15, 6, 3,
                     b''.join(chr(i) for i in address), addr_type,
                     conn_interval_min, conn_interval_max, timeout, latency)
 
     def ble_cmd_gap_end_procedure(self):
-        self._logger.info("construct command ble_cmd_gap_end_procedure")
+        log.debug("construct command ble_cmd_gap_end_procedure")
         return pack('<4B', 0, 0, 6, 4)
 
     def ble_cmd_gap_connect_selective(self, conn_interval_min,
                                       conn_interval_max, timeout, latency):
-        self._logger.info("construct command ble_cmd_gap_connect_selective")
+        log.debug("construct command ble_cmd_gap_connect_selective")
         return pack('<4BHHHH', 0, 8, 6, 5, conn_interval_min, conn_interval_max,
                     timeout, latency)
 
     def ble_cmd_gap_set_filtering(self, scan_policy, adv_policy,
                                   scan_duplicate_filtering):
-        self._logger.info("construct command ble_cmd_gap_set_filtering")
+        log.debug("construct command ble_cmd_gap_set_filtering")
         return pack('<4BBBB', 0, 3, 6, 6, scan_policy, adv_policy,
                     scan_duplicate_filtering)
 
     def ble_cmd_gap_set_scan_parameters(self, scan_interval, scan_window,
                                         active):
-        self._logger.info("construct command ble_cmd_gap_set_scan_parameters")
+        log.debug("construct command ble_cmd_gap_set_scan_parameters")
         return pack('<4BHHB', 0, 5, 6, 7, scan_interval, scan_window, active)
 
     def ble_cmd_gap_set_adv_parameters(self, adv_interval_min,
                                        adv_interval_max, adv_channels):
-        self._logger.info("construct command ble_cmd_gap_set_adv_parameters")
+        log.debug("construct command ble_cmd_gap_set_adv_parameters")
         return pack('<4BHHB', 0, 5, 6, 8, adv_interval_min, adv_interval_max,
                     adv_channels)
 
     def ble_cmd_gap_set_adv_data(self, set_scanrsp, adv_data):
-        self._logger.info("construct command ble_cmd_gap_set_adv_data")
+        log.debug("construct command ble_cmd_gap_set_adv_data")
         return pack('<4BBB' + str(len(adv_data)) + 's', 0, 2 + len(adv_data), 6,
                     9, set_scanrsp, len(adv_data),
                     b''.join(chr(i) for i in adv_data))
 
     def ble_cmd_gap_set_directed_connectable_mode(self, address, addr_type):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_gap_set_directed_connectable_mode")
         return pack('<4B6sB', 0, 7, 6, 10, b''.join(chr(i) for i in address),
                     addr_type)
 
     def ble_cmd_hardware_io_port_config_irq(self, port, enable_bits,
                                             falling_edge):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_hardware_io_port_config_irq")
         return pack('<4BBBB', 0, 3, 7, 0, port, enable_bits, falling_edge)
 
     def ble_cmd_hardware_set_soft_timer(self, time, handle, single_shot):
-        self._logger.info("construct command ble_cmd_hardware_set_soft_timer")
+        log.debug("construct command ble_cmd_hardware_set_soft_timer")
         return pack('<4BIBB', 0, 6, 7, 1, time, handle, single_shot)
 
     def ble_cmd_hardware_adc_read(self, input, decimation, reference_selection):
-        self._logger.info("construct command ble_cmd_hardware_adc_read")
+        log.debug("construct command ble_cmd_hardware_adc_read")
         return pack('<4BBBB', 0, 3, 7, 2, input, decimation,
                     reference_selection)
 
     def ble_cmd_hardware_io_port_config_direction(self, port, direction):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_hardware_io_port_config_direction")
         return pack('<4BBB', 0, 2, 7, 3, port, direction)
 
     def ble_cmd_hardware_io_port_config_function(self, port, function):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_hardware_io_port_config_function")
         return pack('<4BBB', 0, 2, 7, 4, port, function)
 
     def ble_cmd_hardware_io_port_config_pull(self, port, tristate_mask,
                                              pull_up):
-        self._logger.info(
+        log.debug(
             "construct command ble_cmd_hardware_io_port_config_pull")
         return pack('<4BBBB', 0, 3, 7, 5, port, tristate_mask, pull_up)
 
     def ble_cmd_hardware_io_port_write(self, port, mask, data):
-        self._logger.info("construct command ble_cmd_hardware_io_prot_write")
+        log.debug("construct command ble_cmd_hardware_io_prot_write")
         return pack('<4BBBB', 0, 3, 7, 6, port, mask, data)
 
     def ble_cmd_hardware_io_port_read(self, port, mask):
-        self._logger.info("construct command ble_cmd_hardware_io_port_read")
+        log.debug("construct command ble_cmd_hardware_io_port_read")
         return pack('<4BBB', 0, 2, 7, 7, port, mask)
 
     def ble_cmd_hardware_spi_config(self, channel, polarity, phase, bit_order,
                                     baud_e, baud_m):
-        self._logger.info("construct command ble_cmd_hardware_spi_config")
+        log.debug("construct command ble_cmd_hardware_spi_config")
         return pack('<4BBBBBBB', 0, 6, 7, 8, channel, polarity, phase,
                     bit_order, baud_e, baud_m)
 
     def ble_cmd_hardware_spi_transfer(self, channel, data):
-        self._logger.info("construct command ble_cmd_hardware_spi_transfer")
+        log.debug("construct command ble_cmd_hardware_spi_transfer")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 7, 9,
                     channel, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_hardware_i2c_read(self, address, stop, length):
-        self._logger.info("construct command ble_cmd_hardware_i2c_read")
+        log.debug("construct command ble_cmd_hardware_i2c_read")
         return pack('<4BBBB', 0, 3, 7, 10, address, stop, length)
 
     def ble_cmd_hardware_i2c_write(self, address, stop, data):
-        self._logger.info("construct command ble_cmd_hardware_i2c_write")
+        log.debug("construct command ble_cmd_hardware_i2c_write")
         return pack('<4BBBB' + str(len(data)) + 's', 0, 3 + len(data), 7, 11,
                     address, stop, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_hardware_set_txpower(self, power):
-        self._logger.info("construct command ble_cmd_hardware_set_txpower")
+        log.debug("construct command ble_cmd_hardware_set_txpower")
         return pack('<4BB', 0, 1, 7, 12, power)
 
     def ble_cmd_hardware_timer_comparator(self, timer, channel, mode,
                                           comparator_value):
-        self._logger.info("construct command ble_cmd_hardware_timer_comparator")
+        log.debug("construct command ble_cmd_hardware_timer_comparator")
         return pack('<4BBBBH', 0, 5, 7, 13, timer, channel, mode,
                     comparator_value)
 
     def ble_cmd_test_phy_tx(self, channel, length, type):
-        self._logger.info("construct command ble_cmd_test_phy_tx")
+        log.debug("construct command ble_cmd_test_phy_tx")
         return pack('<4BBBB', 0, 3, 8, 0, channel, length, type)
 
     def ble_cmd_test_phy_rx(self, channel):
-        self._logger.info("construct command ble_cmd_test_phy_rx")
+        log.debug("construct command ble_cmd_test_phy_rx")
         return pack('<4BB', 0, 1, 8, 1, channel)
 
     def ble_cmd_test_phy_end(self):
-        self._logger.info("construct command ble_cmd_test_phy_end")
+        log.debug("construct command ble_cmd_test_phy_end")
         return pack('<4B', 0, 0, 8, 2)
 
     def ble_cmd_test_phy_reset(self):
-        self._logger.info("construct command ble_cmd_test_phy_reset")
+        log.debug("construct command ble_cmd_test_phy_reset")
         return pack('<4B', 0, 0, 8, 3)
 
     def ble_cmd_test_get_channel_map(self):
-        self._logger.info("construct command ble_cmd_test_get_channel_map")
+        log.debug("construct command ble_cmd_test_get_channel_map")
         return pack('<4B', 0, 0, 8, 4)
 
     def ble_cmd_test_debug(self, input):
-        self._logger.info("construct command ble_cmd_test_debug")
+        log.debug("construct command ble_cmd_test_debug")
         return pack('<4BB' + str(len(input)) + 's', 0, 1 + len(input), 8, 5,
                     len(input), b''.join(chr(i) for i in input))
 
@@ -617,7 +605,7 @@ class BGLib(object):
         ser -- The serial.Serial object to write to.
         packet -- The packet to write.
         """
-        self._logger.info("Sending command")
+        log.debug("Sending command")
         ser.write(packet)
 
     def parse_byte(self, byte):
@@ -642,7 +630,7 @@ class BGLib(object):
 
         if self.bgapi_rx_expected_length > 0 and\
            len(self.bgapi_rx_buffer) == self.bgapi_rx_expected_length:
-            self._logger.info("read complete packet")
+            log.debug("read complete packet")
             packet = self.bgapi_rx_buffer
             self.bgapi_rx_buffer = []
             return packet
@@ -672,15 +660,15 @@ class BGLib(object):
             # 0x00 = BLE response packet
             if packet_class == 0:
                 if packet_command == 0:  # ble_rsp_system_reset
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_reset")
                     return self.PacketType.ble_rsp_system_reset, {}
                 elif packet_command == 1:  # ble_rsp_system_hello
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_hello")
                     return self.PacketType.ble_rsp_system_hello, {}
                 elif packet_command == 2:  # ble_rsp_system_address_get
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_address_get")
                     address = unpack('<6s', bgapi_rx_payload[:6])[0]
                     address = [ord(b) for b in address]
@@ -689,7 +677,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_address_get, args
                 elif packet_command == 3:  # ble_rsp_system_reg_write
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_reg_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -697,7 +685,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_reg_write, args
                 elif packet_command == 4:  # ble_rsp_system_reg_read
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_reg_read")
                     address, value =\
                         unpack('<HB', bgapi_rx_payload[:3])
@@ -706,7 +694,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_reg_read, args
                 elif packet_command == 5:  # ble_rsp_system_get_counters
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_get_counters")
                     txok, txretry, rxok, rxfail, mbuf =\
                         unpack('<BBBBB', bgapi_rx_payload[:5])
@@ -716,7 +704,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_get_counters, args
                 elif packet_command == 6:  # ble_rsp_system_get_connections
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_get_connections")
                     maxconn = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -724,7 +712,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_get_connections, args
                 elif packet_command == 7:  # ble_rsp_system_read_memory
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_read_memory")
                     address, data_len =\
                         unpack('<IB', bgapi_rx_payload[:5])
@@ -734,7 +722,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_read_memory, args
                 elif packet_command == 8:  # ble_rsp_system_get_info
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_get_info")
                     data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
                     args = {
@@ -745,7 +733,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_get_info, args
                 elif packet_command == 9:  # ble_rsp_system_endpoint_tx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_endpoint_tx")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -754,7 +742,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_system_endpoint_tx, args
                 # ble_rsp_system_whitelist_append
                 elif packet_command == 10:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_whitelist_append")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -763,7 +751,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_system_whitelist_append, args
                 # ble_rsp_system_whitelist_remove
                 elif packet_command == 11:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_whitelist_remove")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -771,11 +759,11 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_system_whitelist_remove
                 elif packet_command == 12:  # ble_rsp_system_whitelist_clear
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_whitelist_clear")
                     return self.PacketType.ble_rsp_system_whitelist_clear, {}
                 elif packet_command == 13:  # ble_rsp_system_endpoint_rx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_endpoint_rx")
                     result, data_len =\
                         unpack('<HB', bgapi_rx_payload[:3])
@@ -786,7 +774,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_system_endpoint_rx, args
                 # ble_rsp_system_endpoint_set_watermarks
                 elif packet_command == 14:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_system_endpoint_set_"
                         "watermarks")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -797,19 +785,19 @@ class BGLib(object):
                             ble_rsp_system_endpoint_set_watermarks, args)
             elif packet_class == 1:
                 if packet_command == 0:  # ble_rsp_flash_ps_defrag
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_defrag")
                     return self.PacketType.ble_rsp_flash_ps_defrag, {}
                 elif packet_command == 1:  # ble_rsp_flash_ps_dump
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_dump")
                     return self.PacketType.ble_rsp_flash_ps_dump, {}
                 elif packet_command == 2:  # ble_rsp_flash_ps_erase_all
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_erase_all")
                     return self.PacketType.ble_rsp_flash_ps_erase_all, {}
                 elif packet_command == 3:  # ble_rsp_flash_ps_save
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_save")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -817,7 +805,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_flash_ps_save, args
                 elif packet_command == 4:  # ble_rsp_flash_ps_load
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_load")
                     result, value_len = unpack('<HB',
                                                bgapi_rx_payload[:3])
@@ -827,11 +815,11 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_flash_ps_load, args
                 elif packet_command == 5:  # ble_rsp_flash_ps_erase
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_erase")
                     return self.PacketType.ble_rsp_flash_ps_erase, {}
                 elif packet_command == 6:  # ble_rsp_flash_ps_erase_page
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_ps_erase_page")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -839,12 +827,12 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_flash_erase_page, args
                 elif packet_command == 7:  # ble_rsp_flash_write_words
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_flash_write_words")
                     return self.PacketType.ble_rsp_flash_write_words, {}
             elif packet_class == 2:
                 if packet_command == 0:  # ble_rsp_attributes_write
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attributes_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -852,7 +840,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_attributes_write, args
                 elif packet_command == 1:  # ble_rsp_attributes_read
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attributes_read")
                     handle, offset, result, value_len = unpack(
                         '<HHHB', bgapi_rx_payload[:7]
@@ -864,7 +852,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_attributes_read, args
                 elif packet_command == 2:  # ble_rsp_attributes_read_type
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attributes_read_type")
                     handle, result, value_len = unpack(
                         '<HHB', bgapi_rx_payload[:5]
@@ -877,21 +865,21 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attributes_read_type, args
                 # ble_rsp_attributes_user_read_response
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attributes_user_read_"
                         "response")
                     return (self.PacketType.
                             ble_rsp_attributes_user_read_response, {})
                 # ble_rsp_attributes_user_write_response
                 elif packet_command == 4:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attributes_user_write_"
                         "response")
                     return (self.PacketType.
                             ble_rsp_attributes_user_write_response, {})
             elif packet_class == 3:
                 if packet_command == 0:  # ble_rsp_connection_disconnect
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_disconnect")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -901,7 +889,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_connection_disconnect, args
                 elif packet_command == 1:  # ble_rsp_connection_get_rssi
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_get_rssi")
                     connection, rssi = unpack(
                         '<Bb', bgapi_rx_payload[:2]
@@ -911,7 +899,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_connection_get_rssi, args
                 elif packet_command == 2:  # ble_rsp_connection_update
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_update")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -922,7 +910,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_connection_update, args
                 # ble_rsp_connection_version_update
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_version_update")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -934,7 +922,7 @@ class BGLib(object):
                             args)
                 # ble_rsp_connection_channel_map_get
                 elif packet_command == 4:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_channel_map_"
                         "get")
                     connection, map_len = unpack(
@@ -948,7 +936,7 @@ class BGLib(object):
                             args)
                 # ble_rsp_connection_channel_map_set
                 elif packet_command == 5:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_channel_map_"
                         "set")
                     connection, result = unpack(
@@ -960,7 +948,7 @@ class BGLib(object):
                     return (self.PacketType.ble_rsp_connection_channel_map_set,
                             args)
                 elif packet_command == 6:  # ble_rsp_connection_features_get
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_features_get")
                     connection, result = unpack('<BH',
                                                 bgapi_rx_payload[:3])
@@ -969,7 +957,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_connection_features_get, args
                 elif packet_command == 7:  # ble_rsp_connection_get_status
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_get_status")
                     connection = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -977,7 +965,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_connection_get_status, args
                 elif packet_command == 8:  # ble_rsp_connection_raw_tx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_connection_raw_tx")
                     connection = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -987,7 +975,7 @@ class BGLib(object):
             elif packet_class == 4:
                 # ble_rsp_attclient_find_by_type_value
                 if packet_command == 0:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_find_by_type_"
                         "value")
                     connection, result = unpack(
@@ -1000,7 +988,7 @@ class BGLib(object):
                             ble_rsp_attclient_find_by_type_value, args)
                 # ble_rsp_attclient_read_by_group_type
                 elif packet_command == 1:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_read_by_group_"
                         "type")
                     connection, result = unpack(
@@ -1012,7 +1000,7 @@ class BGLib(object):
                     return (self.PacketType.
                             ble_rsp_attclient_read_by_group_type, args)
                 elif packet_command == 2:  # ble_rsp_attclient_read_by_type
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_read_by_type")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1023,7 +1011,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attclient_read_by_type, args
                 # ble_rsp_attclient_find_information
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_find_"
                         "information")
                     connection, result = unpack(
@@ -1036,7 +1024,7 @@ class BGLib(object):
                             args)
                 # ble_rsp_attclient_read_by_handle
                 elif packet_command == 4:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_read_by_handle")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1048,7 +1036,7 @@ class BGLib(object):
                             args)
                 # ble_rsp_attclient_attribute_write
                 elif packet_command == 5:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_attribute_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1059,7 +1047,7 @@ class BGLib(object):
                     return (self.PacketType.ble_rsp_attclient_attribute_write,
                             args)
                 elif packet_command == 6:  # ble_rsp_attclient_write_command
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_write_command")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1070,7 +1058,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attclient_write_command, args
                 # ble_rsp_attclient_indicate_confirm
                 elif packet_command == 7:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_indicate_"
                         "confirm")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1080,7 +1068,7 @@ class BGLib(object):
                     return (self.PacketType.ble_rsp_attclient_indicate_confirm,
                             args)
                 elif packet_command == 8:  # ble_rsp_attclient_read_long
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_read_long")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1090,7 +1078,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_attclient_read_long, args
                 elif packet_command == 9:  # ble_rsp_attclient_prepare_write
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_prepare_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1101,7 +1089,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attclient_prepare_write, args
                 # ble_rsp_attclient_execute_write
                 elif packet_command == 10:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_execute_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1112,7 +1100,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attclient_execute_write, args
                 # ble_rsp_attclient_read_multiple
                 elif packet_command == 11:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_attclient_read_multiple")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1123,7 +1111,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_attclient_read_multiple, args
             elif packet_class == 5:
                 if packet_command == 0:  # ble_rsp_sm_encrypt_start
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_encrypt_start")
                     handle, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1133,11 +1121,11 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_sm_encrypt_start, args
                 elif packet_command == 1:  # ble_rsp_sm_set_bondable_mode
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_set_bondable_mode")
                     return self.PacketType.ble_rsp_sm_set_bondable_mode, {}
                 elif packet_command == 2:  # ble_rsp_sm_delete_bonding
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_delete_bonding")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1145,11 +1133,11 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_sm_delete_bonding, args
                 elif packet_command == 3:  # ble_rsp_sm_set_parameters
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_set_parameters")
                     return self.PacketType.ble_rsp_sm_set_parameters, {}
                 elif packet_command == 4:  # ble_rsp_sm_passkey_entry
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_passkey_entry")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1157,7 +1145,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_sm_passkey_entry, args
                 elif packet_command == 5:  # ble_rsp_sm_get_bonds
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_get_bonds")
                     bonds = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -1165,16 +1153,16 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_sm_get_bonds, args
                 elif packet_command == 6:  # ble_rsp_sm_set_oob_data
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_sm_set_oob_data")
                     return self.PacketType.ble_rsp_sm_set_oob_data, {}
             elif packet_class == 6:
                 if packet_command == 0:  # ble_rsp_gap_set_privacy_flags
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_privacy_flags")
                     return self.PacketType.ble_rsp_gap_set_privacy_flags, {}
                 elif packet_command == 1:  # ble_rsp_gap_set_mode
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_mode")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1182,7 +1170,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_set_mode, args
                 elif packet_command == 2:  # ble_rsp_gap_discover
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_discover")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1190,7 +1178,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_discover, args
                 elif packet_command == 3:  # ble_rsp_gap_connect_direct
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_connect_direct")
                     result, connection_handle = unpack(
                         '<HB', bgapi_rx_payload[:3]
@@ -1201,7 +1189,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_connect_direct, args
                 elif packet_command == 4:  # ble_rsp_gap_end_procedure
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_end_procedure")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1209,7 +1197,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_end_procedure, args
                 elif packet_command == 5:  # ble_rsp_gap_connect_selective
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_connect_selective")
                     result, connection_handle = unpack(
                         '<HB', bgapi_rx_payload[:3]
@@ -1220,7 +1208,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_connect_selective, args
                 elif packet_command == 6:  # ble_rsp_gap_set_filtering
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_filtering")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1228,7 +1216,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_set_filtering, args
                 elif packet_command == 7:  # ble_rsp_gap_set_scan_parameters
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_scan_parameters")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1236,7 +1224,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_set_scan_parameters, args
                 elif packet_command == 8:  # ble_rsp_gap_set_adv_parameters
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_adv_parameters")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1244,7 +1232,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_gap_set_adv_parameters, args
                 elif packet_command == 9:  # ble_rsp_gap_set_adv_data
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_adv_data")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1253,7 +1241,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_gap_set_adv_data, args
                 # ble_rsp_gap_set_directed_connectable_mode
                 elif packet_command == 10:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_gap_set_directed_"
                         "connectable_mode")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1265,7 +1253,7 @@ class BGLib(object):
             elif packet_class == 7:
                 # ble_rsp_hardware_io_port_config_irq
                 if packet_command == 0:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_config_"
                         "irq")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1275,7 +1263,7 @@ class BGLib(object):
                     return (self.PacketType.ble_rsp_hardware_io_port_config_irq,
                             args)
                 elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_set_soft_timer")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1283,7 +1271,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_set_soft_timer, args
                 elif packet_command == 2:  # ble_rsp_hardware_adc_read
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_adc_read")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1292,7 +1280,7 @@ class BGLib(object):
                     return self.PacketType.ble_rsp_hardware_adc_read, args
                 # ble_rsp_hardware_io_port_config_direction
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_config_"
                         "direction")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1303,7 +1291,7 @@ class BGLib(object):
                             ble_rsp_hardware_io_port_config_direction, args)
                 # ble_rsp_hardware_io_port_config_function
                 elif packet_command == 4:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_config_"
                         "function")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1314,7 +1302,7 @@ class BGLib(object):
                             ble_rsp_hardware_io_port_config_function, args)
                 # ble_rsp_hardware_io_port_config_pull
                 elif packet_command == 5:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_config_"
                         "pull")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
@@ -1324,7 +1312,7 @@ class BGLib(object):
                     return (self.PacketType.
                             ble_rsp_hardware_io_port_config_pull, args)
                 elif packet_command == 6:  # ble_rsp_hardware_io_port_write
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1332,7 +1320,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_io_port_write, args
                 elif packet_command == 7:  # ble_rsp_hardware_io_port_read
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_io_port_read")
                     result, port, data = unpack(
                         '<HBB', bgapi_rx_payload[:4]
@@ -1342,7 +1330,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_io_port_read, args
                 elif packet_command == 8:  # ble_rsp_hardware_spi_config
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_spi_config")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1350,7 +1338,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_spi_config, args
                 elif packet_command == 9:  # ble_rsp_hardware_spi_transfer
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_spi_transfer")
                     result, channel, data_len = unpack(
                         '<HBB', bgapi_rx_payload[:4]
@@ -1362,7 +1350,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_spi_transfer, args
                 elif packet_command == 10:  # ble_rsp_hardware_i2c_read
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_i2c_read")
                     result, data_len = unpack(
                         '<HB', bgapi_rx_payload[:3]
@@ -1373,7 +1361,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_i2c_read, args
                 elif packet_command == 11:  # ble_rsp_hardware_i2c_write
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_i2c_write")
                     written = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -1381,12 +1369,12 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_hardware_i2c_write, args
                 elif packet_command == 12:  # ble_rsp_hardware_set_txpower
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_set_txpower")
                     return self.PacketType.ble_rsp_hardware_set_txpower, {}
                 # ble_rsp_hardware_timer_comparator
                 elif packet_command == 13:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_hardware_timer_comparator")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1396,15 +1384,15 @@ class BGLib(object):
                             ble_rsp_hardware_timer_comparator, args)
             elif packet_class == 8:
                 if packet_command == 0:  # ble_rsp_test_phy_tx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_phy_tx")
                     return self.PacketType.ble_rsp_test_phy_tx, {}
                 elif packet_command == 1:  # ble_rsp_test_phy_rx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_phy_rx")
                     return self.PacketType.ble_rsp_test_phy_rx, {}
                 elif packet_command == 2:  # ble_rsp_test_phy_end
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_phy_end")
                     counter = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1412,11 +1400,11 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_test_phy_end, args
                 elif packet_command == 3:  # ble_rsp_test_phy_reset
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_phy_reset")
                     return self.PacketType.ble_rsp_test_phy_reset, {}
                 elif packet_command == 4:  # ble_rsp_test_get_channel_map
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_get_channel_map")
                     # channel_map_len = unpack(
                     #    '<B', bgapi_rx_payload[:1]
@@ -1428,7 +1416,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_rsp_test_get_channel_map, args
                 elif packet_command == 5:  # ble_rsp_test_debug
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_rsp_test_debug")
                     # output_len = unpack('<B',
                     #                     bgapi_rx_payload[:1])[0]
@@ -1442,7 +1430,7 @@ class BGLib(object):
             # 0x80 = BLE event packet
             if packet_class == 0:
                 if packet_command == 0:  # ble_evt_system_boot
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_boot")
                     data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
                     args = {
@@ -1453,7 +1441,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_system_boot, args
                 elif packet_command == 1:  # ble_evt_system_debug
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_debug")
                     data_len = unpack('<B', bgapi_rx_payload[:1])[0]
                     data_data = [ord(b) for b in bgapi_rx_payload[1:]]
@@ -1463,7 +1451,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_system_debug, args
                 # ble_evt_system_endpoint_watermark_rx
                 elif packet_command == 2:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_endpoint_"
                         "watermark_rx")
                     endpoint, data = unpack(
@@ -1476,7 +1464,7 @@ class BGLib(object):
                             ble_evt_system_endpoint_watermark_rx, args)
                 # ble_evt_system_endpoint_watermark_tx
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_endpoint_"
                         "watermark_tx")
                     endpoint, data = unpack(
@@ -1488,7 +1476,7 @@ class BGLib(object):
                     return (self.PacketType.
                             ble_evt_system_endpoint_watermark_tx, args)
                 elif packet_command == 4:  # ble_evt_system_script_failure
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_script_failure")
                     address, reason = unpack(
                         '<HH', bgapi_rx_payload[:4]
@@ -1498,12 +1486,12 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_system_script_failure, args
                 elif packet_command == 5:  # ble_evt_system_no_license_key
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_system_no_license_key")
                     return self.PacketType.ble_evt_system_no_license_key, {}
             elif packet_class == 1:
                 if packet_command == 0:  # ble_evt_flash_ps_key
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_flash_ps_key")
                     key, value_len = unpack(
                         '<HB', bgapi_rx_payload[:3]
@@ -1515,7 +1503,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_flash_ps_key, args
             elif packet_class == 2:
                 if packet_command == 0:  # ble_evt_attributes_value
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attributes_value")
                     connection, reason, handle, offset, value_len = unpack(
                         '<BBHHB', bgapi_rx_payload[:7]
@@ -1529,7 +1517,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_attributes_value, args
                 # ble_evt_attributes_user_read_request
                 elif packet_command == 1:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attributes_user_read_"
                         "request")
                     connection, handle, offset, maxsize = unpack(
@@ -1542,7 +1530,7 @@ class BGLib(object):
                     return (self.PacketType.
                             ble_evt_attributes_user_read_request, args)
                 elif packet_command == 2:  # ble_evt_attributes_status
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attributes_status")
                     handle, flags = unpack('<HB', bgapi_rx_payload[:3])
                     args = {
@@ -1551,7 +1539,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_attributes_status, args
             elif packet_class == 3:
                 if packet_command == 0:  # ble_evt_connection_status
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_connection_status")
                     data = unpack('<BB6sBHHHB', bgapi_rx_payload[:16])
                     address = [ord(b) for b in data[2]]
@@ -1563,7 +1551,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_connection_status, args
                 elif packet_command == 1:  # ble_evt_connection_version_ind
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_connection_version_ind")
                     connection, vers_nr, comp_id, sub_vers_nr = unpack(
                         '<BBHH', bgapi_rx_payload[:6]
@@ -1574,7 +1562,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_connection_version_ind, args
                 elif packet_command == 2:  # ble_evt_connection_feature_ind
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_connection_feature_ind")
                     connection, features_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1586,7 +1574,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_connection_feature_ind, args
                 elif packet_command == 3:  # ble_evt_connection_raw_rx
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_connection_raw_rx")
                     connection, data_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1597,7 +1585,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_connection_raw_rx, args
                 elif packet_command == 4:  # ble_evt_connection_disconnected
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_connection_disconnected")
                     connection, reason = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1608,7 +1596,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_connection_disconnected, args
             elif packet_class == 4:
                 if packet_command == 0:  # ble_evt_attclient_indicated
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_indicated")
                     connection, attrhandle = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1619,7 +1607,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_attclient_indicated, args
                 # ble_evt_attclient_procedure_completed
                 elif packet_command == 1:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_procedure_"
                         "completed")
                     connection, result, chrhandle = unpack(
@@ -1632,7 +1620,7 @@ class BGLib(object):
                     return (self.PacketType.
                             ble_evt_attclient_procedure_completed, args)
                 elif packet_command == 2:  # ble_evt_attclient_group_found
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_group_found")
                     connection, start, end, uuid_len = unpack(
                         '<BHHB', bgapi_rx_payload[:6]
@@ -1645,7 +1633,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_attclient_group_found, args
                 # ble_evt_attclient_attribute_found
                 elif packet_command == 3:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_attribute_found")
                     data = unpack('<BHHBB', bgapi_rx_payload[:7])
                     uuid_data = [ord(b) for b in bgapi_rx_payload[7:]]
@@ -1658,7 +1646,7 @@ class BGLib(object):
                             args)
                 # ble_evt_attclient_find_information_found
                 elif packet_command == 4:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_find_"
                         "information_found")
                     connection, chrhandle, uuid_len = unpack(
@@ -1673,7 +1661,7 @@ class BGLib(object):
                             ble_evt_attclient_find_information_found, args)
                 # ble_evt_attclient_attribute_value
                 elif packet_command == 5:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_attribute_value")
                     connection, atthandle, type, value_len = unpack(
                         '<BHBB', bgapi_rx_payload[:5]
@@ -1687,7 +1675,7 @@ class BGLib(object):
                             args)
                 # ble_evt_attclient_read_multiple_response
                 elif packet_command == 6:
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_attclient_read_multiple_"
                         "response")
                     connection, handles_len = unpack(
@@ -1702,7 +1690,7 @@ class BGLib(object):
                             ble_evt_attclient_read_multiple_response, args)
             elif packet_class == 5:
                 if packet_command == 0:  # ble_evt_sm_smp_data
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_sm_smp_data")
                     handle, packet, data_len = unpack(
                         '<BBB', bgapi_rx_payload[:3]
@@ -1714,7 +1702,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_sm_smp_data, args
                 elif packet_command == 1:  # ble_evt_sm_bonding_fail
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_sm_bonding_fail")
                     handle, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1724,7 +1712,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_sm_bonding_fail, args
                 elif packet_command == 2:  # ble_evt_sm_passkey_display
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_sm_passkey_display")
                     handle, passkey = unpack(
                         '<BI', bgapi_rx_payload[:5]
@@ -1734,7 +1722,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_sm_passkey_display, args
                 elif packet_command == 3:  # ble_evt_sm_passkey_request
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_sm_passkey_request")
                     handle = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -1742,7 +1730,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_sm_passkey_request, args
                 elif packet_command == 4:  # ble_evt_sm_bond_status
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_sm_bond_status")
                     bond, keysize, mitm, keys = unpack(
                         '<BBBB', bgapi_rx_payload[:4]
@@ -1754,7 +1742,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_sm_bond_status, args
             elif packet_class == 6:
                 if packet_command == 0:  # ble_evt_gap_scan_response
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_gap_scan_response")
                     data = unpack('<bB6sBBB', bgapi_rx_payload[:11])
                     sender = [ord(b) for b in data[2]]
@@ -1766,7 +1754,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_gap_scan_response, args
                 elif packet_command == 1:  # ble_evt_gap_mode_changed
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_gap_mode_changed")
                     discover, connect = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1777,7 +1765,7 @@ class BGLib(object):
                     return self.PacketType.ble_evt_gap_mode_changed, args
             elif packet_class == 7:
                 if packet_command == 0:  # ble_evt_hardware_io_port_status
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_hardware_io_port_status")
                     timestamp, port, irq, state = unpack(
                         '<IBBB', bgapi_rx_payload[:7]
@@ -1788,7 +1776,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_hardware_io_port_status, args
                 elif packet_command == 1:  # ble_evt_hardware_soft_timer
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_hardware_io_soft_timer")
                     handle = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
@@ -1796,7 +1784,7 @@ class BGLib(object):
                     }
                     return self.PacketType.ble_evt_hardware_soft_timer, args
                 elif packet_command == 2:  # ble_evt_hardware_adc_result
-                    self._logger.info(
+                    log.debug(
                         "received packet ble_evt_hardware_adc_result")
                     input, value = unpack('<Bh', bgapi_rx_payload[:3])
                     args = {
