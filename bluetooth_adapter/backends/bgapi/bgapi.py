@@ -5,13 +5,17 @@ import time
 import threading
 from binascii import hexlify, unhexlify
 
-from pygatt.constants import LOG_FORMAT, LOG_LEVEL
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
+
+from bluetooth_adapter import gatt
 
 from . import bglib
 from . import constants
 from .error_codes import get_return_message
+
+
+log = logging.getLogger(__name__)
 
 
 class BGAPIError(BluetoothLEError):
@@ -60,7 +64,7 @@ class BGAPIBackend(BLEBackend):
 
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True, logfile=None):
+    def __init__(self, serial_port):
         """
         Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -68,21 +72,11 @@ class BGAPIBackend(BLEBackend):
 
         serial_port -- The name of the serial port that the dongle is connected
                        to.
-        run -- begin reveiving packets immediately.
-        logfile -- the file to log to.
         """
         self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(LOG_LEVEL)
-        handler = (logging.FileHandler(logfile)
-                   if logfile is not None
-                   else logging.NullHandler())
-        formatter = logging.Formatter(fmt=LOG_FORMAT)
-        handler.setLevel(LOG_LEVEL)
-        handler.setFormatter(formatter)
-        self._logger.addHandler(handler)
 
         # Initialization
-        self._lib = bglib.BGLib(loghandler=handler, loglevel=LOG_LEVEL)
+        self._lib = bglib.BGLib()
         self._serial_port = serial_port
         self._ser = None
 
@@ -204,10 +198,6 @@ class BGAPIBackend(BLEBackend):
         # Start logging
         self._logger.info("BGAPIBackend on %s", serial_port)
 
-        # Run the receiver thread
-        if run:
-            self.run()
-
     def bond(self):
         """
         Create a bond and encrypted connection with the device.
@@ -220,7 +210,8 @@ class BGAPIBackend(BLEBackend):
         # Set to bondable mode
         self._bond_expected = True
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['yes'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(
+            constants.Bondable.yes.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -233,7 +224,7 @@ class BGAPIBackend(BLEBackend):
         self._bonding_fail = False
         self._logger.info("encrypt_start")
         cmd = self._lib.ble_cmd_sm_encrypt_start(
-            self._connection_handle, constants.bonding['create_bonding'])
+            self._connection_handle, constants.Bonding.create_bonding.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -366,8 +357,7 @@ class BGAPIBackend(BLEBackend):
             return bytearray(self._attribute_value)
 
     def connect(self, address, timeout=5,
-                addr_type=constants.ble_address_type[
-                    'gap_address_type_public']):
+                addr_type=constants.BleAddressType.gap_address_type_public.value):  # noqa FIXME
         """
         Connnect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
@@ -376,7 +366,7 @@ class BGAPIBackend(BLEBackend):
 
         address -- a bytearray containing the device mac address.
         timeout -- number of seconds to wait before returning if not connected.
-        addr_type -- one of the ble_address_type constants.
+        addr_type -- one of constants.BleAddressType constants.
 
         Raises BGAPIError or NotConnectedError on failure.
         """
@@ -497,7 +487,8 @@ class BGAPIBackend(BLEBackend):
 
         # Set to non-bondable mode
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(
+            constants.Bondable.no.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -509,7 +500,8 @@ class BGAPIBackend(BLEBackend):
         # Start encryption
         self._logger.info("encrypt_start")
         cmd = self._lib.ble_cmd_sm_encrypt_start(
-            self._connection_handle, constants.bonding['do_not_create_bonding'])
+            self._connection_handle,
+            constants.Bonding.do_not_create_bonding.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -659,7 +651,7 @@ class BGAPIBackend(BLEBackend):
 
         return rssi_value
 
-    def run(self):
+    def start(self):
         """
         Put the interface into a known state to start. And start the recvr
         thread.
@@ -679,8 +671,8 @@ class BGAPIBackend(BLEBackend):
         # Stop advertising
         self._logger.info("gap_set_mode")
         cmd = self._lib.ble_cmd_gap_set_mode(
-            constants.gap_discoverable_mode['non_discoverable'],
-            constants.gap_connectable_mode['non_connectable'])
+            constants.GapDiscoverableMode.non_discoverable.value,
+            constants.GapConnectableMode.non_connectable.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -704,7 +696,8 @@ class BGAPIBackend(BLEBackend):
 
         # Set not bondable
         self._logger.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
+        cmd = self._lib.ble_cmd_sm_set_bondable_mode(
+            constants.Bondable.no.value)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -713,7 +706,7 @@ class BGAPIBackend(BLEBackend):
 
     def scan(self, scan_interval=75, scan_window=50, active=True,
              scan_time=1000,
-             discover_mode=constants.gap_discover_mode['generic']):
+             discover_mode=constants.GapDiscoverMode.generic.value):
         """
         Perform a scan to discover BLE devices.
 
@@ -722,7 +715,7 @@ class BGAPIBackend(BLEBackend):
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         scan_time -- the number of miliseconds this scan should last.
-        discover_mode -- one of the gap_discover_mode constants.
+        discover_mode -- one of constants.GapDiscoverMode
         """
         # Set scan parameters
         self._logger.info("set_scan_parameters")
@@ -793,9 +786,8 @@ class BGAPIBackend(BLEBackend):
         characteristic_handle = self.get_handle(uuid_bytes)
         characteristic_config_handle = self.get_handle(
             uuid_bytes,
-            constants.gatt_characteristic_descriptor_uuid[
-                'client_characteristic_configuration'
-            ])
+            gatt.GattCharacteristicDescriptor.
+            client_characteristic_configuration)
 
         # Subscribe to characteristic
         config_val = [0x01, 0x00]  # Enable notifications 0x0001
@@ -809,7 +801,6 @@ class BGAPIBackend(BLEBackend):
             self._lock.release()
 
     def stop(self):
-        self.disconnect(fail_quietly=True)
         self._recvr_thread_stop.set()
         self._recvr_thread_is_done.wait()
 
@@ -848,45 +839,6 @@ class BGAPIBackend(BLEBackend):
         """
         return (flags & flag_to_find) == flag_to_find
 
-    def _get_uuid_type(self, uuid):
-        """
-        Checks if the UUID is a custom 128-bit UUID or a GATT characteristic
-        descriptor UUID.
-
-        uuid -- the UUID as a bytearray.
-
-        Returns -1 if the UUID is unrecognized.
-        Returns 0 if the UUID is a 128-bit UUID.
-        Returns 1 if the UUID is a GATT service UUID.
-        Returns 2 if the UUID is a GATT attribute type UUID
-        Returns 3 if the UUID is a GATT characteristic descriptor UUID.
-        Returns 4 if the UUID is a GATT characteristic type UUID.
-        """
-        self._logger.debug("uuid = %s", "0x"+hexlify(uuid))
-        self._logger.debug("len(uuid) = %d", len(uuid))
-        if len(uuid) == 16:  # 128-bit --> 16 byte
-            self._logger.debug("match custom")
-            return 0
-        for name, u in constants.gatt_service_uuid.iteritems():
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                return 1
-        for name, u in constants.gatt_attribute_type_uuid.iteritems():
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                return 2
-        for name, u in (
-                constants.gatt_characteristic_descriptor_uuid.iteritems()):
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                return 3
-        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                return 4
-        self._logger.debug("no match")
-        return -1
-
     def _scan_rsp_data(self, data):
         """
         Parse scan response data.
@@ -898,12 +850,12 @@ class BGAPIBackend(BLEBackend):
         Returns a name and a dictionary containing the parsed data in pairs of
         field_name': value.
         """
+        log.debug("Parsing scan response data")
         # Result stored here
         data_dict = {
             # 'name': value,
         }
         bytes_left_in_field = 0
-        field_name = None
         field_value = []
         # Iterate over data bytes to put in field
         dev_name = ""
@@ -917,23 +869,30 @@ class BGAPIBackend(BLEBackend):
                 bytes_left_in_field -= 1
                 if bytes_left_in_field == 0:
                     # End of field
-                    field_name = (
-                        constants.scan_response_data_type[field_value[0]])
+                    field_type = None
+                    for s in constants.ScanResponseDataType:
+                        if s.value == field_value[0]:
+                            field_type = s
+                            break
                     field_value = field_value[1:]
                     # Field type specific formats
-                    if field_name == 'complete_local_name' or\
-                            field_name == 'shortened_local_name':
+                    # TODO: add more formats
+                    if ((field_type is
+                         constants.ScanResponseDataType.complete_local_name) or
+                        (field_type is
+                         constants.ScanResponseDataType.shortened_local_name)):
                         dev_name = bytearray(field_value).decode("utf-8")
-                        data_dict[field_name] = dev_name
-                    elif field_name ==\
-                            'complete_list_128-bit_service_class_uuids':
-                        data_dict[field_name] = []
+                        data_dict[field_type.name] = dev_name
+                    elif (field_type is constants.ScanResponseDataType.
+                          complete_list_128_bit_service_class_uuids):
+                        uuid_str = '0x'
                         for i in range(0, len(field_value)/16):  # 16 bytes
-                            service_uuid = '0x'+hexlify(bytearray(list(reversed(
+                            uuid_str += hexlify(bytearray(list(reversed(
                                 field_value[i*16:i*16+16]))))
-                            data_dict[field_name].append(service_uuid)
+                        data_dict[field_type.name] = gatt.Uuid(uuid_str)
                     else:
-                        data_dict[field_name] = bytearray(field_value)
+                        data_dict[field_type.name] = bytearray(field_value)
+        log.debug(data_dict)
         return dev_name, data_dict
 
     def _process_packets_until(self, expected_packet_choices, timeout=None,
@@ -1077,17 +1036,59 @@ class BGAPIBackend(BLEBackend):
                 characteristic handle ('chrhandle'), and characteristic UUID
                 ('uuid')
         """
-        uuid = bytearray(list(reversed(args['uuid'])))
-        uuid_str = "0x"+hexlify(uuid)
+        # uuid comes in as a reversed list of bytes
+        uuid_str = hexlify(bytearray(list(reversed(args['uuid']))))
+        uuid = gatt.Uuid(uuid_str)
 
         # Log
         self._logger.info("_ble_evt_attclient_find_information_found")
         self._logger.debug("connection handle = %s", hex(args['connection']))
         self._logger.debug("characteristic handle = %s", hex(args['chrhandle']))
-        self._logger.debug("characteristic UUID = %s", uuid_str)
+        self._logger.debug("characteristic UUID = %s", uuid.string)
 
         # Add uuid to characteristics as characteristic or descriptor
         uuid_type = self._get_uuid_type(uuid)
+
+        # TODO: fix this ------------------------------------------------------
+        """
+        Checks if the UUID is a custom 128-bit UUID or a GATT characteristic
+        descriptor UUID.
+
+        uuid -- the UUID as a bytearray.
+
+        Returns -1 if the UUID is unrecognized.
+        Returns 0 if the UUID is a 128-bit UUID.
+        Returns 1 if the UUID is a GATT service UUID.
+        Returns 2 if the UUID is a GATT attribute type UUID
+        Returns 3 if the UUID is a GATT characteristic descriptor UUID.
+        Returns 4 if the UUID is a GATT characteristic type UUID.
+        """
+        self._logger.debug("uuid = %s", "0x"+hexlify(uuid))
+        self._logger.debug("len(uuid) = %d", len(uuid))
+        if len(uuid) == 16:  # 128-bit --> 16 byte
+            self._logger.debug("match custom")
+            # return 0
+        for u in gatt.GattServices:
+            if u.bytearray == uuid:
+                self._logger.debug("match %s", u.name + ": 0x" + u.string)
+                # return 1
+        for u, name in gatt.gatt_attribute_type_uuid.iteritems():
+            if u.bytearray == uuid:
+                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
+                # return 2
+        for name, u in (
+                constants.gatt_characteristic_descriptor_uuid.iteritems()):
+            if u == uuid:
+                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
+                # return 3
+        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
+            if u == uuid:
+                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
+                # return 4
+        self._logger.debug("no match")
+        # return -1
+        # ---------------------------------------------------------------------
+
         # 3 == descriptor
         if (uuid_type == 3) and (self._current_characteristic is not None):
             self._logger.debug("GATT characteristic descriptor")
@@ -1154,20 +1155,20 @@ class BGAPIBackend(BLEBackend):
         self._connection_handle = args['connection']
         flags = ""
         if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['connected']):
+                args['flags'], constants.ConnectionStatusFlag.connected.value):
             self._connected = True
-            flags += 'connected, '
+            flags += constants.ConnectionStatusFlag.connected.name + ', '
         if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['encrypted']):
+                args['flags'], constants.ConnectionStatusFlag.encrypted.value):
             self._encrypted = True
-            flags += 'encrypted, '
+            flags += constants.ConnectionStatusFlag.encrypted.name + ', '
         if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['completed']):
-            flags += 'completed, '
+                args['flags'], constants.ConnectionStatusFlag.completed.value):
+            flags += constants.ConnectionStatusFlag.completed.name + ', '
         if self._connection_status_flag(
                 args['flags'],
-                constants.connection_status_flag['parameters_change']):
-            flags += 'parameters_change, '
+                constants.ConnectionStatusFlag.parameters_change.value):
+            flags += constants.ConnectionStatusFlag.parameters_change.name
 
         # Log
         self._logger.info("_ble_evt_connection_status")
@@ -1175,14 +1176,11 @@ class BGAPIBackend(BLEBackend):
         self._logger.info("flags = %s", flags)
         addr_str = "0x"+hexlify(bytearray(args['address']))
         self._logger.debug("address = %s", addr_str)
-        if (args['address_type'] ==
-                constants.ble_address_type['gap_address_type_public']):
-            address_type = "public"
-        elif (args['address_type'] ==
-                constants.ble_address_type['gap_address_type_random']):
-            address_type = "random"
-        else:
-            address_type = "Bad type"
+        address_type = 'unrecognized'
+        for a in constants.BleAddressType:
+            if a.value == args['address_type']:
+                address_type = a.name
+                break
         self._logger.debug("address type = %s", address_type)
         self._logger.debug("connection interval = %f ms",
                            args['conn_interval'] * 1.25)
@@ -1201,14 +1199,19 @@ class BGAPIBackend(BLEBackend):
                 type ('address_type'), existing bond handle ('bond'), and
                 scan resonse data list ('data')
         """
+        log.debug("Parsing scan response packet")
+        log.debug(args)
         # Parse packet
-        packet_type = constants.scan_response_packet_type[args['packet_type']]
+        packet_type = None
+        for pt in constants.ScanResponsePacketType:
+            if pt.value == args['packet_type']:
+                packet_type = pt.name
         address = ":".join(list(reversed(
             [format(b, '02x') for b in args['sender']])))
         address_type = "unknown"
-        for name, value in constants.ble_address_type.iteritems():
-            if value == args['address_type']:
-                address_type = name
+        for a in constants.BleAddressType:
+            if a.value == args['address_type']:
+                address_type = a.name
                 break
         name, data_dict = self._scan_rsp_data(args['data'])
 
@@ -1225,13 +1228,11 @@ class BGAPIBackend(BLEBackend):
             dev.packet_data[packet_type] = data_dict
         dev.rssi = args['rssi']
 
-        # Log
-        self._logger.info("_ble_evt_gap_scan_response")
-        self._logger.debug("rssi = %d dBm", args['rssi'])
-        self._logger.debug("packet type = %s", packet_type)
-        self._logger.info("sender address = %s", address)
-        self._logger.debug("address type = %s", address_type)
-        self._logger.debug("data %s", str(data_dict))
+        log.debug("rssi = %d dBm", args['rssi'])
+        log.debug("packet type = %s", packet_type)
+        log.debug("sender address = %s", address)
+        log.debug("address type = %s", address_type)
+        log.debug("data %s", str(data_dict))
 
     def _ble_evt_sm_bond_status(self, args):
         """
