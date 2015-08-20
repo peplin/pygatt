@@ -4,8 +4,14 @@ from enum import Enum
 
 class Uuid(object):
     def __init__(self, uuid_string):
+        # Trim prefix
+        if (len(uuid_string) > 2) and (uuid_string[:2] == '0x'):
+            uuid_string = uuid_string[2:]
         self.string = uuid_string
-        self.bytearray = unhexlify(self._string.replace('-', ''))
+        self.bytearray = unhexlify(self.string.replace('-', ''))
+
+    def __cmp__(self, other):
+        return cmp(self.string, other.string)
 
 
 class GattServices(Enum):
@@ -44,7 +50,7 @@ class GattCharacteristic(object):
     descriptors = []
 
 
-class GattCharacteristicDescriptors(Enum):
+class GattCharacteristicDescriptor(Enum):
     characteristic_extended_properties = Uuid('0x2900')
     characteristic_user_description = Uuid('0x2901')
     client_characteristic_configuration = Uuid('0x2902')
