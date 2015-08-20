@@ -9,7 +9,7 @@ class BleDevice(object):
 
     def __init__(self, backend, mac_address, name=None,
                  scan_response_rssi=None):
-        log.debug("Creating BleDevice with MAC %s")
+        log.debug("Creating BleDevice with MAC %s", mac_address)
         self._backend = backend
         self._mac_address_string = mac_address
         self._mac_address_bytearray = bytearray(
