@@ -53,20 +53,25 @@ class BleDevice(object):
 
     def connect(self):
         log.debug("Connecting")
-        raise NotImplementedError()
-        self._device_adapter.connect(self._mac_address_bytearray)
+        self._backend.connect(self._mac_address_bytearray)
         log.debug("Connected")
+
+    def disconnect(self):
+        log.debug("Disconnecting")
+        # TODO: pass in a connection object
+        self._backend.disconnect(None)
+        log.debug("Disconnected")
 
     def encrypt(self):
         log.debug("Encrypting connection")
         raise NotImplementedError()
-        self._device_adapter.encrypt()
+        self._backend.encrypt()
         log.debug("Connection encrypted")
 
     def bond(self):
         log.debug("Forming bonded connection")
         raise NotImplementedError()
-        self._device_adapter.bond()
+        self._backend.bond()
         log.debug("Bonded connection formed")
 
     def char_read(self, characteristic):
@@ -87,6 +92,6 @@ class BleDevice(object):
                   callback=None):
         log.debug("Subscribing to characteristic {0}".format(characteristic))
         raise NotImplementedError()
-        self._device_adapter.subscribe(characteristic, notifications,
-                                       indications, callback)
+        self._backend.subscribe(characteristic, notifications,
+                                indications, callback)
         log.debug("Done subscribing")

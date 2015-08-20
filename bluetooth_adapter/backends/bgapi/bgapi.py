@@ -356,6 +356,7 @@ class BGAPIBackend(BLEBackend):
             # Return characteristic value
             return bytearray(self._attribute_value)
 
+    # TODO: return a connection object
     def connect(self, address, timeout=5,
                 addr_type=constants.BleAddressType.gap_address_type_public.value):  # noqa FIXME
         """
@@ -373,17 +374,15 @@ class BGAPIBackend(BLEBackend):
         # Make sure there is NOT a connection
         self._check_connection(check_if_connected=False)
 
-        address_bytearray = bytearray(
-            [int(b, 16) for b in address.split(":")])
-
         # Connect to the device
-        bd_addr = [b for b in address_bytearray]
+        bd_addr = [b for b in address]
         interval_min = 6  # 6/1.25 ms
         interval_max = 30  # 30/1.25 ms
         supervision_timeout = 20  # 20/10 ms
         latency = 0  # intervals that can be skipped
         self._logger.info("gap_connect_direct")
-        self._logger.info("address = 0x%s", address)
+        self._logger.info("address = %s",
+                          ':'.join([format(b, '02x') for b in address]))
         self._logger.debug("interval_min = %f ms", interval_min/1.25)
         self._logger.debug("interval_max = %f ms", interval_max/1.25)
         self._logger.debug("timeout = %d ms", timeout/10)
@@ -406,6 +405,7 @@ class BGAPIBackend(BLEBackend):
             [self._lib.PacketType.ble_evt_connection_status], timeout=timeout,
             exception_type=NotConnectedError)
 
+    # TODO: rename/refactor
     def delete_stored_bonds(self):
         """
         Delete the bonds stored on the dongle.
@@ -444,7 +444,8 @@ class BGAPIBackend(BLEBackend):
                                   get_return_message(self._response_return))
                 raise BGAPIError("Can't delete bonding")
 
-    def disconnect(self, fail_quietly=False):
+    # TODO: use a connection object
+    def disconnect(self, connection, fail_quietly=False):
         """
         Disconnect from the device if connected.
 
@@ -665,8 +666,10 @@ class BGAPIBackend(BLEBackend):
         self._recvr_thread_is_done.clear()
         self._recvr_thread.start()
 
+        # TODO: figure out what to do about this when the connection object is
+        #       used
         # Disconnect any connections
-        self.disconnect(fail_quietly=True)
+        self.disconnect(None, fail_quietly=True)
 
         # Stop advertising
         self._logger.info("gap_set_mode")

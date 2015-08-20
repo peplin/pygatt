@@ -6,6 +6,7 @@ import threading
 import time
 
 from bluetooth_adapter.backends import BGAPIBackend
+from bluetooth_adapter.backends.bgapi.constants import ConnectionStatusFlag
 
 from .mocker import MockBGAPISerialDevice
 from .util import uuid_to_bytearray
@@ -29,22 +30,21 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def _connect(self):
         self.mock_device.stage_connect_packets(
-            self.address, ['connected', 'completed'])
-        self.backend.connect(self.address_string)
+            self.address, [ConnectionStatusFlag.connected.name,
+                           ConnectionStatusFlag.completed.name])
+        self.backend.connect(bytearray(self.address))
 
     def test_start_backend(self):
         """start general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
 
-    @unittest.skip("FIXME")
     def test_connect(self):
         """connect general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         self._connect()
 
-    @unittest.skip("FIXME")
     def test_disconnect_when_connected(self):
         """disconnect general functionality."""
         self.mock_device.stage_run_packets()
@@ -52,7 +52,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self._connect()
         # test disconnect (connected, not fail)
         self.mock_device.stage_disconnect_packets(True, False)
-        self.backend.disconnect()
+        self.backend.disconnect(None)
 
     @unittest.skip("FIXME")
     def test_char_read(self):
@@ -227,8 +227,8 @@ class BGAPIBackendTests(unittest.TestCase):
                my_handler.received_value_bytearray)
 
     @unittest.skip("FIXME")
-    def test_delete_stored_bonds(self):
-        """delete_stored_bonds general functionality."""
+    def test_clear_all_bonds(self):
+        """clear_all_bonds general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         # Test delete stored bonds
