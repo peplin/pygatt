@@ -11,7 +11,7 @@ class Uuid(object):
         self.bytearray = unhexlify(self.string.replace('-', ''))
 
     def __cmp__(self, other):
-        return cmp(self.string, other.string)
+        return cmp(self.string.lower(), other.string.lower())
 
 
 class GattServices(Enum):
