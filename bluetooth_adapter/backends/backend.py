@@ -28,11 +28,11 @@ class BLEBackend(object):
         log.error(ERROR)
         raise NotImplementedError()
 
-    def remove_bond(self, bond):
+    def clear_bond(self, bond):
         log.error(ERROR)
         raise NotImplementedError()
 
-    def clear_bonds(self, bond):
+    def clear_all_bonds(self):
         log.error(ERROR)
         raise NotImplementedError()
 
