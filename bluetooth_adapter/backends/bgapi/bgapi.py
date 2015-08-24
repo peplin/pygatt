@@ -297,17 +297,14 @@ class BGAPIBackend(BLEBackend):
             self._logger.warn(warning)
             raise BGAPIError(warning)
 
-    def char_read_uuid(self, uuid):
-        handle = self.get_handle(uuid)
-        return self._char_read(handle)
-
-    def _char_read(self, handle):
+    # TODO: pass in a connection object
+    def attribute_read(self, attribute):
         """
-        Read a value from a characteristic on the device.
+        Read a value from an attribute on the device.
 
         This requires that a connection is already established with the device.
 
-        handle -- the characteristic handle (integer) to read from.
+        attribute -- the GattCharacteristic or GattDescriptor object to read.
 
         Returns a bytearray containing the value read, on success.
         Raised BGAPIError on failure.
@@ -317,9 +314,9 @@ class BGAPIBackend(BLEBackend):
 
         # Read from characteristic
         self._logger.info("read_by_handle")
-        self._expected_attribute_handle = handle
+        self._expected_attribute_handle = attribute.handle
         cmd = self._lib.ble_cmd_attclient_read_by_handle(
-            self._connection_handle, handle)
+            self._connection_handle, attribute.handle)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response
@@ -804,7 +801,7 @@ class BGAPIBackend(BLEBackend):
 
     def _scan_rsp_data(self, data):
         """
-        Parse scan response data.
+        Parse scan response / advertising packet data.
         Note: the data will come in a format like the following:
         [data_length, data_type, data..., data_length, data_type, data...]
 
@@ -848,11 +845,13 @@ class BGAPIBackend(BLEBackend):
                         data_dict[field_type.name] = dev_name
                     elif (field_type is constants.ScanResponseDataType.
                           complete_list_128_bit_service_class_uuids):
+                        data_dict[field_type.name] = []
                         uuid_str = '0x'
                         for i in range(0, len(field_value)/16):  # 16 bytes
                             uuid_str += hexlify(bytearray(list(reversed(
                                 field_value[i*16:i*16+16]))))
-                        data_dict[field_type.name] = gatt.Uuid(uuid_str)
+                            data_dict[field_type.name].append(
+                                gatt.Uuid(uuid_str))
                     else:
                         data_dict[field_type.name] = bytearray(field_value)
         log.debug(data_dict)

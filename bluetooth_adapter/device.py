@@ -98,7 +98,6 @@ class BleDevice(object):
 
     def char_read(self, characteristic):
         log.debug("Reading from characteristic {0}".format(characteristic))
-        raise NotImplementedError()
         # TODO: pass in a connection object
         value_bytearray = self._backend.attribute_read(characteristic)
         log.debug("Read value {0}".format([hex(b) for b in value_bytearray]))
