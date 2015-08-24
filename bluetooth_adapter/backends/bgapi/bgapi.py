@@ -101,11 +101,9 @@ class BGAPIBackend(BLEBackend):
             # Note: address formatted like "01:23:45:67:89:AB"
         }
         self._attribute_value = None  # attribute_value event value
-        self._characteristics = {  # the device characteristics discovered
-            # uuid_string: Characteristic()
-        }
-        self._characteristics_cached = False  # characteristics already found
-        self._current_characteristic = None  # used in char/descriptor discovery
+
+        # Used for device attribute discovery
+        self._services = []
 
         # Flags
         self._event_return = 0  # event return code
@@ -445,7 +443,7 @@ class BGAPIBackend(BLEBackend):
                 raise BGAPIError("Can't delete bonding")
 
     # TODO: use a connection object
-    def disconnect(self, connection, fail_quietly=False):
+    def disconnect(self, fail_quietly=False):
         """
         Disconnect from the device if connected.
 
@@ -527,95 +525,55 @@ class BGAPIBackend(BLEBackend):
             self._logger.warn(warning)
             raise BGAPIError(warning)
 
-    def get_devices_discovered(self):
+    # TODO: use a connection object
+    def discover_attributes(self):
         """
-        Get self._devices_discovered.
-        A scan() should be run prior to accessing this data.
-
-        Returns the self._devices_discovered dictionary.
-        """
-        # Log
-        self._logger.info("get_devices_discovered")
-
-        return self._devices_discovered
-
-    def get_handle(self, characteristic_uuid, descriptor_uuid=None):
-        """
-        Get the handle (integer) for a characteristic or descriptor.
-
-        This requires that a connection is already established with the device.
-
-        characteristic_uuid -- bytearray containing the characteristic UUID.
-        descriptor_uuid -- optional bytearray containg the GATT descriptor UUID
-                           for the given characteristic. Note: use the
-                           gatt_characteristic_descriptor_uuid constant.
-
-        Returns an integer containing the handle on success.
-        Raises BGAPIError on failure.
         """
         # Make sure there is a connection
         self._check_connection()
 
-        # Discover characteristics if not cached
-        if not self._characteristics_cached:
-            att_handle_start = 0x0001  # first valid handle
-            att_handle_end = 0xFFFF  # last valid handle
-            cmd = self._lib.ble_cmd_attclient_find_information(
-                self._connection_handle, att_handle_start, att_handle_end)
-            self._logger.info("find_information")
-            self._lib.send_command(self._ser, cmd)
+        # Discover attributes
+        self._services = []
+        att_handle_start = 0x0001  # first valid handle
+        att_handle_end = 0xFFFF  # last valid handle
+        cmd = self._lib.ble_cmd_attclient_find_information(
+            self._connection_handle, att_handle_start, att_handle_end)
+        self._logger.info("find_information")
+        self._lib.send_command(self._ser, cmd)
 
-            # Wait for response
-            self._process_packets_until(
-                [self._lib.PacketType.ble_rsp_attclient_find_information,
-                 self._lib.PacketType.ble_evt_connection_disconnected])
-            self._check_connection()
-            if self._response_return != 0:
-                warning = "find_information failed " +\
-                          get_return_message(self._response_return)
-                self._logger.warn(warning)
-                raise BGAPIError(warning)
-
-            # Wait for event
-            self._process_packets_until(
-                [self._lib.PacketType.ble_evt_attclient_procedure_completed,
-                 self._lib.PacketType.ble_evt_connection_disconnected])
-            self._check_connection()
-            self._procedure_completed = False
-            if self._event_return != 0:
-                warning = "find_information failed: " +\
-                          get_return_message(self._event_return)
-                self._logger.warn(warning)
-                raise BGAPIError(warning)
-            self._characteristics_cached = True
-
-            # Log
-            self._logger.debug("Characteristics:")
-            for char_uuid_str, char_obj in self._characteristics.iteritems():
-                self._logger.debug("char 0x%s --> %s", char_uuid_str,
-                                   hex(char_obj.handle))
-                for desc_uuid_str, desc_handle in (
-                        char_obj.descriptors.iteritems()):
-                    self._logger.debug("desc 0x%s --> %s", desc_uuid_str,
-                                       hex(desc_handle))
-
-        # Return the handle if it exists
-        char = None
-        char_uuid_str = hexlify(characteristic_uuid)
-        if not (char_uuid_str in self._characteristics):
-            warning = "No such characteristic"
+        # Wait for response
+        self._process_packets_until(
+            [self._lib.PacketType.ble_rsp_attclient_find_information,
+             self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
+        if self._response_return != 0:
+            warning = "find_information failed " +\
+                      get_return_message(self._response_return)
             self._logger.warn(warning)
             raise BGAPIError(warning)
-        char = self._characteristics[char_uuid_str]
-        if descriptor_uuid is None:
-            return char.handle
-        desc_uuid_str = hexlify(descriptor_uuid)
-        if not (desc_uuid_str in char.descriptors):
-            warning = "No such descriptor"
+
+        # Wait for event
+        self._process_packets_until(
+            [self._lib.PacketType.ble_evt_attclient_procedure_completed,
+             self._lib.PacketType.ble_evt_connection_disconnected])
+        self._check_connection()
+        self._procedure_completed = False
+        if self._event_return != 0:
+            warning = "find_information failed: " +\
+                      get_return_message(self._event_return)
             self._logger.warn(warning)
             raise BGAPIError(warning)
-        desc_handle = char.descriptors[desc_uuid_str]
-        return desc_handle
+        self._characteristics_cached = True
+
+        log.debug("Attributes discovered")
+        for s in self._services:
+            log.debug(s)
+            for c in s.characteristics:
+                log.debug('{0}'.format(c))
+                for d in c.descriptors:
+                    log.debug('{0}'.format(d))
+
+        return self._services
 
     def get_rssi(self):
         # The BGAPI has some strange behavior where it will return 25 for
@@ -669,7 +627,7 @@ class BGAPIBackend(BLEBackend):
         # TODO: figure out what to do about this when the connection object is
         #       used
         # Disconnect any connections
-        self.disconnect(None, fail_quietly=True)
+        self.disconnect(fail_quietly=True)
 
         # Stop advertising
         self._logger.info("gap_set_mode")
@@ -770,6 +728,8 @@ class BGAPIBackend(BLEBackend):
             self._logger.warn("gap_end_procedure failed: %s",
                               get_return_message(self._response_return))
             raise BGAPIError("gap end procedure failed")
+
+        return self._devices_discovered
 
     def subscribe(self, uuid, callback=None, indicate=False):
         """
@@ -1023,17 +983,15 @@ class BGAPIBackend(BLEBackend):
 
     def _ble_evt_attclient_find_information_found(self, args):
         """
-        Handles the event for characteritic discovery.
+        Handles the event for attribute discovery.
 
-        Adds the characteristic to the dictionary of characteristics or adds
-        the descriptor to the dictionary of descriptors in the current
-        characteristic. These events will be occur in an order similar to the
-        following:
+        These events will be occur in an order similar to the following:
         1) primary service uuid
-        2) 0 or more descriptors
-        3) characteristic uuid
-        4) 0 or more descriptors
-        5) repeat steps 3-4
+        2) characteristic uuid
+        3) 0 or more descriptors
+        4) repeat steps 2-3
+        5) secondary service uuid
+        6) repeat steps 2-4
 
         args -- dictionary containing the connection handle ('connection'),
                 characteristic handle ('chrhandle'), and characteristic UUID
@@ -1043,65 +1001,66 @@ class BGAPIBackend(BLEBackend):
         uuid_str = hexlify(bytearray(list(reversed(args['uuid']))))
         uuid = gatt.Uuid(uuid_str)
 
-        # Log
-        self._logger.info("_ble_evt_attclient_find_information_found")
-        self._logger.debug("connection handle = %s", hex(args['connection']))
-        self._logger.debug("characteristic handle = %s", hex(args['chrhandle']))
-        self._logger.debug("characteristic UUID = %s", uuid.string)
+        log.debug("_ble_evt_attclient_find_information_found")
+        log.debug("connection handle = %s", hex(args['connection']))
+        log.debug("characteristic handle = %s", hex(args['chrhandle']))
+        log.debug("characteristic UUID = %s", uuid.string)
 
-        # Add uuid to characteristics as characteristic or descriptor
-        uuid_type = self._get_uuid_type(uuid)
+        if len(uuid.string) == 32:  # 32 hex digits --> 128-bit
+            log.debug('Custom 128-bit UUID')
+            char = gatt.GattCharacteristic(args['chrhandle'],
+                                           custom_128_bit_uuid=uuid)
+            log.debug(char)
+            self._services[-1].characteristics.append(char)
+            return
 
-        # TODO: fix this ------------------------------------------------------
-        """
-        Checks if the UUID is a custom 128-bit UUID or a GATT characteristic
-        descriptor UUID.
+        if uuid == gatt.GattAttributeType.characteristic.value:
+            log.debug(gatt.GattAttributeType.characteristic.name)
+            char = gatt.GattCharacteristic(args['chrhandle'])
+            log.debug(char)
+            self._services[-1].characteristics.append(char)
+            return
 
-        uuid -- the UUID as a bytearray.
+        if (uuid == gatt.GattAttributeType.primary_service.value):
+            log.debug(gatt.GattAttributeType.primary_service.name)
+            serv = gatt.GattService(args['chrhandle'],
+                                    gatt.GattAttributeType.primary_service)
+            log.debug(serv)
+            self._services.append(serv)
+            return
 
-        Returns -1 if the UUID is unrecognized.
-        Returns 0 if the UUID is a 128-bit UUID.
-        Returns 1 if the UUID is a GATT service UUID.
-        Returns 2 if the UUID is a GATT attribute type UUID
-        Returns 3 if the UUID is a GATT characteristic descriptor UUID.
-        Returns 4 if the UUID is a GATT characteristic type UUID.
-        """
-        self._logger.debug("uuid = %s", "0x"+hexlify(uuid))
-        self._logger.debug("len(uuid) = %d", len(uuid))
-        if len(uuid) == 16:  # 128-bit --> 16 byte
-            self._logger.debug("match custom")
-            # return 0
-        for u in gatt.GattServices:
-            if u.bytearray == uuid:
-                self._logger.debug("match %s", u.name + ": 0x" + u.string)
-                # return 1
-        for u, name in gatt.gatt_attribute_type_uuid.iteritems():
-            if u.bytearray == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                # return 2
-        for name, u in (
-                constants.gatt_characteristic_descriptor_uuid.iteritems()):
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                # return 3
-        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
-            if u == uuid:
-                self._logger.debug("match %s", name + ": 0x" + hexlify(u))
-                # return 4
-        self._logger.debug("no match")
-        # return -1
-        # ---------------------------------------------------------------------
+        if (uuid == gatt.GattAttributeType.secondary_service.value):
+            log.debug(gatt.GattAttributeType.secondary_service.name)
+            serv = gatt.GattService(args['chrhandle'],
+                                    gatt.GattAttributeType.secondary_service)
+            log.debug(serv)
+            self._services.append(serv)
+            return
 
-        # 3 == descriptor
-        if (uuid_type == 3) and (self._current_characteristic is not None):
-            self._logger.debug("GATT characteristic descriptor")
-            self._current_characteristic.add_descriptor(hexlify(uuid),
-                                                        args['chrhandle'])
-        elif uuid_type == 0:  # 0 == custom 128-bit UUID
-            self._logger.debug("found custom characteristic")
-            new_char = Characteristic(uuid, args['chrhandle'])
-            self._current_characteristic = new_char
-            self._characteristics[hexlify(uuid)] = new_char
+        for u in gatt.GattCharacteristicType:
+            if u.value == uuid:
+                log.debug('%s: %s', u.__class__.__name__, u.name)
+                self._services[-1].characteristics[-1].characteristic_type = u
+                log.debug("added type to {0}".format(
+                    self._services[-1].characteristics[-1]))
+                return
+
+        for u in gatt.GattCharacteristicDescriptor:
+            if u.value == uuid:
+                log.debug('%s: %s', u.__class__.__name__, u.name)
+                desc = gatt.GattDescriptor(args['chrhandle'], u)
+                self._services[-1].characteristics[-1].descriptors.append(desc)
+                log.debug("added descriptor to {0}".format(
+                    self._services[-1].characteristics[-1]))
+                return
+
+        # Unhandled known attribute types
+        for u in gatt.GattAttributeType:
+            if u.value == uuid:
+                log.warning('Unhandled: %s %s', u.__class__.__name__, u.name)
+                return
+
+        log.warning('Ignoring unrecognized UUID %s', uuid.string)
 
     def _ble_evt_attclient_procedure_completed(self, args):
         """

@@ -7,6 +7,7 @@ import time
 
 from bluetooth_adapter.backends import BGAPIBackend
 from bluetooth_adapter.backends.bgapi.constants import ConnectionStatusFlag
+from bluetooth_adapter import gatt
 
 from .mocker import MockBGAPISerialDevice
 from .util import uuid_to_bytearray
@@ -30,6 +31,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def _connect(self):
         self.mock_device.stage_connect_packets(
+            # TODO: update to use enum not just enum name
             self.address, [ConnectionStatusFlag.connected.name,
                            ConnectionStatusFlag.completed.name])
         self.backend.connect(bytearray(self.address))
@@ -52,7 +54,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self._connect()
         # test disconnect (connected, not fail)
         self.mock_device.stage_disconnect_packets(True, False)
-        self.backend.disconnect(None)
+        self.backend.disconnect()
 
     @unittest.skip("FIXME")
     def test_char_read(self):
@@ -125,28 +127,51 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_get_rssi_packets()
         assert(self.backend.get_rssi() == -80)
 
-    @unittest.skip("FIXME")
-    def test_get_handle(self):
-        """get_handle general functionality."""
+    def test_discover_attributes(self):
+        """discover_attributes general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         self._connect()
-        # Test get_handle
-        uuid_char = '01234567-0123-0123-0123-0123456789AB'
-        handle_char = 0x1234
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self.mock_device.stage_get_handle_packets([
-            uuid_char, handle_char,
-            uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char))
-        assert(handle == handle_char)
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char),
-                                         uuid_to_bytearray(uuid_desc))
-        assert(handle == handle_desc)
 
-    def test_scan_and_get_devices_discovered(self):
-        """scan/get_devices_discovered general functionality."""
+        services = []
+        serv = gatt.GattService(0x01, gatt.GattAttributeType.primary_service)
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
+                                   client_characteristic_configuration)
+        char.descriptors.append(desc)
+        serv.characteristics.append(char)
+        services.append(serv)
+
+        self.mock_device.stage_discover_attributes_packets(services)
+        discovered_services = self.backend.discover_attributes()
+        eq_(len(services), len(discovered_services))
+        # TODO: this can be condensed to one line if each object has a __cmp__
+        #       method defined
+        for i in range(len(services)):
+            serv = services[i]
+            serv_d = discovered_services[i]
+            eq_(serv.handle, serv_d.handle)
+            eq_(serv.service_type, serv_d.service_type)
+            eq_(len(serv.characteristics),
+                len(serv_d.characteristics))
+            for j in range(len(serv.characteristics)):
+                char = serv.characteristics[j]
+                char_d = serv_d.characteristics[j]
+                eq_(char.handle, char_d.handle)
+                eq_(char.characteristic_type, char_d.characteristic_type)
+                eq_(char.custom_128_bit_uuid, char_d.custom_128_bit_uuid)
+                eq_(len(char.descriptors),
+                    len(char_d.descriptors))
+                for k in range(len(char.descriptors)):
+                    desc = char.descriptors[k]
+                    desc_d = char.descriptors[k]
+                    eq_(desc.handle, desc_d.handle)
+                    eq_(desc.descriptor_type, desc_d.descriptor_type)
+
+    def test_scan(self):
+        """scan general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         # Test scan
@@ -163,8 +188,7 @@ class BGAPIBackendTests(unittest.TestCase):
                      ord('l'), ord('o'), ord('!')]
         })
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
-        self.backend.scan()
-        devs = self.backend.get_devices_discovered()
+        devs = self.backend.scan()
         assert_in(addr_0_str, devs)
         eq_('Hello!', devs[addr_0_str].name)
         eq_(-80, devs[addr_0_str].rssi)

@@ -2,28 +2,50 @@ from binascii import unhexlify
 from enum import Enum
 
 
+# TODO: The abastractions here could be cleaned up to have a GattAttribute
+#       base class and maybe not format the gatt uuids as enums. This is just
+#       a first attempt so far.
+
+
 class Uuid(object):
     def __init__(self, uuid_string):
         # Trim prefix
         if (len(uuid_string) > 2) and (uuid_string[:2] == '0x'):
             uuid_string = uuid_string[2:]
-        self.string = uuid_string
-        self.bytearray = unhexlify(self.string.replace('-', ''))
+        self.string = uuid_string.replace('-', '')
+        self.bytearray = unhexlify(self.string)
 
     def __cmp__(self, other):
         return cmp(self.string.lower(), other.string.lower())
 
+    def __str__(self):
+        return '0x' + self.string
 
+    def __repr__(self):
+        return ("<{0}.{1} object at {2}: 0x{3}"
+                .format(self.__module__, self.__class__.__name__, id(self),
+                        self.string))
+
+
+# TODO: not sure if this will be used anywhere
 class GattServices(Enum):
     generic_access_profile = Uuid('0x1800')
     generic_attribute_profile = Uuid('0x1801')
 
 
-class Service(object):
+# TODO: clean up
+class GattService(object):
     """GATT protocol service."""
-    uuid = None  # a GattServices object
-    handle = None
-    characteristics = []  # GattCharacteristic objects
+    def __init__(self, handle, gatt_attribute_type):
+        self.handle = handle
+        self.service_type = gatt_attribute_type  # a GattAttributeType object
+        self.characteristics = []  # GattCharacteristic objects
+
+    def __repr__(self):
+        return ('<{0}.{1} object at {2}: handle={3} attribute_type={4}>'
+                .format(self.__module__, self.__class__.__name__,
+                        hex(id(self)), '0x' + format(self.handle, '04x'),
+                        self.service_type))
 
 
 class GattAttributeType(Enum):
@@ -44,10 +66,18 @@ class GattCharacteristicType(Enum):
 
 class GattCharacteristic(object):
     """GATT protocol characteristic."""
-    uuid = None
-    handle = None
-    characteristic_type = None
-    descriptors = []
+    def __init__(self, handle, custom_128_bit_uuid=None):
+        self.handle = handle
+        self.characteristic_type = None
+        self.custom_128_bit_uuid = custom_128_bit_uuid
+        self.descriptors = []
+
+    def __repr__(self):
+        return ('<{0}.{1} object at {2}: handle={3} characteristic_type={4} '
+                'custom_128_bit_uuid={5}>'
+                .format(self.__module__, self.__class__.__name__,
+                        hex(id(self)), '0x' + format(self.handle, '04x'),
+                        self.characteristic_type, self.custom_128_bit_uuid))
 
 
 class GattCharacteristicDescriptor(Enum):
@@ -61,6 +91,12 @@ class GattCharacteristicDescriptor(Enum):
 
 class GattDescriptor(object):
     """GATT protocol descriptor."""
-    uuid = None
-    handle = None
-    descriptor_type = None
+    def __init__(self, handle, descriptor_type):
+        self.handle = handle
+        self.descriptor_type = descriptor_type
+
+    def __repr__(self):
+        return ('<{0}.{1} object at {2}: handle={3} descriptor_type={4}>'
+                .format(self.__module__, self.__class__.__name__,
+                        hex(id(self)), '0x' + format(self.handle, '04x'),
+                        self.descriptor_type))

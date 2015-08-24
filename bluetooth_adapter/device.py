@@ -16,6 +16,7 @@ class BleDevice(object):
             [int(b, 16) for b in self._mac_address_string.split(":")])
         self._name = name
         self._scan_response_rssi = scan_response_rssi
+        self._services = None
         log.debug("BleDevice created")
 
     def __repr__(self):
@@ -42,6 +43,7 @@ class BleDevice(object):
     def get_rssi(self, from_connection=False):
         log.debug("Getting RSSI from %s",
                   'connection' if from_connection else 'scan response')
+        raise NotImplementedError()
         rssi = None
         if from_connection:
             raise NotImplementedError()
@@ -54,6 +56,7 @@ class BleDevice(object):
     def connect(self):
         log.debug("Connecting")
         self._backend.connect(self._mac_address_bytearray)
+        # TODO: store a connection object
         log.debug("Connected")
 
     def disconnect(self):
@@ -62,21 +65,41 @@ class BleDevice(object):
         self._backend.disconnect(None)
         log.debug("Disconnected")
 
+    def list_services(self):
+        """Get a list of GattService objects that contain characteristics and
+        their descriptors.
+        """
+        log.debug("Listing services")
+        if self._services is None:
+            # TODO: pass in a connection object
+            self._services = self._backend.discover_attributes()
+        log.debug("Services:")
+        for s in self._services:
+            log.debug(s)
+            for c in s.characteristics:
+                log.debug(c)
+                for d in c.descriptors:
+                    log.debug(d)
+        return self._services
+
     def encrypt(self):
         log.debug("Encrypting connection")
         raise NotImplementedError()
+        # TODO: pass in a connection object
         self._backend.encrypt()
         log.debug("Connection encrypted")
 
     def bond(self):
         log.debug("Forming bonded connection")
         raise NotImplementedError()
+        # TODO: pass in a connection object
         self._backend.bond()
         log.debug("Bonded connection formed")
 
     def char_read(self, characteristic):
         log.debug("Reading from characteristic {0}".format(characteristic))
         raise NotImplementedError()
+        # TODO: pass in a connection object
         value_bytearray = self._backend.attribute_read(characteristic)
         log.debug("Read value {0}".format([hex(b) for b in value_bytearray]))
         return value_bytearray
@@ -85,6 +108,7 @@ class BleDevice(object):
         log.debug("Writing value {0} to characteristic {1}"
                   .format(value_bytearray, characteristic))
         raise NotImplementedError()
+        # TODO: pass in a connection object
         self._backend.attribute_write(characteristic, value_bytearray)
         log.debug("Done writing")
 
@@ -92,6 +116,7 @@ class BleDevice(object):
                   callback=None):
         log.debug("Subscribing to characteristic {0}".format(characteristic))
         raise NotImplementedError()
+        # TODO: pass in a connection object
         self._backend.subscribe(characteristic, notifications,
                                 indications, callback)
         log.debug("Done subscribing")

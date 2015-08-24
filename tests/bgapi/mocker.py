@@ -3,7 +3,6 @@ from mock import patch
 from tests.serial_mock import SerialMock
 
 from .packets import BGAPIPacketBuilder
-from .util import uuid_to_bytearray
 
 
 class MockBGAPISerialDevice(object):
@@ -16,6 +15,7 @@ class MockBGAPISerialDevice(object):
     def stop(self):
         self.patcher.stop()
 
+    # TODO: update to use enum
     @staticmethod
     def _get_connection_status_flags_byte(flags):
         flags_byte = 0x00
@@ -153,21 +153,41 @@ class MockBGAPISerialDevice(object):
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.gap_end_procedure(0x0000))
 
-    def stage_get_handle_packets(
-            self, uuid_handle_list, connection_handle=0x00):
+    def stage_discover_attributes_packets(self, services,
+                                          connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.attclient_find_information(
                 connection_handle, 0x0000))
-        for i in range(0, len(uuid_handle_list)/2):
-            uuid = uuid_to_bytearray(uuid_handle_list[2*i])
-            handle = uuid_handle_list[2*i + 1]
-            # Stage ble_evt_attclient_find_information_found
-            u = [len(uuid) + 1]
+
+        # Stage ble_evt_attclient_find_information_found
+        for s in services:
+            u = [len(s.service_type.value.bytearray) + 1]
             self.mocked_serial.stage_output(
                 BGAPIPacketBuilder.attclient_find_information_found(
-                    connection_handle, handle,
-                    (u+list(reversed([ord(b) for b in uuid])))))
+                    connection_handle, s.handle,
+                    (u+list(reversed(
+                        [ord(b) for b in s.service_type.value.bytearray])))))
+            for c in s.characteristics:
+                uuid = None
+                if c.custom_128_bit_uuid is not None:
+                    uuid = c.custom_128_bit_uuid
+                else:
+                    uuid = c.characteristic_type.value
+                u = [len(uuid.bytearray) + 1]
+                self.mocked_serial.stage_output(
+                    BGAPIPacketBuilder.attclient_find_information_found(
+                        connection_handle, c.handle,
+                        (u+list(reversed([ord(b) for b in uuid.bytearray])))))
+                for d in c.descriptors:
+                    u = [len(d.descriptor_type.value.bytearray) + 1]
+                    self.mocked_serial.stage_output(
+                        BGAPIPacketBuilder.attclient_find_information_found(
+                            connection_handle, d.handle,
+                            (u+list(reversed(
+                                [ord(b) for b in d.descriptor_type.value.
+                                 bytearray])))))
+
         # Stage ble_evt_attclient_procedure_completed (success)
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.attclient_procedure_completed(
