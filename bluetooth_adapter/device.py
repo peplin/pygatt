@@ -90,7 +90,6 @@ class BleDevice(object):
 
     def encrypt(self):
         log.debug("Encrypting connection")
-        raise NotImplementedError()
         # TODO: pass in a connection object
         self._backend.encrypt()
         log.debug("Connection encrypted")

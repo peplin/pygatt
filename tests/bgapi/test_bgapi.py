@@ -31,8 +31,8 @@ class BGAPIBackendTests(unittest.TestCase):
     def _connect(self):
         self.mock_device.stage_connect_packets(
             # TODO: update to use enum not just enum name
-            self.address, [ConnectionStatusFlag.connected.name,
-                           ConnectionStatusFlag.completed.name])
+            self.address, [ConnectionStatusFlag.connected,
+                           ConnectionStatusFlag.completed])
         self.backend.connect(bytearray(self.address))
 
     def test_start_backend(self):
@@ -87,7 +87,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_attribute_write_packets(char.handle, value)
         self.backend.attribute_write(char, bytearray(value))
 
-    @unittest.skip("FIXME")
     def test_encrypt(self):
         """encrypt general functionality."""
         self.mock_device.stage_start_packets()
@@ -95,7 +94,8 @@ class BGAPIBackendTests(unittest.TestCase):
         self._connect()
         # Test encrypt
         self.mock_device.stage_encrypt_packets(
-            self.address, ['connected', 'encrypted'])
+            self.address, [ConnectionStatusFlag.connected,
+                           ConnectionStatusFlag.encrypted])
         self.backend.encrypt()
 
     @unittest.skip("FIXME")
@@ -105,7 +105,9 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.start()
         self._connect()
         self.mock_device.stage_bond_packets(
-            self.address, ['connected', 'encrypted', 'parameters_change'])
+            self.address, [ConnectionStatusFlag.connected,
+                           ConnectionStatusFlag.encrypted,
+                           ConnectionStatusFlag.parameters_change])
         self.backend.bond()
 
     def test_get_rssi(self):

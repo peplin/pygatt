@@ -15,18 +15,11 @@ class MockBGAPISerialDevice(object):
     def stop(self):
         self.patcher.stop()
 
-    # TODO: update to use enum
     @staticmethod
     def _get_connection_status_flags_byte(flags):
         flags_byte = 0x00
-        if 'connected' in flags:
-            flags_byte |= 0x01
-        if 'encrypted' in flags:
-            flags_byte |= 0x02
-        if 'completed' in flags:
-            flags_byte |= 0x04
-        if 'parameters_change' in flags:
-            flags_byte |= 0x08
+        for f in flags:
+            flags_byte |= f.value
         return flags_byte
 
     def stage_disconnected_by_remote(
