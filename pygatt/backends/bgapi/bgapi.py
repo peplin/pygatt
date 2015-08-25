@@ -84,7 +84,8 @@ class BGAPIBackend(BLEBackend):
         self._logger.addHandler(handler)
 
         # Initialization
-        self._lib = bglib.BGLib(loghandler=handler, loglevel=LOG_LEVEL)
+        self._lib = bglib.BGLib(loghandler=handler,
+                                loglevel=LOG_LEVEL)
         self._serial_port = serial_port
         self._ser = None
 
