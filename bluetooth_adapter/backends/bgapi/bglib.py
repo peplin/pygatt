@@ -661,15 +661,15 @@ class BGLib(object):
             if packet_class == 0:
                 if packet_command == 0:  # ble_rsp_system_reset
                     log.debug(
-                        "received packet ble_rsp_system_reset")
+                        "decoding packet ble_rsp_system_reset")
                     return PacketType.ble_rsp_system_reset, {}
                 elif packet_command == 1:  # ble_rsp_system_hello
                     log.debug(
-                        "received packet ble_rsp_system_hello")
+                        "decoding packet ble_rsp_system_hello")
                     return PacketType.ble_rsp_system_hello, {}
                 elif packet_command == 2:  # ble_rsp_system_address_get
                     log.debug(
-                        "received packet ble_rsp_system_address_get")
+                        "decoding packet ble_rsp_system_address_get")
                     address = unpack('<6s', bgapi_rx_payload[:6])[0]
                     address = [ord(b) for b in address]
                     args = {
@@ -678,7 +678,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_address_get, args
                 elif packet_command == 3:  # ble_rsp_system_reg_write
                     log.debug(
-                        "received packet ble_rsp_system_reg_write")
+                        "decoding packet ble_rsp_system_reg_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -686,7 +686,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_reg_write, args
                 elif packet_command == 4:  # ble_rsp_system_reg_read
                     log.debug(
-                        "received packet ble_rsp_system_reg_read")
+                        "decoding packet ble_rsp_system_reg_read")
                     address, value =\
                         unpack('<HB', bgapi_rx_payload[:3])
                     args = {
@@ -695,7 +695,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_reg_read, args
                 elif packet_command == 5:  # ble_rsp_system_get_counters
                     log.debug(
-                        "received packet ble_rsp_system_get_counters")
+                        "decoding packet ble_rsp_system_get_counters")
                     txok, txretry, rxok, rxfail, mbuf =\
                         unpack('<BBBBB', bgapi_rx_payload[:5])
                     args = {
@@ -705,7 +705,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_get_counters, args
                 elif packet_command == 6:  # ble_rsp_system_get_connections
                     log.debug(
-                        "received packet ble_rsp_system_get_connections")
+                        "decoding packet ble_rsp_system_get_connections")
                     maxconn = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'maxconn': maxconn
@@ -713,7 +713,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_get_connections, args
                 elif packet_command == 7:  # ble_rsp_system_read_memory
                     log.debug(
-                        "received packet ble_rsp_system_read_memory")
+                        "decoding packet ble_rsp_system_read_memory")
                     address, data_len =\
                         unpack('<IB', bgapi_rx_payload[:5])
                     data_data = [ord(b) for b in bgapi_rx_payload[5:]]
@@ -723,7 +723,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_read_memory, args
                 elif packet_command == 8:  # ble_rsp_system_get_info
                     log.debug(
-                        "received packet ble_rsp_system_get_info")
+                        "decoding packet ble_rsp_system_get_info")
                     data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
                     args = {
                         'major': data[0], 'minor': data[1],
@@ -734,7 +734,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_get_info, args
                 elif packet_command == 9:  # ble_rsp_system_endpoint_tx
                     log.debug(
-                        "received packet ble_rsp_system_endpoint_tx")
+                        "decoding packet ble_rsp_system_endpoint_tx")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -743,7 +743,7 @@ class BGLib(object):
                 # ble_rsp_system_whitelist_append
                 elif packet_command == 10:
                     log.debug(
-                        "received packet ble_rsp_system_whitelist_append")
+                        "decoding packet ble_rsp_system_whitelist_append")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -752,7 +752,7 @@ class BGLib(object):
                 # ble_rsp_system_whitelist_remove
                 elif packet_command == 11:
                     log.debug(
-                        "received packet ble_rsp_system_whitelist_remove")
+                        "decoding packet ble_rsp_system_whitelist_remove")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -760,11 +760,11 @@ class BGLib(object):
                     return PacketType.ble_rsp_system_whitelist_remove
                 elif packet_command == 12:  # ble_rsp_system_whitelist_clear
                     log.debug(
-                        "received packet ble_rsp_system_whitelist_clear")
+                        "decoding packet ble_rsp_system_whitelist_clear")
                     return PacketType.ble_rsp_system_whitelist_clear, {}
                 elif packet_command == 13:  # ble_rsp_system_endpoint_rx
                     log.debug(
-                        "received packet ble_rsp_system_endpoint_rx")
+                        "decoding packet ble_rsp_system_endpoint_rx")
                     result, data_len =\
                         unpack('<HB', bgapi_rx_payload[:3])
                     data_data = [ord(b) for b in bgapi_rx_payload[3:]]
@@ -775,7 +775,7 @@ class BGLib(object):
                 # ble_rsp_system_endpoint_set_watermarks
                 elif packet_command == 14:
                     log.debug(
-                        "received packet ble_rsp_system_endpoint_set_"
+                        "decoding packet ble_rsp_system_endpoint_set_"
                         "watermarks")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -786,19 +786,19 @@ class BGLib(object):
             elif packet_class == 1:
                 if packet_command == 0:  # ble_rsp_flash_ps_defrag
                     log.debug(
-                        "received packet ble_rsp_flash_ps_defrag")
+                        "decoding packet ble_rsp_flash_ps_defrag")
                     return PacketType.ble_rsp_flash_ps_defrag, {}
                 elif packet_command == 1:  # ble_rsp_flash_ps_dump
                     log.debug(
-                        "received packet ble_rsp_flash_ps_dump")
+                        "decoding packet ble_rsp_flash_ps_dump")
                     return PacketType.ble_rsp_flash_ps_dump, {}
                 elif packet_command == 2:  # ble_rsp_flash_ps_erase_all
                     log.debug(
-                        "received packet ble_rsp_flash_ps_erase_all")
+                        "decoding packet ble_rsp_flash_ps_erase_all")
                     return PacketType.ble_rsp_flash_ps_erase_all, {}
                 elif packet_command == 3:  # ble_rsp_flash_ps_save
                     log.debug(
-                        "received packet ble_rsp_flash_ps_save")
+                        "decoding packet ble_rsp_flash_ps_save")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -806,7 +806,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_flash_ps_save, args
                 elif packet_command == 4:  # ble_rsp_flash_ps_load
                     log.debug(
-                        "received packet ble_rsp_flash_ps_load")
+                        "decoding packet ble_rsp_flash_ps_load")
                     result, value_len = unpack('<HB',
                                                bgapi_rx_payload[:3])
                     value_data = [ord(b) for b in bgapi_rx_payload[3:]]
@@ -816,11 +816,11 @@ class BGLib(object):
                     return PacketType.ble_rsp_flash_ps_load, args
                 elif packet_command == 5:  # ble_rsp_flash_ps_erase
                     log.debug(
-                        "received packet ble_rsp_flash_ps_erase")
+                        "decoding packet ble_rsp_flash_ps_erase")
                     return PacketType.ble_rsp_flash_ps_erase, {}
                 elif packet_command == 6:  # ble_rsp_flash_ps_erase_page
                     log.debug(
-                        "received packet ble_rsp_flash_ps_erase_page")
+                        "decoding packet ble_rsp_flash_ps_erase_page")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -828,12 +828,12 @@ class BGLib(object):
                     return PacketType.ble_rsp_flash_erase_page, args
                 elif packet_command == 7:  # ble_rsp_flash_write_words
                     log.debug(
-                        "received packet ble_rsp_flash_write_words")
+                        "decoding packet ble_rsp_flash_write_words")
                     return PacketType.ble_rsp_flash_write_words, {}
             elif packet_class == 2:
                 if packet_command == 0:  # ble_rsp_attributes_write
                     log.debug(
-                        "received packet ble_rsp_attributes_write")
+                        "decoding packet ble_rsp_attributes_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -841,7 +841,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_attributes_write, args
                 elif packet_command == 1:  # ble_rsp_attributes_read
                     log.debug(
-                        "received packet ble_rsp_attributes_read")
+                        "decoding packet ble_rsp_attributes_read")
                     handle, offset, result, value_len = unpack(
                         '<HHHB', bgapi_rx_payload[:7]
                     )
@@ -853,7 +853,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_attributes_read, args
                 elif packet_command == 2:  # ble_rsp_attributes_read_type
                     log.debug(
-                        "received packet ble_rsp_attributes_read_type")
+                        "decoding packet ble_rsp_attributes_read_type")
                     handle, result, value_len = unpack(
                         '<HHB', bgapi_rx_payload[:5]
                     )
@@ -866,21 +866,21 @@ class BGLib(object):
                 # ble_rsp_attributes_user_read_response
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_rsp_attributes_user_read_"
+                        "decoding packet ble_rsp_attributes_user_read_"
                         "response")
                     return (PacketType.
                             ble_rsp_attributes_user_read_response, {})
                 # ble_rsp_attributes_user_write_response
                 elif packet_command == 4:
                     log.debug(
-                        "received packet ble_rsp_attributes_user_write_"
+                        "decoding packet ble_rsp_attributes_user_write_"
                         "response")
                     return (PacketType.
                             ble_rsp_attributes_user_write_response, {})
             elif packet_class == 3:
                 if packet_command == 0:  # ble_rsp_connection_disconnect
                     log.debug(
-                        "received packet ble_rsp_connection_disconnect")
+                        "decoding packet ble_rsp_connection_disconnect")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -890,7 +890,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_connection_disconnect, args
                 elif packet_command == 1:  # ble_rsp_connection_get_rssi
                     log.debug(
-                        "received packet ble_rsp_connection_get_rssi")
+                        "decoding packet ble_rsp_connection_get_rssi")
                     connection, rssi = unpack(
                         '<Bb', bgapi_rx_payload[:2]
                     )
@@ -900,7 +900,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_connection_get_rssi, args
                 elif packet_command == 2:  # ble_rsp_connection_update
                     log.debug(
-                        "received packet ble_rsp_connection_update")
+                        "decoding packet ble_rsp_connection_update")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -911,7 +911,7 @@ class BGLib(object):
                 # ble_rsp_connection_version_update
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_rsp_connection_version_update")
+                        "decoding packet ble_rsp_connection_version_update")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -923,7 +923,7 @@ class BGLib(object):
                 # ble_rsp_connection_channel_map_get
                 elif packet_command == 4:
                     log.debug(
-                        "received packet ble_rsp_connection_channel_map_"
+                        "decoding packet ble_rsp_connection_channel_map_"
                         "get")
                     connection, map_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -937,7 +937,7 @@ class BGLib(object):
                 # ble_rsp_connection_channel_map_set
                 elif packet_command == 5:
                     log.debug(
-                        "received packet ble_rsp_connection_channel_map_"
+                        "decoding packet ble_rsp_connection_channel_map_"
                         "set")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -949,7 +949,7 @@ class BGLib(object):
                             args)
                 elif packet_command == 6:  # ble_rsp_connection_features_get
                     log.debug(
-                        "received packet ble_rsp_connection_features_get")
+                        "decoding packet ble_rsp_connection_features_get")
                     connection, result = unpack('<BH',
                                                 bgapi_rx_payload[:3])
                     args = {
@@ -958,7 +958,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_connection_features_get, args
                 elif packet_command == 7:  # ble_rsp_connection_get_status
                     log.debug(
-                        "received packet ble_rsp_connection_get_status")
+                        "decoding packet ble_rsp_connection_get_status")
                     connection = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'connection': connection
@@ -966,7 +966,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_connection_get_status, args
                 elif packet_command == 8:  # ble_rsp_connection_raw_tx
                     log.debug(
-                        "received packet ble_rsp_connection_raw_tx")
+                        "decoding packet ble_rsp_connection_raw_tx")
                     connection = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'connection': connection
@@ -976,7 +976,7 @@ class BGLib(object):
                 # ble_rsp_attclient_find_by_type_value
                 if packet_command == 0:
                     log.debug(
-                        "received packet ble_rsp_attclient_find_by_type_"
+                        "decoding packet ble_rsp_attclient_find_by_type_"
                         "value")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -989,7 +989,7 @@ class BGLib(object):
                 # ble_rsp_attclient_read_by_group_type
                 elif packet_command == 1:
                     log.debug(
-                        "received packet ble_rsp_attclient_read_by_group_"
+                        "decoding packet ble_rsp_attclient_read_by_group_"
                         "type")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1001,7 +1001,7 @@ class BGLib(object):
                             ble_rsp_attclient_read_by_group_type, args)
                 elif packet_command == 2:  # ble_rsp_attclient_read_by_type
                     log.debug(
-                        "received packet ble_rsp_attclient_read_by_type")
+                        "decoding packet ble_rsp_attclient_read_by_type")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1012,7 +1012,7 @@ class BGLib(object):
                 # ble_rsp_attclient_find_information
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_rsp_attclient_find_"
+                        "decoding packet ble_rsp_attclient_find_"
                         "information")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
@@ -1025,7 +1025,7 @@ class BGLib(object):
                 # ble_rsp_attclient_read_by_handle
                 elif packet_command == 4:
                     log.debug(
-                        "received packet ble_rsp_attclient_read_by_handle")
+                        "decoding packet ble_rsp_attclient_read_by_handle")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1037,7 +1037,7 @@ class BGLib(object):
                 # ble_rsp_attclient_attribute_write
                 elif packet_command == 5:
                     log.debug(
-                        "received packet ble_rsp_attclient_attribute_write")
+                        "decoding packet ble_rsp_attclient_attribute_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1048,7 +1048,7 @@ class BGLib(object):
                             args)
                 elif packet_command == 6:  # ble_rsp_attclient_write_command
                     log.debug(
-                        "received packet ble_rsp_attclient_write_command")
+                        "decoding packet ble_rsp_attclient_write_command")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1059,7 +1059,7 @@ class BGLib(object):
                 # ble_rsp_attclient_indicate_confirm
                 elif packet_command == 7:
                     log.debug(
-                        "received packet ble_rsp_attclient_indicate_"
+                        "decoding packet ble_rsp_attclient_indicate_"
                         "confirm")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1069,7 +1069,7 @@ class BGLib(object):
                             args)
                 elif packet_command == 8:  # ble_rsp_attclient_read_long
                     log.debug(
-                        "received packet ble_rsp_attclient_read_long")
+                        "decoding packet ble_rsp_attclient_read_long")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1079,7 +1079,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_attclient_read_long, args
                 elif packet_command == 9:  # ble_rsp_attclient_prepare_write
                     log.debug(
-                        "received packet ble_rsp_attclient_prepare_write")
+                        "decoding packet ble_rsp_attclient_prepare_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1090,7 +1090,7 @@ class BGLib(object):
                 # ble_rsp_attclient_execute_write
                 elif packet_command == 10:
                     log.debug(
-                        "received packet ble_rsp_attclient_execute_write")
+                        "decoding packet ble_rsp_attclient_execute_write")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1101,7 +1101,7 @@ class BGLib(object):
                 # ble_rsp_attclient_read_multiple
                 elif packet_command == 11:
                     log.debug(
-                        "received packet ble_rsp_attclient_read_multiple")
+                        "decoding packet ble_rsp_attclient_read_multiple")
                     connection, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1112,7 +1112,7 @@ class BGLib(object):
             elif packet_class == 5:
                 if packet_command == 0:  # ble_rsp_sm_encrypt_start
                     log.debug(
-                        "received packet ble_rsp_sm_encrypt_start")
+                        "decoding packet ble_rsp_sm_encrypt_start")
                     handle, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1122,11 +1122,11 @@ class BGLib(object):
                     return PacketType.ble_rsp_sm_encrypt_start, args
                 elif packet_command == 1:  # ble_rsp_sm_set_bondable_mode
                     log.debug(
-                        "received packet ble_rsp_sm_set_bondable_mode")
+                        "decoding packet ble_rsp_sm_set_bondable_mode")
                     return PacketType.ble_rsp_sm_set_bondable_mode, {}
                 elif packet_command == 2:  # ble_rsp_sm_delete_bonding
                     log.debug(
-                        "received packet ble_rsp_sm_delete_bonding")
+                        "decoding packet ble_rsp_sm_delete_bonding")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1134,11 +1134,11 @@ class BGLib(object):
                     return PacketType.ble_rsp_sm_delete_bonding, args
                 elif packet_command == 3:  # ble_rsp_sm_set_parameters
                     log.debug(
-                        "received packet ble_rsp_sm_set_parameters")
+                        "decoding packet ble_rsp_sm_set_parameters")
                     return PacketType.ble_rsp_sm_set_parameters, {}
                 elif packet_command == 4:  # ble_rsp_sm_passkey_entry
                     log.debug(
-                        "received packet ble_rsp_sm_passkey_entry")
+                        "decoding packet ble_rsp_sm_passkey_entry")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1146,7 +1146,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_sm_passkey_entry, args
                 elif packet_command == 5:  # ble_rsp_sm_get_bonds
                     log.debug(
-                        "received packet ble_rsp_sm_get_bonds")
+                        "decoding packet ble_rsp_sm_get_bonds")
                     bonds = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'bonds': bonds
@@ -1154,16 +1154,16 @@ class BGLib(object):
                     return PacketType.ble_rsp_sm_get_bonds, args
                 elif packet_command == 6:  # ble_rsp_sm_set_oob_data
                     log.debug(
-                        "received packet ble_rsp_sm_set_oob_data")
+                        "decoding packet ble_rsp_sm_set_oob_data")
                     return PacketType.ble_rsp_sm_set_oob_data, {}
             elif packet_class == 6:
                 if packet_command == 0:  # ble_rsp_gap_set_privacy_flags
                     log.debug(
-                        "received packet ble_rsp_gap_set_privacy_flags")
+                        "decoding packet ble_rsp_gap_set_privacy_flags")
                     return PacketType.ble_rsp_gap_set_privacy_flags, {}
                 elif packet_command == 1:  # ble_rsp_gap_set_mode
                     log.debug(
-                        "received packet ble_rsp_gap_set_mode")
+                        "decoding packet ble_rsp_gap_set_mode")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1171,7 +1171,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_set_mode, args
                 elif packet_command == 2:  # ble_rsp_gap_discover
                     log.debug(
-                        "received packet ble_rsp_gap_discover")
+                        "decoding packet ble_rsp_gap_discover")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1179,7 +1179,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_discover, args
                 elif packet_command == 3:  # ble_rsp_gap_connect_direct
                     log.debug(
-                        "received packet ble_rsp_gap_connect_direct")
+                        "decoding packet ble_rsp_gap_connect_direct")
                     result, connection_handle = unpack(
                         '<HB', bgapi_rx_payload[:3]
                     )
@@ -1190,7 +1190,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_connect_direct, args
                 elif packet_command == 4:  # ble_rsp_gap_end_procedure
                     log.debug(
-                        "received packet ble_rsp_gap_end_procedure")
+                        "decoding packet ble_rsp_gap_end_procedure")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1198,7 +1198,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_end_procedure, args
                 elif packet_command == 5:  # ble_rsp_gap_connect_selective
                     log.debug(
-                        "received packet ble_rsp_gap_connect_selective")
+                        "decoding packet ble_rsp_gap_connect_selective")
                     result, connection_handle = unpack(
                         '<HB', bgapi_rx_payload[:3]
                     )
@@ -1209,7 +1209,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_connect_selective, args
                 elif packet_command == 6:  # ble_rsp_gap_set_filtering
                     log.debug(
-                        "received packet ble_rsp_gap_set_filtering")
+                        "decoding packet ble_rsp_gap_set_filtering")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1217,7 +1217,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_set_filtering, args
                 elif packet_command == 7:  # ble_rsp_gap_set_scan_parameters
                     log.debug(
-                        "received packet ble_rsp_gap_set_scan_parameters")
+                        "decoding packet ble_rsp_gap_set_scan_parameters")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1225,7 +1225,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_set_scan_parameters, args
                 elif packet_command == 8:  # ble_rsp_gap_set_adv_parameters
                     log.debug(
-                        "received packet ble_rsp_gap_set_adv_parameters")
+                        "decoding packet ble_rsp_gap_set_adv_parameters")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1233,7 +1233,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_gap_set_adv_parameters, args
                 elif packet_command == 9:  # ble_rsp_gap_set_adv_data
                     log.debug(
-                        "received packet ble_rsp_gap_set_adv_data")
+                        "decoding packet ble_rsp_gap_set_adv_data")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1242,7 +1242,7 @@ class BGLib(object):
                 # ble_rsp_gap_set_directed_connectable_mode
                 elif packet_command == 10:
                     log.debug(
-                        "received packet ble_rsp_gap_set_directed_"
+                        "decoding packet ble_rsp_gap_set_directed_"
                         "connectable_mode")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1254,7 +1254,7 @@ class BGLib(object):
                 # ble_rsp_hardware_io_port_config_irq
                 if packet_command == 0:
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_config_"
+                        "decoding packet ble_rsp_hardware_io_port_config_"
                         "irq")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1264,7 +1264,7 @@ class BGLib(object):
                             args)
                 elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
                     log.debug(
-                        "received packet ble_rsp_hardware_set_soft_timer")
+                        "decoding packet ble_rsp_hardware_set_soft_timer")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1272,7 +1272,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_set_soft_timer, args
                 elif packet_command == 2:  # ble_rsp_hardware_adc_read
                     log.debug(
-                        "received packet ble_rsp_hardware_adc_read")
+                        "decoding packet ble_rsp_hardware_adc_read")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1281,7 +1281,7 @@ class BGLib(object):
                 # ble_rsp_hardware_io_port_config_direction
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_config_"
+                        "decoding packet ble_rsp_hardware_io_port_config_"
                         "direction")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1292,7 +1292,7 @@ class BGLib(object):
                 # ble_rsp_hardware_io_port_config_function
                 elif packet_command == 4:
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_config_"
+                        "decoding packet ble_rsp_hardware_io_port_config_"
                         "function")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1303,7 +1303,7 @@ class BGLib(object):
                 # ble_rsp_hardware_io_port_config_pull
                 elif packet_command == 5:
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_config_"
+                        "decoding packet ble_rsp_hardware_io_port_config_"
                         "pull")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
@@ -1313,7 +1313,7 @@ class BGLib(object):
                             ble_rsp_hardware_io_port_config_pull, args)
                 elif packet_command == 6:  # ble_rsp_hardware_io_port_write
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_write")
+                        "decoding packet ble_rsp_hardware_io_port_write")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1321,7 +1321,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_io_port_write, args
                 elif packet_command == 7:  # ble_rsp_hardware_io_port_read
                     log.debug(
-                        "received packet ble_rsp_hardware_io_port_read")
+                        "decoding packet ble_rsp_hardware_io_port_read")
                     result, port, data = unpack(
                         '<HBB', bgapi_rx_payload[:4]
                     )
@@ -1331,7 +1331,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_io_port_read, args
                 elif packet_command == 8:  # ble_rsp_hardware_spi_config
                     log.debug(
-                        "received packet ble_rsp_hardware_spi_config")
+                        "decoding packet ble_rsp_hardware_spi_config")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1339,7 +1339,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_spi_config, args
                 elif packet_command == 9:  # ble_rsp_hardware_spi_transfer
                     log.debug(
-                        "received packet ble_rsp_hardware_spi_transfer")
+                        "decoding packet ble_rsp_hardware_spi_transfer")
                     result, channel, data_len = unpack(
                         '<HBB', bgapi_rx_payload[:4]
                     )
@@ -1351,7 +1351,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_spi_transfer, args
                 elif packet_command == 10:  # ble_rsp_hardware_i2c_read
                     log.debug(
-                        "received packet ble_rsp_hardware_i2c_read")
+                        "decoding packet ble_rsp_hardware_i2c_read")
                     result, data_len = unpack(
                         '<HB', bgapi_rx_payload[:3]
                     )
@@ -1362,7 +1362,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_i2c_read, args
                 elif packet_command == 11:  # ble_rsp_hardware_i2c_write
                     log.debug(
-                        "received packet ble_rsp_hardware_i2c_write")
+                        "decoding packet ble_rsp_hardware_i2c_write")
                     written = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'written': written
@@ -1370,12 +1370,12 @@ class BGLib(object):
                     return PacketType.ble_rsp_hardware_i2c_write, args
                 elif packet_command == 12:  # ble_rsp_hardware_set_txpower
                     log.debug(
-                        "received packet ble_rsp_hardware_set_txpower")
+                        "decoding packet ble_rsp_hardware_set_txpower")
                     return PacketType.ble_rsp_hardware_set_txpower, {}
                 # ble_rsp_hardware_timer_comparator
                 elif packet_command == 13:
                     log.debug(
-                        "received packet ble_rsp_hardware_timer_comparator")
+                        "decoding packet ble_rsp_hardware_timer_comparator")
                     result = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'result': result
@@ -1385,15 +1385,15 @@ class BGLib(object):
             elif packet_class == 8:
                 if packet_command == 0:  # ble_rsp_test_phy_tx
                     log.debug(
-                        "received packet ble_rsp_test_phy_tx")
+                        "decoding packet ble_rsp_test_phy_tx")
                     return PacketType.ble_rsp_test_phy_tx, {}
                 elif packet_command == 1:  # ble_rsp_test_phy_rx
                     log.debug(
-                        "received packet ble_rsp_test_phy_rx")
+                        "decoding packet ble_rsp_test_phy_rx")
                     return PacketType.ble_rsp_test_phy_rx, {}
                 elif packet_command == 2:  # ble_rsp_test_phy_end
                     log.debug(
-                        "received packet ble_rsp_test_phy_end")
+                        "decoding packet ble_rsp_test_phy_end")
                     counter = unpack('<H', bgapi_rx_payload[:2])[0]
                     args = {
                         'counter': counter
@@ -1401,11 +1401,11 @@ class BGLib(object):
                     return PacketType.ble_rsp_test_phy_end, args
                 elif packet_command == 3:  # ble_rsp_test_phy_reset
                     log.debug(
-                        "received packet ble_rsp_test_phy_reset")
+                        "decoding packet ble_rsp_test_phy_reset")
                     return PacketType.ble_rsp_test_phy_reset, {}
                 elif packet_command == 4:  # ble_rsp_test_get_channel_map
                     log.debug(
-                        "received packet ble_rsp_test_get_channel_map")
+                        "decoding packet ble_rsp_test_get_channel_map")
                     # channel_map_len = unpack(
                     #    '<B', bgapi_rx_payload[:1]
                     # )[0]
@@ -1417,7 +1417,7 @@ class BGLib(object):
                     return PacketType.ble_rsp_test_get_channel_map, args
                 elif packet_command == 5:  # ble_rsp_test_debug
                     log.debug(
-                        "received packet ble_rsp_test_debug")
+                        "decoding packet ble_rsp_test_debug")
                     # output_len = unpack('<B',
                     #                     bgapi_rx_payload[:1])[0]
                     output_data =\
@@ -1431,7 +1431,7 @@ class BGLib(object):
             if packet_class == 0:
                 if packet_command == 0:  # ble_evt_system_boot
                     log.debug(
-                        "received packet ble_evt_system_boot")
+                        "decoding packet ble_evt_system_boot")
                     data = unpack('<HHHHHBB', bgapi_rx_payload[:12])
                     args = {
                         'major': data[0], 'minor': data[1],
@@ -1442,7 +1442,7 @@ class BGLib(object):
                     return PacketType.ble_evt_system_boot, args
                 elif packet_command == 1:  # ble_evt_system_debug
                     log.debug(
-                        "received packet ble_evt_system_debug")
+                        "decoding packet ble_evt_system_debug")
                     data_len = unpack('<B', bgapi_rx_payload[:1])[0]
                     data_data = [ord(b) for b in bgapi_rx_payload[1:]]
                     args = {
@@ -1452,7 +1452,7 @@ class BGLib(object):
                 # ble_evt_system_endpoint_watermark_rx
                 elif packet_command == 2:
                     log.debug(
-                        "received packet ble_evt_system_endpoint_"
+                        "decoding packet ble_evt_system_endpoint_"
                         "watermark_rx")
                     endpoint, data = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1465,7 +1465,7 @@ class BGLib(object):
                 # ble_evt_system_endpoint_watermark_tx
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_evt_system_endpoint_"
+                        "decoding packet ble_evt_system_endpoint_"
                         "watermark_tx")
                     endpoint, data = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1477,7 +1477,7 @@ class BGLib(object):
                             ble_evt_system_endpoint_watermark_tx, args)
                 elif packet_command == 4:  # ble_evt_system_script_failure
                     log.debug(
-                        "received packet ble_evt_system_script_failure")
+                        "decoding packet ble_evt_system_script_failure")
                     address, reason = unpack(
                         '<HH', bgapi_rx_payload[:4]
                     )
@@ -1487,12 +1487,12 @@ class BGLib(object):
                     return PacketType.ble_evt_system_script_failure, args
                 elif packet_command == 5:  # ble_evt_system_no_license_key
                     log.debug(
-                        "received packet ble_evt_system_no_license_key")
+                        "decoding packet ble_evt_system_no_license_key")
                     return PacketType.ble_evt_system_no_license_key, {}
             elif packet_class == 1:
                 if packet_command == 0:  # ble_evt_flash_ps_key
                     log.debug(
-                        "received packet ble_evt_flash_ps_key")
+                        "decoding packet ble_evt_flash_ps_key")
                     key, value_len = unpack(
                         '<HB', bgapi_rx_payload[:3]
                     )
@@ -1504,7 +1504,7 @@ class BGLib(object):
             elif packet_class == 2:
                 if packet_command == 0:  # ble_evt_attributes_value
                     log.debug(
-                        "received packet ble_evt_attributes_value")
+                        "decoding packet ble_evt_attributes_value")
                     connection, reason, handle, offset, value_len = unpack(
                         '<BBHHB', bgapi_rx_payload[:7]
                     )
@@ -1518,7 +1518,7 @@ class BGLib(object):
                 # ble_evt_attributes_user_read_request
                 elif packet_command == 1:
                     log.debug(
-                        "received packet ble_evt_attributes_user_read_"
+                        "decoding packet ble_evt_attributes_user_read_"
                         "request")
                     connection, handle, offset, maxsize = unpack(
                         '<BHHB', bgapi_rx_payload[:6]
@@ -1531,7 +1531,7 @@ class BGLib(object):
                             ble_evt_attributes_user_read_request, args)
                 elif packet_command == 2:  # ble_evt_attributes_status
                     log.debug(
-                        "received packet ble_evt_attributes_status")
+                        "decoding packet ble_evt_attributes_status")
                     handle, flags = unpack('<HB', bgapi_rx_payload[:3])
                     args = {
                         'handle': handle, 'flags': flags
@@ -1540,7 +1540,7 @@ class BGLib(object):
             elif packet_class == 3:
                 if packet_command == 0:  # ble_evt_connection_status
                     log.debug(
-                        "received packet ble_evt_connection_status")
+                        "decoding packet ble_evt_connection_status")
                     data = unpack('<BB6sBHHHB', bgapi_rx_payload[:16])
                     address = [ord(b) for b in data[2]]
                     args = {
@@ -1552,7 +1552,7 @@ class BGLib(object):
                     return PacketType.ble_evt_connection_status, args
                 elif packet_command == 1:  # ble_evt_connection_version_ind
                     log.debug(
-                        "received packet ble_evt_connection_version_ind")
+                        "decoding packet ble_evt_connection_version_ind")
                     connection, vers_nr, comp_id, sub_vers_nr = unpack(
                         '<BBHH', bgapi_rx_payload[:6]
                     )
@@ -1563,7 +1563,7 @@ class BGLib(object):
                     return PacketType.ble_evt_connection_version_ind, args
                 elif packet_command == 2:  # ble_evt_connection_feature_ind
                     log.debug(
-                        "received packet ble_evt_connection_feature_ind")
+                        "decoding packet ble_evt_connection_feature_ind")
                     connection, features_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
                     )
@@ -1575,7 +1575,7 @@ class BGLib(object):
                     return PacketType.ble_evt_connection_feature_ind, args
                 elif packet_command == 3:  # ble_evt_connection_raw_rx
                     log.debug(
-                        "received packet ble_evt_connection_raw_rx")
+                        "decoding packet ble_evt_connection_raw_rx")
                     connection, data_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
                     )
@@ -1586,7 +1586,7 @@ class BGLib(object):
                     return PacketType.ble_evt_connection_raw_rx, args
                 elif packet_command == 4:  # ble_evt_connection_disconnected
                     log.debug(
-                        "received packet ble_evt_connection_disconnected")
+                        "decoding packet ble_evt_connection_disconnected")
                     connection, reason = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1597,7 +1597,7 @@ class BGLib(object):
             elif packet_class == 4:
                 if packet_command == 0:  # ble_evt_attclient_indicated
                     log.debug(
-                        "received packet ble_evt_attclient_indicated")
+                        "decoding packet ble_evt_attclient_indicated")
                     connection, attrhandle = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1608,7 +1608,7 @@ class BGLib(object):
                 # ble_evt_attclient_procedure_completed
                 elif packet_command == 1:
                     log.debug(
-                        "received packet ble_evt_attclient_procedure_"
+                        "decoding packet ble_evt_attclient_procedure_"
                         "completed")
                     connection, result, chrhandle = unpack(
                         '<BHH', bgapi_rx_payload[:5]
@@ -1621,7 +1621,7 @@ class BGLib(object):
                             ble_evt_attclient_procedure_completed, args)
                 elif packet_command == 2:  # ble_evt_attclient_group_found
                     log.debug(
-                        "received packet ble_evt_attclient_group_found")
+                        "decoding packet ble_evt_attclient_group_found")
                     connection, start, end, uuid_len = unpack(
                         '<BHHB', bgapi_rx_payload[:6]
                     )
@@ -1634,7 +1634,7 @@ class BGLib(object):
                 # ble_evt_attclient_attribute_found
                 elif packet_command == 3:
                     log.debug(
-                        "received packet ble_evt_attclient_attribute_found")
+                        "decoding packet ble_evt_attclient_attribute_found")
                     data = unpack('<BHHBB', bgapi_rx_payload[:7])
                     uuid_data = [ord(b) for b in bgapi_rx_payload[7:]]
                     args = {
@@ -1647,7 +1647,7 @@ class BGLib(object):
                 # ble_evt_attclient_find_information_found
                 elif packet_command == 4:
                     log.debug(
-                        "received packet ble_evt_attclient_find_"
+                        "decoding packet ble_evt_attclient_find_"
                         "information_found")
                     connection, chrhandle, uuid_len = unpack(
                         '<BHB', bgapi_rx_payload[:4]
@@ -1662,7 +1662,7 @@ class BGLib(object):
                 # ble_evt_attclient_attribute_value
                 elif packet_command == 5:
                     log.debug(
-                        "received packet ble_evt_attclient_attribute_value")
+                        "decoding packet ble_evt_attclient_attribute_value")
                     connection, atthandle, type, value_len = unpack(
                         '<BHBB', bgapi_rx_payload[:5]
                     )
@@ -1676,7 +1676,7 @@ class BGLib(object):
                 # ble_evt_attclient_read_multiple_response
                 elif packet_command == 6:
                     log.debug(
-                        "received packet ble_evt_attclient_read_multiple_"
+                        "decoding packet ble_evt_attclient_read_multiple_"
                         "response")
                     connection, handles_len = unpack(
                         '<BB', bgapi_rx_payload[:2]
@@ -1691,7 +1691,7 @@ class BGLib(object):
             elif packet_class == 5:
                 if packet_command == 0:  # ble_evt_sm_smp_data
                     log.debug(
-                        "received packet ble_evt_sm_smp_data")
+                        "decoding packet ble_evt_sm_smp_data")
                     handle, packet, data_len = unpack(
                         '<BBB', bgapi_rx_payload[:3]
                     )
@@ -1703,7 +1703,7 @@ class BGLib(object):
                     return PacketType.ble_evt_sm_smp_data, args
                 elif packet_command == 1:  # ble_evt_sm_bonding_fail
                     log.debug(
-                        "received packet ble_evt_sm_bonding_fail")
+                        "decoding packet ble_evt_sm_bonding_fail")
                     handle, result = unpack(
                         '<BH', bgapi_rx_payload[:3]
                     )
@@ -1713,7 +1713,7 @@ class BGLib(object):
                     return PacketType.ble_evt_sm_bonding_fail, args
                 elif packet_command == 2:  # ble_evt_sm_passkey_display
                     log.debug(
-                        "received packet ble_evt_sm_passkey_display")
+                        "decoding packet ble_evt_sm_passkey_display")
                     handle, passkey = unpack(
                         '<BI', bgapi_rx_payload[:5]
                     )
@@ -1723,7 +1723,7 @@ class BGLib(object):
                     return PacketType.ble_evt_sm_passkey_display, args
                 elif packet_command == 3:  # ble_evt_sm_passkey_request
                     log.debug(
-                        "received packet ble_evt_sm_passkey_request")
+                        "decoding packet ble_evt_sm_passkey_request")
                     handle = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'handle': handle
@@ -1731,7 +1731,7 @@ class BGLib(object):
                     return PacketType.ble_evt_sm_passkey_request, args
                 elif packet_command == 4:  # ble_evt_sm_bond_status
                     log.debug(
-                        "received packet ble_evt_sm_bond_status")
+                        "decoding packet ble_evt_sm_bond_status")
                     bond, keysize, mitm, keys = unpack(
                         '<BBBB', bgapi_rx_payload[:4]
                     )
@@ -1743,7 +1743,7 @@ class BGLib(object):
             elif packet_class == 6:
                 if packet_command == 0:  # ble_evt_gap_scan_response
                     log.debug(
-                        "received packet ble_evt_gap_scan_response")
+                        "decoding packet ble_evt_gap_scan_response")
                     data = unpack('<bB6sBBB', bgapi_rx_payload[:11])
                     sender = [ord(b) for b in data[2]]
                     data_data = [ord(b) for b in bgapi_rx_payload[11:]]
@@ -1755,7 +1755,7 @@ class BGLib(object):
                     return PacketType.ble_evt_gap_scan_response, args
                 elif packet_command == 1:  # ble_evt_gap_mode_changed
                     log.debug(
-                        "received packet ble_evt_gap_mode_changed")
+                        "decoding packet ble_evt_gap_mode_changed")
                     discover, connect = unpack(
                         '<BB', bgapi_rx_payload[:2]
                     )
@@ -1766,7 +1766,7 @@ class BGLib(object):
             elif packet_class == 7:
                 if packet_command == 0:  # ble_evt_hardware_io_port_status
                     log.debug(
-                        "received packet ble_evt_hardware_io_port_status")
+                        "decoding packet ble_evt_hardware_io_port_status")
                     timestamp, port, irq, state = unpack(
                         '<IBBB', bgapi_rx_payload[:7]
                     )
@@ -1777,7 +1777,7 @@ class BGLib(object):
                     return PacketType.ble_evt_hardware_io_port_status, args
                 elif packet_command == 1:  # ble_evt_hardware_soft_timer
                     log.debug(
-                        "received packet ble_evt_hardware_io_soft_timer")
+                        "decoding packet ble_evt_hardware_io_soft_timer")
                     handle = unpack('<B', bgapi_rx_payload[:1])[0]
                     args = {
                         'handle': handle
@@ -1785,7 +1785,7 @@ class BGLib(object):
                     return PacketType.ble_evt_hardware_soft_timer, args
                 elif packet_command == 2:  # ble_evt_hardware_adc_result
                     log.debug(
-                        "received packet ble_evt_hardware_adc_result")
+                        "decoding packet ble_evt_hardware_adc_result")
                     input, value = unpack('<Bh', bgapi_rx_payload[:3])
                     args = {
                         'input': input, 'value': value
