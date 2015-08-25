@@ -1474,6 +1474,7 @@ class BGAPIBackend(BLEBackend):
         # Log
         log.info("_ble_rsp_set_bondable_mode")
 
+    # TODO: remove this method because it won't be needed
     def _uuid_bytearray(self, uuid):
         """
         Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
