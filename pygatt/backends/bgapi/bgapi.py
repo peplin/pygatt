@@ -212,20 +212,20 @@ class BGAPIBackend(BLEBackend):
                          EventPacketType.connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
-            warning = "encrypt_start failed: " +\
-                      get_return_message(self._response_return)
+            warning = "encrypt_start failed: %s" % (
+                get_return_message(self._response_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
-        while (not self._bonding_fail) and self._connected and\
-              (not self._bonded) and (not self._encrypted):
+        while (self._connected and not self._bonding_fail and
+               not self._bonded and not self._encrypted):
             self.expect_any([EventPacketType.connection_status,
                              EventPacketType.sm_bonding_fail,
                              EventPacketType.connection_disconnected])
         self._check_connection()
         if self._bonding_fail:
-            warning = "encrypt_start failed: " +\
-                      get_return_message(self._event_return)
+            warning = "encrypt_start failed: %s" % (
+                get_return_message(self._event_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -255,8 +255,8 @@ class BGAPIBackend(BLEBackend):
                          EventPacketType.connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
-            warning = "attribute_write failed: " +\
-                      get_return_message(self._response_return)
+            warning = "attribute_write failed: %s " % (
+                get_return_message(self._response_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -265,8 +265,8 @@ class BGAPIBackend(BLEBackend):
         self._procedure_completed = False
         self._check_connection()
         if self._event_return != 0:
-            warning = "attribute_write failed: " +\
-                      get_return_message(self._event_return)
+            warning = "attribute_write failed: %s" % (
+                get_return_message(self._event_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -298,8 +298,8 @@ class BGAPIBackend(BLEBackend):
                          EventPacketType.connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
-            warning = "read_by_handle failed: " +\
-                      get_return_message(self._response_return)
+            warning = "read_by_handle failed: %s" % (
+                get_return_message(self._response_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -312,8 +312,8 @@ class BGAPIBackend(BLEBackend):
         self._check_connection()
         if self._procedure_completed:
             self._procedure_completed = False
-            warning = "read_by_handle failed: " +\
-                      get_return_message(self._event_return)
+            warning = "read_by_handle failed: %s" % (
+                      get_return_message(self._event_return))
             log.warn(warning)
             raise BGAPIError(warning)
         if self._attribute_value_received:
@@ -453,8 +453,8 @@ class BGAPIBackend(BLEBackend):
                          EventPacketType.connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
-            warning = "encrypt_start failed " +\
-                      get_return_message(self._response_return)
+            warning = "encrypt_start failed %s" % (
+                get_return_message(self._response_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -462,8 +462,8 @@ class BGAPIBackend(BLEBackend):
                          EventPacketType.connection_disconnected])
         self._check_connection()
         if not self._encrypted:
-            warning = "encrypt_start failed: " +\
-                      get_return_message(self._response_return)
+            warning = "encrypt_start failed: %s" % (
+                get_return_message(self._response_return))
             log.warn(warning)
             raise BGAPIError(warning)
 
@@ -507,8 +507,8 @@ class BGAPIBackend(BLEBackend):
                              EventPacketType.connection_disconnected])
             self._check_connection()
             if self._response_return != 0:
-                warning = "find_information failed " +\
-                          get_return_message(self._response_return)
+                warning = "find_information failed %s" % (
+                          get_return_message(self._response_return))
                 log.warn(warning)
                 raise BGAPIError(warning)
 
@@ -517,8 +517,8 @@ class BGAPIBackend(BLEBackend):
             self._check_connection()
             self._procedure_completed = False
             if self._event_return != 0:
-                warning = "find_information failed: " +\
-                          get_return_message(self._event_return)
+                warning = "find_information failed: %s" % (
+                          get_return_message(self._event_return))
                 log.warn(warning)
                 raise BGAPIError(warning)
             self._characteristics_cached = True
@@ -830,12 +830,12 @@ class BGAPIBackend(BLEBackend):
                         constants.scan_response_data_type[field_value[0]])
                     field_value = field_value[1:]
                     # Field type specific formats
-                    if field_name == 'complete_local_name' or\
-                            field_name == 'shortened_local_name':
+                    if (field_name == 'complete_local_name' or
+                            field_name == 'shortened_local_name'):
                         dev_name = bytearray(field_value).decode("utf-8")
                         data_dict[field_name] = dev_name
-                    elif field_name ==\
-                            'complete_list_128-bit_service_class_uuids':
+                    elif (field_name ==
+                          'complete_list_128-bit_service_class_uuids'):
                         data_dict[field_name] = []
                         for i in range(0, len(field_value)/16):  # 16 bytes
                             service_uuid = '0x'+hexlify(bytearray(list(reversed(
@@ -1115,8 +1115,8 @@ class BGAPIBackend(BLEBackend):
             dev.name = name
         if dev.address == "":
             dev.address = address
-        if (packet_type not in dev.packet_data) or\
-                len(dev.packet_data[packet_type]) < len(data_dict):
+        if (packet_type not in dev.packet_data or
+                len(dev.packet_data[packet_type]) < len(data_dict)):
             dev.packet_data[packet_type] = data_dict
         dev.rssi = args['rssi']
 
