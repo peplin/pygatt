@@ -5,6 +5,11 @@ from enum import Enum
 # TODO: The abastractions here could be cleaned up to have a GattAttribute
 #       base class and maybe not format the gatt uuids as enums. This is just
 #       a first attempt so far.
+# NOTE: what I am thinking right now is having a GattAttribute parent class that
+#       has a Uuid and a handle, then subclasses for descs, chars, and servs.
+#       The GATT constants should be enums and then there should be hash table
+#       that goes from the enum member to the Uuid and perhaps another one that
+#       goes from Uuid to enum member so we can have O(1) lookup.
 
 
 class Uuid(object):
