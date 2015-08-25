@@ -788,20 +788,11 @@ class BGLib(object):
 
         log.info("Received response packet %s", packet_type)
         response = {}
-        if packet_type == ResponsePacketType.system_reset:
-            pass
-        elif packet_type == ResponsePacketType.system_hello:
-            pass
-        elif packet_type == ResponsePacketType.system_address_get:
+        if packet_type == ResponsePacketType.system_address_get:
             address = unpack('<6s', payload[:6])[0]
             address = [ord(b) for b in address]
             response = {
                 'address': address
-            }
-        elif packet_type == ResponsePacketType.system_reg_write:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
             }
         elif packet_type == ResponsePacketType.system_reg_read:
             address, value =\
@@ -836,23 +827,40 @@ class BGLib(object):
                 'll_version': data[4], 'protocol_version': data[5],
                 'hw': data[6]
             }
-        elif packet_type == ResponsePacketType.system_endpoint_tx:
+        elif packet_type in [
+                ResponsePacketType.system_endpoint_tx,
+                ResponsePacketType.system_whitelist_append,
+                ResponsePacketType.system_whitelist_remove,
+                ResponsePacketType.system_endpoint_set_watermarks,
+                ResponsePacketType.flash_ps_save,
+                ResponsePacketType.flash_erase_page,
+                ResponsePacketType.attributes_write,
+                ResponsePacketType.system_reg_write,
+                ResponsePacketType.attclient_indicate_confirm,
+                ResponsePacketType.sm_delete_bonding,
+                ResponsePacketType.sm_passkey_entry,
+                ResponsePacketType.gap_set_mode,
+                ResponsePacketType.gap_discover,
+                ResponsePacketType.gap_end_procedure,
+                ResponsePacketType.gap_set_filtering,
+                ResponsePacketType.hardware_timer_comparator,
+                ResponsePacketType.test_phy_end,
+                ResponsePacketType.hardware_spi_config,
+                ResponsePacketType.gap_set_scan_parameters,
+                ResponsePacketType.gap_set_adv_parameters,
+                ResponsePacketType.gap_set_adv_data,
+                ResponsePacketType.gap_set_directed_connectable_mode,
+                ResponsePacketType.hardware_io_port_config_irq,
+                ResponsePacketType.hardware_set_soft_timer,
+                ResponsePacketType.hardware_adc_read,
+                ResponsePacketType.hardware_io_port_config_direction,
+                ResponsePacketType.hardware_io_port_config_function,
+                ResponsePacketType.hardware_io_port_config_pull,
+                ResponsePacketType.hardware_io_port_write]:
             result = unpack('<H', payload[:2])[0]
             response = {
                 'result': result
             }
-        elif packet_type == ResponsePacketType.system_whitelist_append:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.system_whitelist_remove:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.system_whitelist_clear:
-            pass
         elif packet_type == ResponsePacketType.system_endpoint_rx:
             result, data_len =\
                 unpack('<HB', payload[:3])
@@ -860,42 +868,12 @@ class BGLib(object):
             response = {
                 'result': result, 'data': data_data
             }
-        elif packet_type == ResponsePacketType.system_endpoint_set_watermarks:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.flash_ps_defrag:
-            pass
-        elif packet_type == ResponsePacketType.flash_ps_dump:
-            pass
-        elif packet_type == ResponsePacketType.flash_ps_erase_all:
-            pass
-        elif packet_type == ResponsePacketType.flash_ps_save:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
         elif packet_type == ResponsePacketType.flash_ps_load:
             result, value_len = unpack('<HB',
                                        payload[:3])
             value_data = [ord(b) for b in payload[3:]]
             response = {
                 'result': result, 'value': value_data
-            }
-        elif packet_type == ResponsePacketType.flash_ps_erase:
-            pass
-        elif packet_type == ResponsePacketType.flash_erase_page:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.flash_write_words:
-            pass
-        elif packet_type == ResponsePacketType.attributes_write:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
             }
         elif packet_type == ResponsePacketType.attributes_read:
             handle, offset, result, value_len = unpack(
@@ -915,13 +893,24 @@ class BGLib(object):
                 'handle': handle, 'result': result,
                 'value': value_data
             }
-        elif packet_type == ResponsePacketType.attributes_user_read_response:
-            pass
-        elif packet_type == ResponsePacketType.attributes_user_write_response:
-            pass
-        elif packet_type == ResponsePacketType.connection_disconnect:
-            # TODO this is really common, have just one conditional for all of
-            # these messages
+        elif packet_type in [
+                ResponsePacketType.connection_disconnect,
+                ResponsePacketType.connection_update,
+                ResponsePacketType.connection_version_update,
+                ResponsePacketType.connection_channel_map_set,
+                ResponsePacketType.connection_features_get,
+                ResponsePacketType.attclient_find_by_type_value,
+                ResponsePacketType.attclient_read_by_group_type,
+                ResponsePacketType.attclient_read_by_type,
+                ResponsePacketType.attclient_find_information,
+                ResponsePacketType.attclient_read_by_handle,
+                ResponsePacketType.attclient_attribute_write,
+                ResponsePacketType.attclient_write_command,
+                ResponsePacketType.attclient_read_long,
+                ResponsePacketType.attclient_prepare_write,
+                ResponsePacketType.attclient_execute_write,
+                ResponsePacketType.attclient_read_multiple,
+                ]:
             connection, result = unpack(
                 '<BH', payload[:3]
             )
@@ -935,20 +924,6 @@ class BGLib(object):
             response = {
                 'connection': connection, 'rssi': rssi
             }
-        elif packet_type == ResponsePacketType.connection_update:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.connection_version_update:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
         elif packet_type == ResponsePacketType.connection_channel_map_get:
             connection, map_len = unpack(
                 '<BB', payload[:2]
@@ -956,19 +931,6 @@ class BGLib(object):
             map_data = [ord(b) for b in payload[2:]]
             response = {
                 'connection': connection, 'map': map_data
-            }
-        elif packet_type == ResponsePacketType.connection_channel_map_set:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.connection_features_get:
-            connection, result = unpack('<BH',
-                                        payload[:3])
-            response = {
-                'connection': connection, 'result': result
             }
         elif packet_type == ResponsePacketType.connection_get_status:
             connection = unpack('<B', payload[:1])[0]
@@ -980,88 +942,6 @@ class BGLib(object):
             response = {
                 'connection': connection
             }
-        elif packet_type == ResponsePacketType.attclient_find_by_type_value:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_read_by_group_type:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_read_by_type:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_find_information:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_read_by_handle:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_attribute_write:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_write_command:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_indicate_confirm:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_read_long:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_prepare_write:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_execute_write:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
-        elif packet_type == ResponsePacketType.attclient_read_multiple:
-            connection, result = unpack(
-                '<BH', payload[:3]
-            )
-            response = {
-                'connection': connection, 'result': result
-            }
         elif packet_type == ResponsePacketType.sm_encrypt_start:
             handle, result = unpack(
                 '<BH', payload[:3]
@@ -1069,38 +949,10 @@ class BGLib(object):
             response = {
                 'handle': handle, 'result': result
             }
-        elif packet_type == ResponsePacketType.sm_set_bondable_mode:
-            pass
-        elif packet_type == ResponsePacketType.sm_delete_bonding:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.sm_set_parameters:
-            pass
-        elif packet_type == ResponsePacketType.sm_passkey_entry:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
         elif packet_type == ResponsePacketType.sm_get_bonds:
             bonds = unpack('<B', payload[:1])[0]
             response = {
                 'bonds': bonds
-            }
-        elif packet_type == ResponsePacketType.sm_set_oob_data:
-            pass
-        elif packet_type == ResponsePacketType.gap_set_privacy_flags:
-            pass
-        elif packet_type == ResponsePacketType.gap_set_mode:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.gap_discover:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
             }
         elif packet_type == ResponsePacketType.gap_connect_direct:
             result, connection_handle = unpack(
@@ -1110,11 +962,6 @@ class BGLib(object):
                 'result': result,
                 'connection_handle': connection_handle
             }
-        elif packet_type == ResponsePacketType.gap_end_procedure:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
         elif packet_type == ResponsePacketType.gap_connect_selective:
             result, connection_handle = unpack(
                 '<HB', payload[:3]
@@ -1123,79 +970,12 @@ class BGLib(object):
                 'result': result,
                 'connection_handle': connection_handle
             }
-        elif packet_type == ResponsePacketType.gap_set_filtering:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.gap_set_scan_parameters:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.gap_set_adv_parameters:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.gap_set_adv_data:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == (
-                ResponsePacketType.gap_set_directed_connectable_mode):
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_io_port_config_irq:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_set_soft_timer:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_adc_read:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == (
-                ResponsePacketType.hardware_io_port_config_direction):
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_io_port_config_function:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_io_port_config_pull:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.hardware_io_port_write:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
         elif packet_type == ResponsePacketType.hardware_io_port_read:
             result, port, data = unpack(
                 '<HBB', payload[:4]
             )
             response = {
                 'result': result, 'port': port, 'data': data
-            }
-        elif packet_type == ResponsePacketType.hardware_spi_config:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
             }
         elif packet_type == ResponsePacketType.hardware_spi_transfer:
             result, channel, data_len = unpack(
@@ -1219,24 +999,6 @@ class BGLib(object):
             response = {
                 'written': written
             }
-        elif packet_type == ResponsePacketType.hardware_set_txpower:
-            pass
-        elif packet_type == ResponsePacketType.hardware_timer_comparator:
-            result = unpack('<H', payload[:2])[0]
-            response = {
-                'result': result
-            }
-        elif packet_type == ResponsePacketType.test_phy_tx:
-            pass
-        elif packet_type == ResponsePacketType.test_phy_rx:
-            pass
-        elif packet_type == ResponsePacketType.test_phy_end:
-            counter = unpack('<H', payload[:2])[0]
-            response = {
-                'counter': counter
-            }
-        elif packet_type == ResponsePacketType.test_phy_reset:
-            pass
         elif packet_type == ResponsePacketType.test_get_channel_map:
             # channel_map_len = unpack(
             #    '<B', payload[:1]
@@ -1280,14 +1042,9 @@ class BGLib(object):
             response = {
                 'data': data_data
             }
-        elif packet_type == EventPacketType.system_endpoint_watermark_rx:
-            endpoint, data = unpack(
-                '<BB', payload[:2]
-            )
-            response = {
-                'endpoint': endpoint, 'data': data
-            }
-        elif packet_type == EventPacketType.system_endpoint_watermark_tx:
+        elif packet_type in [EventPacketType.system_endpoint_watermark_rx,
+                             EventPacketType.system_endpoint_watermark_tx
+                             ]:
             endpoint, data = unpack(
                 '<BB', payload[:2]
             )
@@ -1301,8 +1058,6 @@ class BGLib(object):
             response = {
                 'address': address, 'reason': reason
             }
-        elif packet_type == EventPacketType.system_no_license_key:
-            pass
         elif packet_type == EventPacketType.flash_ps_key:
             key, value_len = unpack(
                 '<HB', payload[:3]
