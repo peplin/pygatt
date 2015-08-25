@@ -191,8 +191,12 @@ class BGAPIBackend(BLEBackend):
             self._lib.PacketType.ble_evt_sm_bonding_fail] =\
             self._ble_evt_sm_bonding_fail
 
-        # Start logging
-        log.info("BGAPIBackend on %s", serial_port)
+        log.info("Created %s", repr(self))
+
+    def __repr__(self):
+        return ("<{0}.{1} object at {2}: serial_port={3}>"
+                .format(self.__module__, self.__class__.__name__, id(self),
+                        self._serial_port))
 
     def bond(self):
         """
