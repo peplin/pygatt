@@ -747,7 +747,7 @@ class BGLib(object):
         ser -- The serial.Serial object to write to.
         packet -- The packet to write.
         """
-        log.info("Sending command")
+        log.debug("Sending packet %s", packet)
         ser.write(packet)
 
     def parse_byte(self, byte):
@@ -770,9 +770,10 @@ class BGLib(object):
         elif len(self.buffer) > 1:
             self.buffer.append(byte)
 
-        if self.expected_length > 0 and\
-           len(self.buffer) == self.expected_length:
-            log.info("read complete packet")
+        if (self.expected_length > 0 and
+                len(self.buffer) == self.expected_length):
+            log.debug("Read complete %d byte packet: %s",
+                      self.expected_length, self.buffer)
             packet = self.buffer
             self.buffer = []
             return packet
