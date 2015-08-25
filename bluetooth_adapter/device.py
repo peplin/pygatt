@@ -96,7 +96,6 @@ class BleDevice(object):
 
     def bond(self):
         log.debug("Forming bonded connection")
-        raise NotImplementedError()
         # TODO: pass in a connection object
         self._backend.bond()
         log.debug("Bonded connection formed")

@@ -98,7 +98,6 @@ class BGAPIBackendTests(unittest.TestCase):
                            ConnectionStatusFlag.encrypted])
         self.backend.encrypt()
 
-    @unittest.skip("FIXME")
     def test_bond(self):
         """bond general functionality."""
         self.mock_device.stage_start_packets()
