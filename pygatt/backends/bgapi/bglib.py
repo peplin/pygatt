@@ -39,6 +39,8 @@ from struct import pack, unpack
 log = logging.getLogger(__name__)
 
 
+# TODO use enum.Enum for these so we can index by value and conver to string
+# easily
 class ResponsePacketType(object):
     system_reset = 0
     system_hello = 1
