@@ -174,7 +174,7 @@ class BGAPIBackend(BLEBackend):
             EventPacketType.sm_bonding_fail: self._ble_evt_sm_bonding_fail,
         })
 
-        log.info("BGAPIBackend on %s", serial_port)
+        log.info("Initialized new BGAPI backend on %s", serial_port)
         if run:
             self.run()
 
@@ -188,16 +188,17 @@ class BGAPIBackend(BLEBackend):
 
         # Set to bondable mode
         self._bond_expected = True
-        log.info("set_bondable_mode")
-        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['yes'])
-        self._lib.send_command(self._ser, cmd)
+        log.info("Bonding to device")
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.sm_set_bondable_mode(constants.bondable['yes']))
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
-
-        log.info("encrypt_start")
-        cmd = CommandBuilder.sm_encrypt_start(
-            self._connection_handle, constants.bonding['create_bonding'])
-        self._lib.send_command(self._ser, cmd)
+        log.debug("Enabling encryption")
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.sm_encrypt_start(
+                self._connection_handle, constants.bonding['create_bonding']))
 
         self.expect(ResponsePacketType.sm_encrypt_start)
         while self._connected and not self._bonded and not self._encrypted:
@@ -227,9 +228,10 @@ class BGAPIBackend(BLEBackend):
 
         value_list = [b for b in value]
         log.info("attribute_write")
-        cmd = CommandBuilder.attclient_attribute_write(
-            self._connection_handle, handle, value_list)
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.attclient_attribute_write(
+                self._connection_handle, handle, value_list))
 
         self.expect(ResponsePacketType.attclient_attribute_write)
         self.expect(EventPacketType.attclient_procedure_completed)
@@ -254,9 +256,10 @@ class BGAPIBackend(BLEBackend):
         # Read from characteristic
         log.info("read_by_handle")
         self._expected_attribute_handle = handle
-        cmd = CommandBuilder.attclient_read_by_handle(
-            self._connection_handle, handle)
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.attclient_read_by_handle(
+                self._connection_handle, handle))
 
         self.expect(ResponsePacketType.attclient_read_by_handle)
         matched_packet_type, response = self.expect_any(
@@ -301,10 +304,11 @@ class BGAPIBackend(BLEBackend):
         log.debug("interval_max = %f ms", interval_max/1.25)
         log.debug("timeout = %d ms", timeout/10)
         log.debug("latency = %d intervals", latency)
-        cmd = CommandBuilder.gap_connect_direct(
-            bd_addr, addr_type, interval_min, interval_max, supervision_timeout,
-            latency)
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.gap_connect_direct(
+                bd_addr, addr_type, interval_min, interval_max,
+                supervision_timeout, latency))
 
         self.expect(ResponsePacketType.gap_connect_direct)
         try:
@@ -322,8 +326,7 @@ class BGAPIBackend(BLEBackend):
         # Find bonds
         log.info("get_bonds")
         self._stored_bonds = []
-        cmd = CommandBuilder.sm_get_bonds()
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(self._ser, CommandBuilder.sm_get_bonds())
 
         try:
             self.expect(ResponsePacketType.sm_get_bonds)
@@ -339,8 +342,9 @@ class BGAPIBackend(BLEBackend):
         # Delete bonds
         for b in reversed(self._stored_bonds):
             log.info("delete_bonding")
-            cmd = CommandBuilder.sm_delete_bonding(b)
-            self._lib.send_command(self._ser, cmd)
+
+            self._lib.send_command(self._ser,
+                                   CommandBuilder.sm_delete_bonding(b))
             self.expect(ResponsePacketType.sm_delete_bonding)
 
     def disconnect(self, fail_quietly=False):
@@ -350,8 +354,10 @@ class BGAPIBackend(BLEBackend):
         fail_quietly -- do not raise an exception on failure.
         """
         log.info("connection_disconnect")
-        cmd = CommandBuilder.connection_disconnect(self._connection_handle)
-        self._lib.send_command(self._ser, cmd)
+
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.connection_disconnect(self._connection_handle))
 
         try:
             self.expect(ResponsePacketType.connection_disconnect)
@@ -372,16 +378,21 @@ class BGAPIBackend(BLEBackend):
 
         # Set to non-bondable mode
         log.info("set_bondable_mode")
-        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['no'])
-        self._lib.send_command(self._ser, cmd)
 
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.sm_set_bondable_mode(constants.bondable['no']))
+        # TODO expecting the response for a partiocular command is a repeated
+        # pattern - the send_command function should have an option to wait for
+        # the response for the command and return it.
         self.expect(ResponsePacketType.sm_set_bondable_mode)
 
-        # Start encryption
-        log.info("encrypt_start")
-        cmd = CommandBuilder.sm_encrypt_start(
-            self._connection_handle, constants.bonding['do_not_create_bonding'])
-        self._lib.send_command(self._ser, cmd)
+        log.info("Starting encryption")
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.sm_encrypt_start(
+                self._connection_handle,
+                constants.bonding['do_not_create_bonding']))
 
         self.expect(ResponsePacketType.sm_encrypt_start)
         self.expect(EventPacketType.connection_status)
@@ -421,10 +432,11 @@ class BGAPIBackend(BLEBackend):
         if not self._characteristics_cached:
             att_handle_start = 0x0001  # first valid handle
             att_handle_end = 0xFFFF  # last valid handle
-            cmd = CommandBuilder.attclient_find_information(
-                self._connection_handle, att_handle_start, att_handle_end)
             log.info("find_information")
-            self._lib.send_command(self._ser, cmd)
+            self._lib.send_command(
+                self._ser,
+                CommandBuilder.attclient_find_information(
+                    self._connection_handle, att_handle_start, att_handle_end))
 
             self.expect(ResponsePacketType.attclient_find_information)
             self.expect(EventPacketType.attclient_procedure_completed)
@@ -475,10 +487,10 @@ class BGAPIBackend(BLEBackend):
         """
         self._assert_connected()
 
-        # Get RSSI value
-        log.info("get_rssi")
-        cmd = CommandBuilder.connection_get_rssi(self._connection_handle)
-        self._lib.send_command(self._ser, cmd)
+        log.info("Fetching RSSI one time")
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.connection_get_rssi(self._connection_handle))
 
         _, response = self.expect(ResponsePacketType.connection_get_rssi)
         return response['rssi']
@@ -501,11 +513,12 @@ class BGAPIBackend(BLEBackend):
         self.disconnect(fail_quietly=True)
 
         # Stop advertising
-        log.info("gap_set_mode")
-        cmd = CommandBuilder.gap_set_mode(
-            constants.gap_discoverable_mode['non_discoverable'],
-            constants.gap_connectable_mode['non_connectable'])
-        self._lib.send_command(self._ser, cmd)
+        log.info("Disabling advertising")
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.gap_set_mode(
+                constants.gap_discoverable_mode['non_discoverable'],
+                constants.gap_connectable_mode['non_connectable']))
 
         try:
             self.expect(ResponsePacketType.gap_set_mode)
@@ -515,8 +528,7 @@ class BGAPIBackend(BLEBackend):
 
         # Stop any ongoing procedure
         log.info("gap_end_procedure")
-        cmd = CommandBuilder.gap_end_procedure()
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(self._ser, CommandBuilder.gap_end_procedure())
 
         try:
             self.expect(ResponsePacketType.gap_end_procedure)
@@ -526,8 +538,9 @@ class BGAPIBackend(BLEBackend):
 
         # Set not bondable
         log.info("set_bondable_mode")
-        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['no'])
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.sm_set_bondable_mode(constants.bondable['no']))
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
 
@@ -552,17 +565,18 @@ class BGAPIBackend(BLEBackend):
             active = 0x00
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
-        cmd = CommandBuilder.gap_set_scan_parameters(
-            scan_interval, scan_window, active
-        )
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(
+            self._ser,
+            CommandBuilder.gap_set_scan_parameters(
+                scan_interval, scan_window, active
+            ))
 
         self.expect(ResponsePacketType.gap_set_scan_parameters)
 
         # Begin scanning
         log.info("gap_discover")
-        cmd = CommandBuilder.gap_discover(discover_mode)
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(self._ser,
+                               CommandBuilder.gap_discover(discover_mode))
 
         self.expect(ResponsePacketType.gap_discover)
 
@@ -572,8 +586,7 @@ class BGAPIBackend(BLEBackend):
 
         # Stop scanning
         log.info("gap_end_procedure")
-        cmd = CommandBuilder.gap_end_procedure()
-        self._lib.send_command(self._ser, cmd)
+        self._lib.send_command(self._ser, CommandBuilder.gap_end_procedure())
 
         self.expect(ResponsePacketType.gap_end_procedure)
 
