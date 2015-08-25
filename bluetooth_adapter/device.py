@@ -51,8 +51,11 @@ class BleDevice(object):
             # TODO: pass in a connection object
             rssi = self._backend.get_rssi()
         else:
+            if self._scan_response_rssi is None:
+                msg = "No scan response RSSI found"
+                log.error(msg)
+                raise Exception(msg)
             rssi = self._scan_response_rssi
-        assert(rssi is not None)
         log.debug("RSSI is %d dBm", rssi)
         return rssi
 
