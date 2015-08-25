@@ -783,7 +783,7 @@ class BGAPIBackend(BLEBackend):
             if packet_type in expected_packet_choices:
                 if assert_return_success and return_code != 0:
                     exc = BGAPIError(
-                        "Response to packet %d errored: %s" %
+                        "Response to packet %s errored: %s" %
                         (packet_type, get_return_message(return_code)))
                     log.error(exc.message)
                     raise exc
