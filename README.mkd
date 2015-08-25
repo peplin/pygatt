@@ -89,10 +89,11 @@ backend, install the optional dependencies with:
 - Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
 - Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
+
 Derived from the work of several others, see NOTICE.
 
 ## License
 
-Copyright 2015 Stratos Inc.
+Copyright 2015 Stratos Inc. and Orion Labs
 
 Apache License, Version 2.0 and MIT License. See LICENSE.

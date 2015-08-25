@@ -13,16 +13,6 @@ except Exception as e:
 
 from exceptions import BluetoothLEError
 
-
-"""
-MODIFIED Utils for pygatt Module.
-"""
-
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
-
-
 log = logging.getLogger(__name__)
 
 # TODO since adding support for multiple backends, the interface in this

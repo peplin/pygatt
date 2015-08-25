@@ -17,11 +17,6 @@ from pygatt import constants
 from pygatt import exceptions
 from pygatt.backends.backend import BLEBackend
 
-
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
-
 log = logging.getLogger(__name__)
 
 
