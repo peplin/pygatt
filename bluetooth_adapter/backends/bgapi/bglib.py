@@ -654,6 +654,8 @@ class BGLib(object):
             Byte 3:     8 bits, Command ID (CMD)         Command ID
             Bytes 4-n:  0 - 2048 Bytes, Payload (PL) Up to 2048 bytes of payload
         """
+        assert(packet is not None)
+
         packet_type, payload_length, packet_class, packet_command = packet[:4]
         bgapi_rx_payload = b''.join(chr(i) for i in packet[4:])
         if packet_type & 0x88 == 0x00:
