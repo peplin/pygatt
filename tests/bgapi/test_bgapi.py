@@ -66,9 +66,9 @@ class BGAPIBackendTests(unittest.TestCase):
             0x02, custom_128_bit_uuid=gatt.Uuid(
                 '01234567-0123-0123-0123-0123456789AB'))
 
-        # Test char_read
+        # Test attribute_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
-        self.mock_device.stage_char_read_packets(
+        self.mock_device.stage_attribute_read_packets(
             char.handle, 0x00, expected_value)
         value = self.backend.attribute_read(char)
         eq_(value, bytearray(expected_value))
@@ -83,9 +83,9 @@ class BGAPIBackendTests(unittest.TestCase):
             0x02, custom_128_bit_uuid=gatt.Uuid(
                 '01234567-0123-0123-0123-0123456789AB'))
 
-        # Test char_write
+        # Test attribute_write
         value = [0xF0, 0x0F, 0x00]
-        self.mock_device.stage_char_write_packets(char.handle, value)
+        self.mock_device.stage_attribute_write_packets(char.handle, value)
         self.backend.attribute_write(char, bytearray(value))
 
     @unittest.skip("FIXME")
