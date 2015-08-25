@@ -6,8 +6,8 @@ import threading
 from binascii import hexlify, unhexlify
 
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
-from pygatt.backends.backend import BLEBackend
 
+from bluetooth_adapter.backends.backend import BLEBackend
 from bluetooth_adapter import gatt
 
 from . import bglib

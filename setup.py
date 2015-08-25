@@ -41,7 +41,10 @@ setup(
     extras_require={
         'GATTTOOL': ["pexpect"],
     },
-    package_dir={'pygatt': 'pygatt'},
+    package_dir={
+        'pygatt': 'pygatt',
+        'bluetooth_adapter': 'bluetooth_adapter',
+    },
     zip_safe=False,
     include_package_data=True
 )
