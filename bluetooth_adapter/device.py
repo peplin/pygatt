@@ -54,6 +54,7 @@ class BleDevice(object):
             if self._scan_response_rssi is None:
                 msg = "No scan response RSSI found"
                 log.error(msg)
+                # TODO: excpetion type
                 raise Exception(msg)
             rssi = self._scan_response_rssi
         log.debug("RSSI is %d dBm", rssi)

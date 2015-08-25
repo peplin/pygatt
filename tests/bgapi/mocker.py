@@ -26,7 +26,7 @@ class MockBGAPISerialDevice(object):
             self, connection_handle=0x00):
         # Stage ble_evt_connection_disconnected (terminated by remote user)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.connection_disconnected(
+            BGAPIPacketBuilder.ble_evt_connection_disconnected(
                 connection_handle, 0x0213))
 
     def stage_disconnect_packets(self, connected, fail, connection_handle=0x00):
@@ -36,124 +36,133 @@ class MockBGAPISerialDevice(object):
 
             # Stage ble_rsp_connection_disconnect (success)
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.connection_disconnect(
+                BGAPIPacketBuilder.ble_rsp_connection_disconnect(
                     connection_handle, 0x0000))
             # Stage ble_evt_connection_disconnected (success by local user)
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.connection_disconnected(
+                BGAPIPacketBuilder.ble_evt_connection_disconnected(
                     connection_handle, 0x0000))
         else:  # not connected always fails
             # Stage ble_rsp_connection_disconnect (fail, not connected)
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.connection_disconnect(
+                BGAPIPacketBuilder.ble_rsp_connection_disconnect(
                     connection_handle, 0x0186))
 
     def stage_start_packets(self, connection_handle=0x00):
         # Stage ble_rsp_connection_disconnect (not connected, fail)
         self.stage_disconnect_packets(False, True)
         # Stage ble_rsp_gap_set_mode (success)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.gap_set_mode(0x0000))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_rsp_gap_set_mode(0x0000))
         # Stage ble_rsp_gap_end_procedure (fail, device in wrong state)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.gap_end_procedure(0x0181))
+            BGAPIPacketBuilder.ble_rsp_gap_end_procedure(0x0181))
         # Stage ble_rsp_sm_set_bondable_mode (always success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_set_bondable_mode())
+            BGAPIPacketBuilder.ble_rsp_sm_set_bondable_mode())
 
     def stage_connect_packets(self, addr, flags, connection_handle=0x00):
         # Stage ble_rsp_gap_connect_direct (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.gap_connect_direct(connection_handle, 0x0000))
+            BGAPIPacketBuilder.ble_rsp_gap_connect_direct(
+                connection_handle, 0x0000))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.connection_status(
-            addr, flags_byte, connection_handle, 0,
-            0x0014, 0x0006, 0x0000, 0xFF))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_evt_connection_status(
+                addr, flags_byte, connection_handle, 0,
+                0x0014, 0x0006, 0x0000, 0xFF))
 
     def stage_get_rssi_packets(self, connection_handle=0x00,
                                rssi=-80):
         # Stage ble_rsp_connection_get_rssi
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.connection_get_rssi(connection_handle, rssi))
+            BGAPIPacketBuilder.ble_rsp_connection_get_rssi(
+                connection_handle, rssi))
 
     def stage_encrypt_packets(self, addr, flags,
                               connection_handle=0x00):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_set_bondable_mode())
+            BGAPIPacketBuilder.ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_encrypt_start(
-            connection_handle, 0x0000))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_rsp_sm_encrypt_start(
+                connection_handle, 0x0000))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.connection_status(
-            addr, flags_byte, connection_handle, 0,
-            0x0014, 0x0006, 0x0000, 0xFF))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_evt_connection_status(
+                addr, flags_byte, connection_handle, 0,
+                0x0014, 0x0006, 0x0000, 0xFF))
 
     def stage_bond_packets(self, addr, flags,
                            connection_handle=0x00, bond_handle=0x01):
         # Stage ble_rsp_sm_set_bondable_mode (always success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_set_bondable_mode())
+            BGAPIPacketBuilder.ble_rsp_sm_set_bondable_mode())
         # Stage ble_rsp_sm_encrypt_start (success)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_encrypt_start(
-            connection_handle, 0x0000))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_rsp_sm_encrypt_start(
+                connection_handle, 0x0000))
         # Stage ble_evt_sm_bond_status
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_bond_status(
-            bond_handle, 0x00, 0x00, 0x00))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_evt_sm_bond_status(
+                bond_handle, 0x00, 0x00, 0x00))
         # Stage ble_evt_connection_status
         flags_byte = self._get_connection_status_flags_byte(flags)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.connection_status(
-            addr, flags_byte, connection_handle, 0,
-            0x0014, 0x0006, 0x0000, 0xFF))
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.ble_evt_connection_status(
+                addr, flags_byte, connection_handle, 0,
+                0x0014, 0x0006, 0x0000, 0xFF))
 
     def stage_list_bonds_packets(self, bonds):
         """bonds -- list of 8-bit integer bond handles"""
         # Stage ble_rsp_get_bonds
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_get_bonds(len(bonds)))
+            BGAPIPacketBuilder.ble_rsp_sm_get_bonds(len(bonds)))
         # Stage ble_evt_sm_bond_status (bond handle)
         for b in bonds:
-            self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_bond_status(
-                b, 0x00, 0x00, 0x00))
+            self.mocked_serial.stage_output(
+                BGAPIPacketBuilder.ble_evt_sm_bond_status(b, 0x00, 0x00, 0x00))
 
     def stage_delete_stored_bonds_packets(self, bonds):
         """bonds -- list of 8-bit integer bond handles"""
         # Stage ble_rsp_sm_delete_bonding (success)
         for _ in bonds:
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.sm_delete_bonding(0x0000))
+                BGAPIPacketBuilder.ble_rsp_sm_delete_bonding(0x0000))
 
     def stage_scan_packets(self, scan_responses=[]):
         # Stage ble_rsp_gap_set_scan_parameters (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.gap_set_scan_parameters(0x0000))
+            BGAPIPacketBuilder.ble_rsp_gap_set_scan_parameters(0x0000))
         # Stage ble_rsp_gap_discover (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.gap_discover(0x0000))
+            BGAPIPacketBuilder.ble_rsp_gap_discover(0x0000))
         for srp in scan_responses:
             # Stage ble_evt_gap_scan_response
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.gap_scan_response(
+                BGAPIPacketBuilder.ble_evt_gap_scan_response(
                     srp['rssi'], srp['packet_type'], srp['bd_addr'],
                     srp['addr_type'], srp['bond'],
                     [len(srp['data'])+1]+srp['data']))
         # Stage ble_rsp_gap_end_procedure (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.gap_end_procedure(0x0000))
+            BGAPIPacketBuilder.ble_rsp_gap_end_procedure(0x0000))
 
     def stage_discover_attributes_packets(self, services,
                                           connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_find_information(
+            BGAPIPacketBuilder.ble_rsp_attclient_find_information(
                 connection_handle, 0x0000))
 
         # Stage ble_evt_attclient_find_information_found
         for s in services:
             u = [len(s.service_type.value.bytearray) + 1]
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.attclient_find_information_found(
+                BGAPIPacketBuilder.ble_evt_attclient_find_information_found(
                     connection_handle, s.handle,
                     (u+list(reversed(
                         [ord(b) for b in s.service_type.value.bytearray])))))
@@ -165,13 +174,14 @@ class MockBGAPISerialDevice(object):
                     uuid = c.characteristic_type.value
                 u = [len(uuid.bytearray) + 1]
                 self.mocked_serial.stage_output(
-                    BGAPIPacketBuilder.attclient_find_information_found(
+                    BGAPIPacketBuilder.ble_evt_attclient_find_information_found(
                         connection_handle, c.handle,
                         (u+list(reversed([ord(b) for b in uuid.bytearray])))))
                 for d in c.descriptors:
                     u = [len(d.descriptor_type.value.bytearray) + 1]
                     self.mocked_serial.stage_output(
-                        BGAPIPacketBuilder.attclient_find_information_found(
+                        BGAPIPacketBuilder.
+                        ble_evt_attclient_find_information_found(
                             connection_handle, d.handle,
                             (u+list(reversed(
                                 [ord(b) for b in d.descriptor_type.value.
@@ -179,29 +189,29 @@ class MockBGAPISerialDevice(object):
 
         # Stage ble_evt_attclient_procedure_completed (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_procedure_completed(
+            BGAPIPacketBuilder.ble_evt_attclient_procedure_completed(
                 connection_handle, 0x0000, 0xFFFF))
 
     def stage_attribute_read_packets(
             self, att_handle, att_type, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_read_by_handle (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_read_by_handle(
+            BGAPIPacketBuilder.ble_rsp_attclient_read_by_handle(
                 connection_handle, 0x0000))
         # Stage ble_evt_attclient_attribute_value
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_attribute_value(
+            BGAPIPacketBuilder.ble_evt_attclient_attribute_value(
                 connection_handle, att_handle, att_type, [len(value)+1]+value))
 
     def stage_attribute_write_packets(
             self, handle, value, connection_handle=0x00):
         # Stage ble_rsp_attclient_attribute_write (success)
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_attribute_write(
+            BGAPIPacketBuilder.ble_rsp_attclient_attribute_write(
                 connection_handle, 0x0000))
         # Stage ble_evt_attclient_procedure_completed
         self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.attclient_procedure_completed(
+            BGAPIPacketBuilder.ble_evt_attclient_procedure_completed(
                 connection_handle, 0x0000, handle))
 
     def stage_notification_packets(
@@ -210,5 +220,5 @@ class MockBGAPISerialDevice(object):
         for value in packet_values:
             val = list(value)
             self.mocked_serial.stage_output(
-                BGAPIPacketBuilder.attclient_attribute_value(
+                BGAPIPacketBuilder.ble_evt_attclient_attribute_value(
                     connection_handle, handle, 0x00, value=[len(val)+1]+val))
