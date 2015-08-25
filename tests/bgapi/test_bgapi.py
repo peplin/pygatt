@@ -225,22 +225,28 @@ class BGAPIBackendTests(unittest.TestCase):
         assert(my_handler.expected_value_bytearray ==
                my_handler.received_value_bytearray)
 
-    @unittest.skip("FIXME")
+    def test_list_bonds(self):
+        """list_bonds general functionality."""
+        self.mock_device.stage_start_packets()
+        self.backend.start()
+        expected_bonds = [0x00, 0x01, 0x02, 0x03, 0x04]
+        self.mock_device.stage_list_bonds_packets(expected_bonds)
+        bonds = self.backend.list_bonds()
+        eq_(bonds, expected_bonds)
+
+    def test_clear_bond(self):
+        """clear__bond general functionality."""
+        self.mock_device.stage_start_packets()
+        self.backend.start()
+        bond = 0x00
+        self.mock_device.stage_delete_stored_bonds_packets([bond])
+        self.backend.clear_bond(bond)
+
     def test_clear_all_bonds(self):
         """clear_all_bonds general functionality."""
         self.mock_device.stage_start_packets()
         self.backend.start()
-        # Test delete stored bonds
-        self.mock_device.stage_delete_stored_bonds_packets(
-            [0x00, 0x01, 0x02, 0x03, 0x04])
-        self.backend.delete_stored_bonds()
-
-    @unittest.skip("FIXME")
-    def test_delete_stored_bonds_disconnect(self):
-        """delete_stored_bonds shouldn't abort if disconnected."""
-        self.mock_device.stage_start_packets()
-        self.backend.start()
-        # Test delete stored bonds
-        self.mock_device.stage_delete_stored_bonds_packets(
-            [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
-        self.backend.delete_stored_bonds()
+        bonds = [0x00, 0x01, 0x02, 0x03, 0x04]
+        self.mock_device.stage_list_bonds_packets(bonds)
+        self.mock_device.stage_delete_stored_bonds_packets(bonds)
+        self.backend.clear_all_bonds()

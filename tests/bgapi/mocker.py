@@ -107,24 +107,20 @@ class MockBGAPISerialDevice(object):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    def stage_delete_stored_bonds_packets(
-            self, bonds, disconnects=False):
+    def stage_list_bonds_packets(self, bonds):
         """bonds -- list of 8-bit integer bond handles"""
-        if disconnects:
-            self.stage_disconnected_by_remote()
         # Stage ble_rsp_get_bonds
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.sm_get_bonds(len(bonds)))
         # Stage ble_evt_sm_bond_status (bond handle)
         for b in bonds:
-            if disconnects:
-                self.stage_disconnected_by_remote()
             self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_bond_status(
                 b, 0x00, 0x00, 0x00))
+
+    def stage_delete_stored_bonds_packets(self, bonds):
+        """bonds -- list of 8-bit integer bond handles"""
         # Stage ble_rsp_sm_delete_bonding (success)
-        for b in bonds:
-            if disconnects:
-                self.stage_disconnected_by_remote()
+        for _ in bonds:
             self.mocked_serial.stage_output(
                 BGAPIPacketBuilder.sm_delete_bonding(0x0000))
 

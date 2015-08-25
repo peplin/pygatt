@@ -394,17 +394,10 @@ class BGAPIBackend(BLEBackend):
 
         log.info("Connected successfully to %s", address_string)
 
-    # TODO: rename/refactor
-    def delete_stored_bonds(self):
-        """
-        Delete the bonds stored on the dongle.
+    def list_bonds(self):
+        """Returns a list of the bond handles stored on the dongle."""
+        log.info("listing stored bonds")
 
-        Note: this does not delete the corresponding bond stored on the remote
-              device.
-        """
-        log.info("Deleting stored bonds")
-        # Find bonds
-        log.debug("get_bonds")
         self._stored_bonds = []
         cmd = self._lib.ble_cmd_sm_get_bonds()
         self._lib.send_command(self._ser, cmd)
@@ -412,29 +405,39 @@ class BGAPIBackend(BLEBackend):
         # Wait for response
         self._process_packets_until(
             [PacketType.ble_rsp_sm_get_bonds])
-        if self._num_bonds == 0:  # no bonds
-            log.debug("No bonds to delete")
-            return
+        if self._num_bonds > 0:
+            # Wait for event
+            while len(self._stored_bonds) < self._num_bonds:
+                self._process_packets_until(
+                    [PacketType.ble_evt_sm_bond_status])
 
-        # Wait for event
-        while len(self._stored_bonds) < self._num_bonds:
-            self._process_packets_until(
-                [PacketType.ble_evt_sm_bond_status])
+        log.info(str(self._stored_bonds))
+        return self._stored_bonds
+
+    def clear_bond(self, bond):
+        """Delete a single bond stored on the dongle."""
+        log.info("Deleting bond {0}".format(bond))
+
+        cmd = self._lib.ble_cmd_sm_delete_bonding(bond)
+        self._lib.send_command(self._ser, cmd)
+
+        self._process_packets_until(
+            [PacketType.ble_rsp_sm_delete_bonding])
+        if self._response_return != 0:
+            msg = "delete_bonding: %s" +\
+                  get_return_message(self._response_return)
+            log.error(msg)
+            raise BGAPIError(msg)
+        log.info("Bond successfully deleted")
+
+    def clear_all_bonds(self):
+        """Delete all the bonds stored on the dongle."""
+        log.info("Deleting stored bonds")
 
         # Delete bonds
-        for b in reversed(self._stored_bonds):
-            log.debug("delete_bonding")
-            cmd = self._lib.ble_cmd_sm_delete_bonding(b)
-            self._lib.send_command(self._ser, cmd)
-
-            # Wait for response
-            self._process_packets_until(
-                [PacketType.ble_rsp_sm_delete_bonding])
-            if self._response_return != 0:
-                msg = "delete_bonding: %s" +\
-                      get_return_message(self._response_return)
-                log.error(msg)
-                raise BGAPIError(msg)
+        bonds = self.list_bonds()
+        for b in bonds:
+            self.clear_bond(b)
 
         log.info("Bonds deleted successfully")
 
@@ -823,7 +826,7 @@ class BGAPIBackend(BLEBackend):
         self._ser = None
 
         self._recvr_thread = None
-        log.info("Backend stoped successfully")
+        log.info("Backend stopped successfully")
 
     def _check_connection(self, check_if_connected=True):
         """
@@ -1466,10 +1469,6 @@ class BGAPIBackend(BLEBackend):
 
         args -- dictionary containing the return code ('result')
         """
-        # Remove bond
-        if args['result'] == 0:
-            self._stored_bonds.pop()
-
         # Set flags
         self._response_return = args['result']
 
