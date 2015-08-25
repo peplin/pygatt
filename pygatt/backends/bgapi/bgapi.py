@@ -12,9 +12,9 @@ from pygatt.constants import LOG_FORMAT, LOG_LEVEL
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
 
-from . import bglib
+from . import bglib, constants
 from .bglib import EventPacketType, ResponsePacketType
-from . import constants
+from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message
 
 log = logging.getLogger(__name__)
@@ -189,13 +189,13 @@ class BGAPIBackend(BLEBackend):
         # Set to bondable mode
         self._bond_expected = True
         log.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['yes'])
+        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['yes'])
         self._lib.send_command(self._ser, cmd)
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
 
         log.info("encrypt_start")
-        cmd = self._lib.ble_cmd_sm_encrypt_start(
+        cmd = CommandBuilder.sm_encrypt_start(
             self._connection_handle, constants.bonding['create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
@@ -227,7 +227,7 @@ class BGAPIBackend(BLEBackend):
 
         value_list = [b for b in value]
         log.info("attribute_write")
-        cmd = self._lib.ble_cmd_attclient_attribute_write(
+        cmd = CommandBuilder.attclient_attribute_write(
             self._connection_handle, handle, value_list)
         self._lib.send_command(self._ser, cmd)
 
@@ -254,7 +254,7 @@ class BGAPIBackend(BLEBackend):
         # Read from characteristic
         log.info("read_by_handle")
         self._expected_attribute_handle = handle
-        cmd = self._lib.ble_cmd_attclient_read_by_handle(
+        cmd = CommandBuilder.attclient_read_by_handle(
             self._connection_handle, handle)
         self._lib.send_command(self._ser, cmd)
 
@@ -301,7 +301,7 @@ class BGAPIBackend(BLEBackend):
         log.debug("interval_max = %f ms", interval_max/1.25)
         log.debug("timeout = %d ms", timeout/10)
         log.debug("latency = %d intervals", latency)
-        cmd = self._lib.ble_cmd_gap_connect_direct(
+        cmd = CommandBuilder.gap_connect_direct(
             bd_addr, addr_type, interval_min, interval_max, supervision_timeout,
             latency)
         self._lib.send_command(self._ser, cmd)
@@ -322,7 +322,7 @@ class BGAPIBackend(BLEBackend):
         # Find bonds
         log.info("get_bonds")
         self._stored_bonds = []
-        cmd = self._lib.ble_cmd_sm_get_bonds()
+        cmd = CommandBuilder.sm_get_bonds()
         self._lib.send_command(self._ser, cmd)
 
         try:
@@ -339,7 +339,7 @@ class BGAPIBackend(BLEBackend):
         # Delete bonds
         for b in reversed(self._stored_bonds):
             log.info("delete_bonding")
-            cmd = self._lib.ble_cmd_sm_delete_bonding(b)
+            cmd = CommandBuilder.sm_delete_bonding(b)
             self._lib.send_command(self._ser, cmd)
             self.expect(ResponsePacketType.sm_delete_bonding)
 
@@ -350,7 +350,7 @@ class BGAPIBackend(BLEBackend):
         fail_quietly -- do not raise an exception on failure.
         """
         log.info("connection_disconnect")
-        cmd = self._lib.ble_cmd_connection_disconnect(self._connection_handle)
+        cmd = CommandBuilder.connection_disconnect(self._connection_handle)
         self._lib.send_command(self._ser, cmd)
 
         try:
@@ -372,14 +372,14 @@ class BGAPIBackend(BLEBackend):
 
         # Set to non-bondable mode
         log.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
+        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['no'])
         self._lib.send_command(self._ser, cmd)
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
 
         # Start encryption
         log.info("encrypt_start")
-        cmd = self._lib.ble_cmd_sm_encrypt_start(
+        cmd = CommandBuilder.sm_encrypt_start(
             self._connection_handle, constants.bonding['do_not_create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
@@ -421,7 +421,7 @@ class BGAPIBackend(BLEBackend):
         if not self._characteristics_cached:
             att_handle_start = 0x0001  # first valid handle
             att_handle_end = 0xFFFF  # last valid handle
-            cmd = self._lib.ble_cmd_attclient_find_information(
+            cmd = CommandBuilder.attclient_find_information(
                 self._connection_handle, att_handle_start, att_handle_end)
             log.info("find_information")
             self._lib.send_command(self._ser, cmd)
@@ -477,7 +477,7 @@ class BGAPIBackend(BLEBackend):
 
         # Get RSSI value
         log.info("get_rssi")
-        cmd = self._lib.ble_cmd_connection_get_rssi(self._connection_handle)
+        cmd = CommandBuilder.connection_get_rssi(self._connection_handle)
         self._lib.send_command(self._ser, cmd)
 
         _, response = self.expect(ResponsePacketType.connection_get_rssi)
@@ -502,7 +502,7 @@ class BGAPIBackend(BLEBackend):
 
         # Stop advertising
         log.info("gap_set_mode")
-        cmd = self._lib.ble_cmd_gap_set_mode(
+        cmd = CommandBuilder.gap_set_mode(
             constants.gap_discoverable_mode['non_discoverable'],
             constants.gap_connectable_mode['non_connectable'])
         self._lib.send_command(self._ser, cmd)
@@ -515,7 +515,7 @@ class BGAPIBackend(BLEBackend):
 
         # Stop any ongoing procedure
         log.info("gap_end_procedure")
-        cmd = self._lib.ble_cmd_gap_end_procedure()
+        cmd = CommandBuilder.gap_end_procedure()
         self._lib.send_command(self._ser, cmd)
 
         try:
@@ -526,7 +526,7 @@ class BGAPIBackend(BLEBackend):
 
         # Set not bondable
         log.info("set_bondable_mode")
-        cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
+        cmd = CommandBuilder.sm_set_bondable_mode(constants.bondable['no'])
         self._lib.send_command(self._ser, cmd)
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
@@ -552,7 +552,7 @@ class BGAPIBackend(BLEBackend):
             active = 0x00
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
-        cmd = self._lib.ble_cmd_gap_set_scan_parameters(
+        cmd = CommandBuilder.gap_set_scan_parameters(
             scan_interval, scan_window, active
         )
         self._lib.send_command(self._ser, cmd)
@@ -561,7 +561,7 @@ class BGAPIBackend(BLEBackend):
 
         # Begin scanning
         log.info("gap_discover")
-        cmd = self._lib.ble_cmd_gap_discover(discover_mode)
+        cmd = CommandBuilder.gap_discover(discover_mode)
         self._lib.send_command(self._ser, cmd)
 
         self.expect(ResponsePacketType.gap_discover)
@@ -572,7 +572,7 @@ class BGAPIBackend(BLEBackend):
 
         # Stop scanning
         log.info("gap_end_procedure")
-        cmd = self._lib.ble_cmd_gap_end_procedure()
+        cmd = CommandBuilder.gap_end_procedure()
         self._lib.send_command(self._ser, cmd)
 
         self.expect(ResponsePacketType.gap_end_procedure)
