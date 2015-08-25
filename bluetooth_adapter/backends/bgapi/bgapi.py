@@ -798,6 +798,12 @@ class BGAPIBackend(BLEBackend):
 
         assert(notifications or indications)
 
+        # TODO: test with indications before this is considered implemeted
+        if indications:
+            msg = "Indication functionality not tested"
+            log.error(msg)
+            raise NotImplementedError(msg)
+
         cccd = None
         for d in characteristic.descriptors:
             if (d.descriptor_type is gatt.GattCharacteristicDescriptor.
