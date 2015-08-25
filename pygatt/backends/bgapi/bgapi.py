@@ -730,8 +730,6 @@ class BGAPIBackend(BLEBackend):
     def expect(self, expected, *args, **kargs):
         return self.expect_any([expected], *args, **kargs)
 
-    # TODO "expect any" can go away when we raise an exception on disconnection
-    # instead of having to "expect" that as a possible result
     def expect_any(self, expected_packet_choices, timeout=None,
                    assert_return_success=True):
         """
