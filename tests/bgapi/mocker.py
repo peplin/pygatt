@@ -55,7 +55,7 @@ class MockBGAPISerialDevice(object):
                 BGAPIPacketBuilder.connection_disconnect(
                     connection_handle, 0x0186))
 
-    def stage_run_packets(self, connection_handle=0x00):
+    def stage_start_packets(self, connection_handle=0x00):
         # Stage ble_rsp_connection_disconnect (not connected, fail)
         self.stage_disconnect_packets(False, True)
         # Stage ble_rsp_gap_set_mode (success)

@@ -37,18 +37,18 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_start_backend(self):
         """start general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
 
     def test_connect(self):
         """connect general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
 
     def test_disconnect_when_connected(self):
         """disconnect general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
         # test disconnect (connected, not fail)
@@ -57,7 +57,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_attribute_read(self):
         """read general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
 
@@ -74,7 +74,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_attribute_write(self):
         """attribute_write general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
 
@@ -90,7 +90,7 @@ class BGAPIBackendTests(unittest.TestCase):
     @unittest.skip("FIXME")
     def test_encrypt(self):
         """encrypt general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
         # Test encrypt
@@ -101,7 +101,7 @@ class BGAPIBackendTests(unittest.TestCase):
     @unittest.skip("FIXME")
     def test_bond(self):
         """bond general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
         self.mock_device.stage_bond_packets(
@@ -111,7 +111,7 @@ class BGAPIBackendTests(unittest.TestCase):
     @unittest.skip("FIXME")
     def test_get_rssi(self):
         """get_rssi general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
         # Test get_rssi
@@ -120,7 +120,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_discover_attributes(self):
         """discover_attributes general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
 
@@ -163,7 +163,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_scan(self):
         """scan general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         # Test scan
         scan_responses = []
@@ -197,7 +197,7 @@ class BGAPIBackendTests(unittest.TestCase):
                 self.received_value_bytearray = received_value_bytearray
                 self.called.set()
 
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         self._connect()
         # Test subscribe with notifications
@@ -228,7 +228,7 @@ class BGAPIBackendTests(unittest.TestCase):
     @unittest.skip("FIXME")
     def test_clear_all_bonds(self):
         """clear_all_bonds general functionality."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         # Test delete stored bonds
         self.mock_device.stage_delete_stored_bonds_packets(
@@ -238,7 +238,7 @@ class BGAPIBackendTests(unittest.TestCase):
     @unittest.skip("FIXME")
     def test_delete_stored_bonds_disconnect(self):
         """delete_stored_bonds shouldn't abort if disconnected."""
-        self.mock_device.stage_run_packets()
+        self.mock_device.stage_start_packets()
         self.backend.start()
         # Test delete stored bonds
         self.mock_device.stage_delete_stored_bonds_packets(
