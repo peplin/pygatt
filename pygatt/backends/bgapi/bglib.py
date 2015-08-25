@@ -338,405 +338,318 @@ class BGLib(object):
         self._wifi_response = 0x08
 
     def ble_cmd_system_reset(self, boot_in_dfu):
-        log.info("construct command ble_cmd_system_reset")
         return pack('<4BB', 0, 1, 0, 0, boot_in_dfu)
 
     def ble_cmd_system_hello(self):
-        log.info("construct command ble_cmd_system_hello")
         return pack('<4B', 0, 0, 0, 1)
 
     def ble_cmd_system_address_get(self):
-        log.info("construct command ble_cmd_system_address_get")
         return pack('<4B', 0, 0, 0, 2)
 
     def ble_cmd_system_reg_write(self, address, value):
-        log.info("construct command ble_cmd_system_reg_write")
         return pack('<4BHB', 0, 3, 0, 3, address, value)
 
     def ble_cmd_system_reg_read(self, address):
-        log.info("construct command ble_cmd_system_reg_read")
         return pack('<4BH', 0, 2, 0, 4, address)
 
     def ble_cmd_system_get_counters(self):
-        log.info("construct command ble_cmd_system_get_counters")
         return pack('<4B', 0, 0, 0, 5)
 
     def ble_cmd_system_get_connections(self):
-        log.info("construct command ble_cmd_system_get_connections")
         return pack('<4B', 0, 0, 0, 6)
 
     def ble_cmd_system_read_memory(self, address, length):
-        log.info("construct command ble_cmd_system_read_memory")
         return pack('<4BIB', 0, 5, 0, 7, address, length)
 
     def ble_cmd_system_get_info(self):
-        log.info("construct command ble_cmd_system_get_info")
         return pack('<4B', 0, 0, 0, 8)
 
     def ble_cmd_system_endpoint_tx(self, endpoint, data):
-        log.info("construct command ble_cmd_system_endpoint_tx")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 0, 9,
                     endpoint, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_system_whitelist_append(self, address, address_type):
-        log.info("construct command ble_cmd_system_whitelist_append")
         return pack('<4B6sB', 0, 7, 0, 10, b''.join(chr(i) for i in address),
                     address_type)
 
     def ble_cmd_system_whitelist_remove(self, address, address_type):
-        log.info("construct command ble_cmd_system_whitelist_remove")
         return pack('<4B6sB', 0, 7, 0, 11, b''.join(chr(i) for i in address),
                     address_type)
 
     def ble_cmd_system_whitelist_clear(self):
-        log.info("construct command ble_cmd_system_whitelist_clear")
         return pack('<4B', 0, 0, 0, 12)
 
     def ble_cmd_system_endpoint_rx(self, endpoint, size):
-        log.info("construct command ble_cmd_system_endpoint_rx")
         return pack('<4BBB', 0, 2, 0, 13, endpoint, size)
 
     def ble_cmd_system_endpoint_set_watermarks(self, endpoint, rx, tx):
-        log.info("construct command ble_cmd_system_endpoint_set_watermarks")
         return pack('<4BBBB', 0, 3, 0, 14, endpoint, rx, tx)
 
     def ble_cmd_flash_ps_defrag(self):
-        log.info("construct command ble_cmd_flash_ps_defrag")
         return pack('<4B', 0, 0, 1, 0)
 
     def ble_cmd_flash_ps_dump(self):
-        log.info("construct command ble_cmd_flash_ps_dump")
         return pack('<4B', 0, 0, 1, 1)
 
     def ble_cmd_flash_ps_erase_all(self):
-        log.info("construct command ble_cmd_flash_ps_erase_all")
         return pack('<4B', 0, 0, 1, 2)
 
     def ble_cmd_flash_ps_save(self, key, value):
-        log.info("construct command ble_cmd_flash_ps_save")
         return pack('<4BHB' + str(len(value)) + 's', 0, 3 + len(value), 1, 3,
                     key, len(value), b''.join(chr(i) for i in value))
 
     def ble_cmd_flash_ps_load(self, key):
-        log.info("construct command ble_cmd_flash_ps_load")
         return pack('<4BH', 0, 2, 1, 4, key)
 
     def ble_cmd_flash_ps_erase(self, key):
-        log.info("construct command ble_cmd_flash_ps_erase")
         return pack('<4BH', 0, 2, 1, 5, key)
 
     def ble_cmd_flash_erase_page(self, page):
-        log.info("construct command ble_cmd_flash_ps_erase_page")
         return pack('<4BB', 0, 1, 1, 6, page)
 
     def ble_cmd_flash_write_words(self, address, words):
-        log.info("construct command ble_cmd_flash_write_words")
         return pack('<4BHB' + str(len(words)) + 's', 0, 3 + len(words), 1, 7,
                     address, len(words), b''.join(chr(i) for i in words))
 
     def ble_cmd_attributes_write(self, handle, offset, value):
-        log.info("construct command ble_cmd_attributes_write")
         return pack('<4BHBB' + str(len(value)) + 's', 0, 4 + len(value), 2, 0,
                     handle, offset, len(value), b''.join(chr(i) for i in value))
 
     def ble_cmd_attributes_read(self, handle, offset):
-        log.info("construct command ble_cmd_attributes_read")
         return pack('<4BHH', 0, 4, 2, 1, handle, offset)
 
     def ble_cmd_attributes_read_type(self, handle):
-        log.info("construct command ble_cmd_attributes_read_type")
         return pack('<4BH', 0, 2, 2, 2, handle)
 
     def ble_cmd_attributes_user_read_response(self, connection, att_error,
                                               value):
-        log.info("construct command ble_cmd_attributes_user_read_response")
         return pack('<4BBBB' + str(len(value)) + 's', 0, 3 + len(value), 2, 3,
                     connection, att_error, len(value),
                     b''.join(chr(i) for i in value))
 
     def ble_cmd_attributes_user_write_response(self, connection, att_error):
-        log.info("construct command ble_cmd_attributes_user_write_response")
         return pack('<4BBB', 0, 2, 2, 4, connection, att_error)
 
     def ble_cmd_connection_disconnect(self, connection):
-        log.info("construct command ble_cmd_connection_disconnnect")
         return pack('<4BB', 0, 1, 3, 0, connection)
 
     def ble_cmd_connection_get_rssi(self, connection):
-        log.info("construct command ble_cmd_connection_get_rssi")
         return pack('<4BB', 0, 1, 3, 1, connection)
 
     def ble_cmd_connection_update(self, connection, interval_min, interval_max,
                                   latency, timeout):
-        log.info("construct command ble_cmd_connection_update")
         return pack('<4BBHHHH', 0, 9, 3, 2, connection, interval_min,
                     interval_max, latency, timeout)
 
     def ble_cmd_connection_version_update(self, connection):
-        log.info("construct command ble_cmd_connection_version_update")
         return pack('<4BB', 0, 1, 3, 3, connection)
 
     def ble_cmd_connection_channel_map_get(self, connection):
-        log.info("construct command ble_cmd_connection_channel_map_get")
         return pack('<4BB', 0, 1, 3, 4, connection)
 
     def ble_cmd_connection_channel_map_set(self, connection, map):
-        log.info("construct command ble_cmd_connection_channel_map_set")
         return pack('<4BBB' + str(len(map)) + 's', 0, 2 + len(map), 3, 5,
                     connection, len(map), b''.join(chr(i) for i in map))
 
     def ble_cmd_connection_features_get(self, connection):
-        log.info("construct command ble_cmd_connection_features_get")
         return pack('<4BB', 0, 1, 3, 6, connection)
 
     def ble_cmd_connection_get_status(self, connection):
-        log.info("construct command ble_cmd_connection_get_status")
         return pack('<4BB', 0, 1, 3, 7, connection)
 
     def ble_cmd_connection_raw_tx(self, connection, data):
-        log.info("construct command ble_cmd_connection_raw_tx")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 3, 8,
                     connection, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_find_by_type_value(self, connection, start, end, uuid,
                                              value):
-        log.info("construct command ble_cmd_attclient_find_by_type_value")
         return pack('<4BBHHHB' + str(len(value)) + 's', 0, 8 + len(value), 4, 0,
                     connection, start, end, uuid, len(value),
                     b''.join(chr(i) for i in value))
 
     def ble_cmd_attclient_read_by_group_type(self, connection, start, end,
                                              uuid):
-        log.info("construct command ble_cmd_attclient_read_by_group_type")
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 1,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
 
     def ble_cmd_attclient_read_by_type(self, connection, start, end, uuid):
-        log.info("construct command ble_cmd_attclient_read_by_type")
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
 
     def ble_cmd_attclient_find_information(self, connection, start, end):
-        log.info("construct command ble_cmd_attclient_find_information")
         return pack('<4BBHH', 0, 5, 4, 3, connection, start, end)
 
     def ble_cmd_attclient_read_by_handle(self, connection, chrhandle):
-        log.info("construct command ble_cmd_attclient_read_by_handle")
         return pack('<4BBH', 0, 3, 4, 4, connection, chrhandle)
 
     def ble_cmd_attclient_attribute_write(self, connection, atthandle, data):
-        log.info("construct command ble_cmd_attclient_attribute_write")
         return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 5,
                     connection, atthandle, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_write_command(self, connection, atthandle, data):
-        log.info("construct command ble_cmd_attclient_write_command")
         return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 6,
                     connection, atthandle, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_indicate_confirm(self, connection):
-        log.info("construct command ble_cmd_attclient_indicate_confirm")
         return pack('<4BB', 0, 1, 4, 7, connection)
 
     def ble_cmd_attclient_read_long(self, connection, chrhandle):
-        log.info("construct command ble_cmd_attclient_read_long")
         return pack('<4BBH', 0, 3, 4, 8, connection, chrhandle)
 
     def ble_cmd_attclient_prepare_write(self, connection, atthandle, offset,
                                         data):
-        log.info("construct command ble_cmd_attclient_prepare_write")
         return pack('<4BBHHB' + str(len(data)) + 's', 0, 6 + len(data), 4, 9,
                     connection, atthandle, offset, len(data),
                     b''.join(chr(i) for i in data))
 
     def ble_cmd_attclient_execute_write(self, connection, commit):
-        log.info("construct command ble_cmd_attclient_execute_write")
         return pack('<4BBB', 0, 2, 4, 10, connection, commit)
 
     def ble_cmd_attclient_read_multiple(self, connection, handles):
-        log.info("construct command ble_cmd_attclient_read_multiple")
         return pack('<4BBB' + str(len(handles)) + 's', 0, 2 + len(handles), 4,
                     11, connection, len(handles),
                     b''.join(chr(i) for i in handles))
 
     def ble_cmd_sm_encrypt_start(self, handle, bonding):
-        log.info("construct command ble_cmd_sm_encrypt_start")
         return pack('<4BBB', 0, 2, 5, 0, handle, bonding)
 
     def ble_cmd_sm_set_bondable_mode(self, bondable):
-        log.info("construct command ble_cmd_sm_set_bondable_mode")
         return pack('<4BB', 0, 1, 5, 1, bondable)
 
     def ble_cmd_sm_delete_bonding(self, handle):
-        log.info("construct command ble_cmd_sm_delete_bonding")
         return pack('<4BB', 0, 1, 5, 2, handle)
 
     def ble_cmd_sm_set_parameters(self, mitm, min_key_size, io_capabilities):
-        log.info("construct command ble_cmd_sm_set_parameters")
         return pack('<4BBBB', 0, 3, 5, 3, mitm, min_key_size, io_capabilities)
 
     def ble_cmd_sm_passkey_entry(self, handle, passkey):
-        log.info("construct command ble_cmd_sm_passkey_entry")
         return pack('<4BBI', 0, 5, 5, 4, handle, passkey)
 
     def ble_cmd_sm_get_bonds(self):
-        log.info("construct command ble_cmd_sm_get_bonds")
         return pack('<4B', 0, 0, 5, 5)
 
     def ble_cmd_sm_set_oob_data(self, oob):
-        log.info("construct command ble_cmd_sm_oob_data")
         return pack('<4BB' + str(len(oob)) + 's', 0, 1 + len(oob), 5, 6,
                     len(oob), b''.join(chr(i) for i in oob))
 
     def ble_cmd_gap_set_privacy_flags(self, peripheral_privacy,
                                       central_privacy):
-        log.info("construct command ble_cmd_gap_set_privacy_flags")
         return pack('<4BBB', 0, 2, 6, 0, peripheral_privacy, central_privacy)
 
     def ble_cmd_gap_set_mode(self, discover, connect):
-        log.info("construct command ble_cmd_gap_set_mode")
         return pack('<4BBB', 0, 2, 6, 1, discover, connect)
 
     def ble_cmd_gap_discover(self, mode):
-        log.info("construct command ble_cmd_gap_discover")
         return pack('<4BB', 0, 1, 6, 2, mode)
 
     def ble_cmd_gap_connect_direct(self, address, addr_type, conn_interval_min,
                                    conn_interval_max, timeout, latency):
-        log.info("construct command ble_cmd_gap_connect_direct")
         return pack('<4B6sBHHHH', 0, 15, 6, 3,
                     b''.join(chr(i) for i in address), addr_type,
                     conn_interval_min, conn_interval_max, timeout, latency)
 
     def ble_cmd_gap_end_procedure(self):
-        log.info("construct command ble_cmd_gap_end_procedure")
         return pack('<4B', 0, 0, 6, 4)
 
     def ble_cmd_gap_connect_selective(self, conn_interval_min,
                                       conn_interval_max, timeout, latency):
-        log.info("construct command ble_cmd_gap_connect_selective")
         return pack('<4BHHHH', 0, 8, 6, 5, conn_interval_min, conn_interval_max,
                     timeout, latency)
 
     def ble_cmd_gap_set_filtering(self, scan_policy, adv_policy,
                                   scan_duplicate_filtering):
-        log.info("construct command ble_cmd_gap_set_filtering")
         return pack('<4BBBB', 0, 3, 6, 6, scan_policy, adv_policy,
                     scan_duplicate_filtering)
 
     def ble_cmd_gap_set_scan_parameters(self, scan_interval, scan_window,
                                         active):
-        log.info("construct command ble_cmd_gap_set_scan_parameters")
         return pack('<4BHHB', 0, 5, 6, 7, scan_interval, scan_window, active)
 
     def ble_cmd_gap_set_adv_parameters(self, adv_interval_min,
                                        adv_interval_max, adv_channels):
-        log.info("construct command ble_cmd_gap_set_adv_parameters")
         return pack('<4BHHB', 0, 5, 6, 8, adv_interval_min, adv_interval_max,
                     adv_channels)
 
     def ble_cmd_gap_set_adv_data(self, set_scanrsp, adv_data):
-        log.info("construct command ble_cmd_gap_set_adv_data")
         return pack('<4BBB' + str(len(adv_data)) + 's', 0, 2 + len(adv_data), 6,
                     9, set_scanrsp, len(adv_data),
                     b''.join(chr(i) for i in adv_data))
 
     def ble_cmd_gap_set_directed_connectable_mode(self, address, addr_type):
-        log.info("construct command ble_cmd_gap_set_directed_connectable_mode")
         return pack('<4B6sB', 0, 7, 6, 10, b''.join(chr(i) for i in address),
                     addr_type)
 
     def ble_cmd_hardware_io_port_config_irq(self, port, enable_bits,
                                             falling_edge):
-        log.info("construct command ble_cmd_hardware_io_port_config_irq")
         return pack('<4BBBB', 0, 3, 7, 0, port, enable_bits, falling_edge)
 
     def ble_cmd_hardware_set_soft_timer(self, time, handle, single_shot):
-        log.info("construct command ble_cmd_hardware_set_soft_timer")
         return pack('<4BIBB', 0, 6, 7, 1, time, handle, single_shot)
 
     def ble_cmd_hardware_adc_read(self, input, decimation, reference_selection):
-        log.info("construct command ble_cmd_hardware_adc_read")
         return pack('<4BBBB', 0, 3, 7, 2, input, decimation,
                     reference_selection)
 
     def ble_cmd_hardware_io_port_config_direction(self, port, direction):
-        log.info("construct command ble_cmd_hardware_io_port_config_direction")
         return pack('<4BBB', 0, 2, 7, 3, port, direction)
 
     def ble_cmd_hardware_io_port_config_function(self, port, function):
-        log.info("construct command ble_cmd_hardware_io_port_config_function")
         return pack('<4BBB', 0, 2, 7, 4, port, function)
 
     def ble_cmd_hardware_io_port_config_pull(self, port, tristate_mask,
                                              pull_up):
-        log.info("construct command ble_cmd_hardware_io_port_config_pull")
         return pack('<4BBBB', 0, 3, 7, 5, port, tristate_mask, pull_up)
 
     def ble_cmd_hardware_io_port_write(self, port, mask, data):
-        log.info("construct command ble_cmd_hardware_io_prot_write")
         return pack('<4BBBB', 0, 3, 7, 6, port, mask, data)
 
     def ble_cmd_hardware_io_port_read(self, port, mask):
-        log.info("construct command ble_cmd_hardware_io_port_read")
         return pack('<4BBB', 0, 2, 7, 7, port, mask)
 
     def ble_cmd_hardware_spi_config(self, channel, polarity, phase, bit_order,
                                     baud_e, baud_m):
-        log.info("construct command ble_cmd_hardware_spi_config")
         return pack('<4BBBBBBB', 0, 6, 7, 8, channel, polarity, phase,
                     bit_order, baud_e, baud_m)
 
     def ble_cmd_hardware_spi_transfer(self, channel, data):
-        log.info("construct command ble_cmd_hardware_spi_transfer")
         return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 7, 9,
                     channel, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_hardware_i2c_read(self, address, stop, length):
-        log.info("construct command ble_cmd_hardware_i2c_read")
         return pack('<4BBBB', 0, 3, 7, 10, address, stop, length)
 
     def ble_cmd_hardware_i2c_write(self, address, stop, data):
-        log.info("construct command ble_cmd_hardware_i2c_write")
         return pack('<4BBBB' + str(len(data)) + 's', 0, 3 + len(data), 7, 11,
                     address, stop, len(data), b''.join(chr(i) for i in data))
 
     def ble_cmd_hardware_set_txpower(self, power):
-        log.info("construct command ble_cmd_hardware_set_txpower")
         return pack('<4BB', 0, 1, 7, 12, power)
 
     def ble_cmd_hardware_timer_comparator(self, timer, channel, mode,
                                           comparator_value):
-        log.info("construct command ble_cmd_hardware_timer_comparator")
         return pack('<4BBBBH', 0, 5, 7, 13, timer, channel, mode,
                     comparator_value)
 
     def ble_cmd_test_phy_tx(self, channel, length, type):
-        log.info("construct command ble_cmd_test_phy_tx")
         return pack('<4BBBB', 0, 3, 8, 0, channel, length, type)
 
     def ble_cmd_test_phy_rx(self, channel):
-        log.info("construct command ble_cmd_test_phy_rx")
         return pack('<4BB', 0, 1, 8, 1, channel)
 
     def ble_cmd_test_phy_end(self):
-        log.info("construct command ble_cmd_test_phy_end")
         return pack('<4B', 0, 0, 8, 2)
 
     def ble_cmd_test_phy_reset(self):
-        log.info("construct command ble_cmd_test_phy_reset")
         return pack('<4B', 0, 0, 8, 3)
 
     def ble_cmd_test_get_channel_map(self):
-        log.info("construct command ble_cmd_test_get_channel_map")
         return pack('<4B', 0, 0, 8, 4)
 
     def ble_cmd_test_debug(self, input):
-        log.info("construct command ble_cmd_test_debug")
         return pack('<4BB' + str(len(input)) + 's', 0, 1 + len(input), 8, 5,
                     len(input), b''.join(chr(i) for i in input))
 
