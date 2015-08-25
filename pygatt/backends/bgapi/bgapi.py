@@ -184,7 +184,7 @@ class BGAPIBackend(BLEBackend):
 
         This requires that a connection is already extablished with the device.
         """
-        self._check_connection()
+        self._assert_connected()
 
         # Set to bondable mode
         self._bond_expected = True
@@ -192,29 +192,22 @@ class BGAPIBackend(BLEBackend):
         cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['yes'])
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any([ResponsePacketType.sm_set_bondable_mode,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
+        self.expect(ResponsePacketType.sm_set_bondable_mode)
 
         log.info("encrypt_start")
         cmd = self._lib.ble_cmd_sm_encrypt_start(
             self._connection_handle, constants.bonding['create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any([ResponsePacketType.sm_encrypt_start,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
-
+        self.expect(ResponsePacketType.sm_encrypt_start)
         while self._connected and not self._bonded and not self._encrypted:
             matched_packet_type, response = self.expect_any(
                 [EventPacketType.connection_status,
-                 EventPacketType.sm_bonding_fail,
-                 EventPacketType.connection_disconnected])
+                 EventPacketType.sm_bonding_fail])
             if matched_packet_type == EventPacketType.sm_bonding_fail:
                 raise BGAPIError("Bonding failed")
             # TODO how many times shoulud we try to bond? when does this loop
             # exit?
-        self._check_connection()
 
     def char_write(self, handle, value, wait_for_response=False):
         """
@@ -230,7 +223,7 @@ class BGAPIBackend(BLEBackend):
         if wait_for_response:
             raise NotImplementedError("bgapi subscribe wait for response")
 
-        self._check_connection()
+        self._assert_connected()
 
         value_list = [b for b in value]
         log.info("attribute_write")
@@ -238,14 +231,8 @@ class BGAPIBackend(BLEBackend):
             self._connection_handle, handle, value_list)
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any(
-            [ResponsePacketType.attclient_attribute_write,
-             EventPacketType.connection_disconnected])
-        self._check_connection()
-
-        self.expect_any([EventPacketType.attclient_procedure_completed,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
+        self.expect(ResponsePacketType.attclient_attribute_write)
+        self.expect(EventPacketType.attclient_procedure_completed)
 
     def char_read_uuid(self, uuid):
         handle = self.get_handle(uuid)
@@ -262,7 +249,7 @@ class BGAPIBackend(BLEBackend):
         Returns a bytearray containing the value read, on success.
         Raised BGAPIError on failure.
         """
-        self._check_connection()
+        self._assert_connected()
 
         # Read from characteristic
         log.info("read_by_handle")
@@ -271,15 +258,13 @@ class BGAPIBackend(BLEBackend):
             self._connection_handle, handle)
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any([ResponsePacketType.attclient_read_by_handle,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
-
+        self.expect(ResponsePacketType.attclient_read_by_handle)
         matched_packet_type, response = self.expect_any(
             [EventPacketType.attclient_attribute_value,
-             EventPacketType.attclient_procedure_completed,
-             EventPacketType.connection_disconnected])
-        self._check_connection()
+             EventPacketType.attclient_procedure_completed])
+        # TODO why not just expect *only* the attribute value response, then it
+        # would time out and raise an exception if allwe got was the 'procedure
+        # completed' response?
         if matched_packet_type != EventPacketType.attclient_attribute_value:
             raise BGAPIError("Unable to read characteristic")
         return bytearray(response['value'])
@@ -299,7 +284,8 @@ class BGAPIBackend(BLEBackend):
 
         Raises BGAPIError or NotConnectedError on failure.
         """
-        self._check_connection(check_if_connected=False)
+        if self._connected:
+            raise BGAPIError("Already connected")
 
         address_bytearray = bytearray(
             [int(b, 16) for b in address.split(":")])
@@ -339,7 +325,11 @@ class BGAPIBackend(BLEBackend):
         cmd = self._lib.ble_cmd_sm_get_bonds()
         self._lib.send_command(self._ser, cmd)
 
-        self.expect(ResponsePacketType.sm_get_bonds)
+        try:
+            self.expect(ResponsePacketType.sm_get_bonds)
+        except NotConnectedError:
+            pass
+
         if self._num_bonds == 0:
             return
 
@@ -365,7 +355,7 @@ class BGAPIBackend(BLEBackend):
 
         try:
             self.expect(ResponsePacketType.connection_disconnect)
-        except BGAPIError:
+        except (BGAPIError, NotConnectedError):
             if not fail_quietly:
                 raise
         log.info("Connection disconnected: disconnected by local user")
@@ -378,16 +368,14 @@ class BGAPIBackend(BLEBackend):
 
         Raises BGAPIError on failure.
         """
-        self._check_connection()
+        self._assert_connected()
 
         # Set to non-bondable mode
         log.info("set_bondable_mode")
         cmd = self._lib.ble_cmd_sm_set_bondable_mode(constants.bondable['no'])
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any([ResponsePacketType.sm_set_bondable_mode,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
+        self.expect(ResponsePacketType.sm_set_bondable_mode)
 
         # Start encryption
         log.info("encrypt_start")
@@ -395,13 +383,8 @@ class BGAPIBackend(BLEBackend):
             self._connection_handle, constants.bonding['do_not_create_bonding'])
         self._lib.send_command(self._ser, cmd)
 
-        self.expect_any([ResponsePacketType.sm_encrypt_start,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
-
-        self.expect_any([EventPacketType.connection_status,
-                         EventPacketType.connection_disconnected])
-        self._check_connection()
+        self.expect(ResponsePacketType.sm_encrypt_start)
+        self.expect(EventPacketType.connection_status)
         if not self._encrypted:
             msg = "Expected to be encrypted, but wasn't"
             log.error(msg)
@@ -432,7 +415,7 @@ class BGAPIBackend(BLEBackend):
         Returns an integer containing the handle on success.
         Raises BGAPIError on failure.
         """
-        self._check_connection()
+        self._assert_connected()
 
         # Discover characteristics if not cached
         if not self._characteristics_cached:
@@ -443,13 +426,8 @@ class BGAPIBackend(BLEBackend):
             log.info("find_information")
             self._lib.send_command(self._ser, cmd)
 
-            self.expect_any([ResponsePacketType.attclient_find_information,
-                             EventPacketType.connection_disconnected])
-            self._check_connection()
-
-            self.expect_any([EventPacketType.attclient_procedure_completed,
-                             EventPacketType.connection_disconnected])
-            self._check_connection()
+            self.expect(ResponsePacketType.attclient_find_information)
+            self.expect(EventPacketType.attclient_procedure_completed)
             self._characteristics_cached = True
 
             log.debug("Characteristics:")
@@ -495,17 +473,14 @@ class BGAPIBackend(BLEBackend):
 
         Returns the RSSI as in integer in dBm.
         """
-        self._check_connection()
+        self._assert_connected()
 
         # Get RSSI value
         log.info("get_rssi")
         cmd = self._lib.ble_cmd_connection_get_rssi(self._connection_handle)
         self._lib.send_command(self._ser, cmd)
 
-        _, response = self.expect_any(
-            [ResponsePacketType.connection_get_rssi,
-             EventPacketType.connection_disconnected])
-        self._check_connection()
+        _, response = self.expect(ResponsePacketType.connection_get_rssi)
         return response['rssi']
 
     def run(self):
@@ -645,24 +620,15 @@ class BGAPIBackend(BLEBackend):
 
         self._recvr_thread = None
 
-    def _check_connection(self, check_if_connected=True):
+    def _assert_connected(self):
         """
         Checks if there is/isn't a connection already established with a device.
 
-        check_if_connected -- If True, checks if connected, else checks if not
-                              connected.
-
         Raises NotConnectedError on failure if check_if_connected == True.
-        Raised BGAPIError on failure if check_if_connected == False.
         """
-        if (not self._connected) and check_if_connected:
-            warning = "Not connected"
-            log.warn(warning)
-            raise NotConnectedError(warning)
-        elif self._connected and (not check_if_connected):
-            warning = "Already connected"
-            log.warn(warning)
-            raise BGAPIError(warning)
+        if not self._connected:
+            log.warn("Unexpectedly not connected")
+            raise NotConnectedError()
 
     def _connection_status_flag(self, flags, flag_to_find):
         """
@@ -811,6 +777,7 @@ class BGAPIBackend(BLEBackend):
             log.debug("got packet")
             packet_type, response = self._lib.decode_packet(packet)
             log.debug('packet type {0}'.format(packet_type))
+
             self._packet_handlers[packet_type](response)
             return_code = response.get('result', 0)
             if packet_type in expected_packet_choices:
@@ -954,6 +921,7 @@ class BGAPIBackend(BLEBackend):
         self._connected = False
         self._encrypted = False
         self._bonded = False
+        raise NotConnectedError()
 
     def _ble_evt_connection_status(self, args):
         """
