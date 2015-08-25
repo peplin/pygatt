@@ -3,7 +3,7 @@ import Queue
 import serial
 import time
 import threading
-from binascii import hexlify, unhexlify
+from binascii import hexlify
 
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 
@@ -1537,16 +1537,3 @@ class BGAPIBackend(BLEBackend):
         """
         # Log
         log.debug("_ble_rsp_set_bondable_mode")
-
-    # TODO: remove this method because it won't be needed
-    def _uuid_bytearray(self, uuid):
-        """
-        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-        to a bytearray.
-
-        uuid -- the UUID to convert.
-
-        Returns a bytearray containing the UUID.
-        """
-        log.debug("_uuid_bytearray %s", uuid)
-        return unhexlify(uuid.replace("-", ""))
