@@ -10,7 +10,7 @@ from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from bluetooth_adapter.backends.backend import BLEBackend
 from bluetooth_adapter import gatt
 
-from . import bglib
+from .bglib import BGLib, PacketType
 from . import constants
 from .error_codes import get_return_message
 
@@ -74,7 +74,7 @@ class BGAPIBackend(BLEBackend):
                        to.
         """
         # Initialization
-        self._lib = bglib.BGLib()
+        self._lib = BGLib()
         self._serial_port = serial_port
         self._ser = None
 
@@ -120,75 +120,74 @@ class BGAPIBackend(BLEBackend):
             # BGLib.PacketType.<PACKET_NAME>, BGAPIBackend.handler_function
         }
         # Set default packet handler
-        for i in range(self._lib.PacketType.before_first_value+1,
-                       self._lib.PacketType.after_last_value):
-            self._packet_handlers[i] = self._generic_handler
+        for p in PacketType:
+            self._packet_handlers[p] = self._generic_handler
         # Register needed packet handlers
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_attclient_attribute_write] =\
+            PacketType.ble_rsp_attclient_attribute_write] =\
             self._ble_rsp_attclient_attribute_write
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_attclient_find_information] =\
+            PacketType.ble_rsp_attclient_find_information] =\
             self._ble_rsp_attclient_find_information
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_attclient_read_by_handle] =\
+            PacketType.ble_rsp_attclient_read_by_handle] =\
             self._ble_rsp_attclient_read_by_handle
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_connection_disconnect] =\
+            PacketType.ble_rsp_connection_disconnect] =\
             self._ble_rsp_connection_disconnect
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_connection_get_rssi] =\
+            PacketType.ble_rsp_connection_get_rssi] =\
             self._ble_rsp_connection_get_rssi
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_gap_connect_direct] =\
+            PacketType.ble_rsp_gap_connect_direct] =\
             self._ble_rsp_gap_connect_direct
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_gap_discover] =\
+            PacketType.ble_rsp_gap_discover] =\
             self._ble_rsp_gap_discover
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_gap_end_procedure] =\
+            PacketType.ble_rsp_gap_end_procedure] =\
             self._ble_rsp_gap_end_procedure
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_gap_set_mode] =\
+            PacketType.ble_rsp_gap_set_mode] =\
             self._ble_rsp_gap_set_mode
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_gap_set_scan_parameters] =\
+            PacketType.ble_rsp_gap_set_scan_parameters] =\
             self._ble_rsp_gap_set_scan_parameters
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_sm_delete_bonding] =\
+            PacketType.ble_rsp_sm_delete_bonding] =\
             self._ble_rsp_sm_delete_bonding
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_sm_encrypt_start] =\
+            PacketType.ble_rsp_sm_encrypt_start] =\
             self._ble_rsp_sm_encrypt_start
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_sm_get_bonds] =\
+            PacketType.ble_rsp_sm_get_bonds] =\
             self._ble_rsp_sm_get_bonds
         self._packet_handlers[
-            self._lib.PacketType.ble_rsp_sm_set_bondable_mode] =\
+            PacketType.ble_rsp_sm_set_bondable_mode] =\
             self._ble_rsp_sm_set_bondable_mode
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_attclient_attribute_value] =\
+            PacketType.ble_evt_attclient_attribute_value] =\
             self._ble_evt_attclient_attribute_value
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_attclient_find_information_found] =\
+            PacketType.ble_evt_attclient_find_information_found] =\
             self._ble_evt_attclient_find_information_found
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_attclient_procedure_completed] =\
+            PacketType.ble_evt_attclient_procedure_completed] =\
             self._ble_evt_attclient_procedure_completed
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_connection_status] =\
+            PacketType.ble_evt_connection_status] =\
             self._ble_evt_connection_status
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_connection_disconnected] =\
+            PacketType.ble_evt_connection_disconnected] =\
             self._ble_evt_connection_disconnected
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_gap_scan_response] =\
+            PacketType.ble_evt_gap_scan_response] =\
             self._ble_evt_gap_scan_response
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_sm_bond_status] =\
+            PacketType.ble_evt_sm_bond_status] =\
             self._ble_evt_sm_bond_status
         self._packet_handlers[
-            self._lib.PacketType.ble_evt_sm_bonding_fail] =\
+            PacketType.ble_evt_sm_bonding_fail] =\
             self._ble_evt_sm_bonding_fail
 
         log.info("Created %s", repr(self))
@@ -216,8 +215,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_sm_set_bondable_mode,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
 
         # Begin encryption and bonding
@@ -229,8 +228,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_encrypt_start,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_sm_encrypt_start,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
             warning = "encrypt_start failed: " +\
@@ -242,9 +241,9 @@ class BGAPIBackend(BLEBackend):
         while (not self._bonding_fail) and self._connected and\
               (not self._bonded) and (not self._encrypted):
             self._process_packets_until(
-                [self._lib.PacketType.ble_evt_connection_status,
-                 self._lib.PacketType.ble_evt_sm_bonding_fail,
-                 self._lib.PacketType.ble_evt_connection_disconnected])
+                [PacketType.ble_evt_connection_status,
+                 PacketType.ble_evt_sm_bonding_fail,
+                 PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._bonding_fail:
             warning = "encrypt_start failed: " +\
@@ -276,8 +275,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_attclient_attribute_write,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_attclient_attribute_write,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
             warning = "attribute_write failed: " +\
@@ -287,8 +286,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_attclient_procedure_completed,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_evt_attclient_procedure_completed,
+             PacketType.ble_evt_connection_disconnected])
         self._procedure_completed = False
         self._check_connection()
         if self._event_return != 0:
@@ -321,8 +320,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_attclient_read_by_handle,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_attclient_read_by_handle,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
             warning = "read_by_handle failed: " +\
@@ -336,9 +335,9 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_attclient_attribute_value,
-             self._lib.PacketType.ble_evt_attclient_procedure_completed,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_evt_attclient_attribute_value,
+             PacketType.ble_evt_attclient_procedure_completed,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._procedure_completed:
             self._procedure_completed = False  # reset the flag
@@ -392,7 +391,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_connect_direct])
+            [PacketType.ble_rsp_gap_connect_direct])
         if self._response_return != 0:
             log.warn("connect_direct failed: %s",
                      get_return_message(self._response_return))
@@ -400,7 +399,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status], timeout=timeout,
+            [PacketType.ble_evt_connection_status], timeout=timeout,
             exception_type=NotConnectedError)
 
     # TODO: rename/refactor
@@ -419,14 +418,14 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_get_bonds])
+            [PacketType.ble_rsp_sm_get_bonds])
         if self._num_bonds == 0:  # no bonds
             return
 
         # Wait for event
         while len(self._stored_bonds) < self._num_bonds:
             self._process_packets_until(
-                [self._lib.PacketType.ble_evt_sm_bond_status])
+                [PacketType.ble_evt_sm_bond_status])
 
         # Delete bonds
         for b in reversed(self._stored_bonds):
@@ -436,7 +435,7 @@ class BGAPIBackend(BLEBackend):
 
             # Wait for response
             self._process_packets_until(
-                [self._lib.PacketType.ble_rsp_sm_delete_bonding])
+                [PacketType.ble_rsp_sm_delete_bonding])
             if self._response_return != 0:
                 log.warn("delete_bonding: %s",
                          get_return_message(self._response_return))
@@ -456,7 +455,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_connection_disconnect])
+            [PacketType.ble_rsp_connection_disconnect])
         if self._response_return != 0:
             log.warn("connection_disconnect failed: %s",
                      get_return_message(self._response_return))
@@ -467,7 +466,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_evt_connection_disconnected])
         msg = "Disconnected by local user"
         if self._event_return != 0:
             msg = get_return_message(self._event_return)
@@ -492,8 +491,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_sm_set_bondable_mode,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
 
         # Start encryption
@@ -505,8 +504,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_encrypt_start,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_sm_encrypt_start,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
             warning = "encrypt_start failed " +\
@@ -516,8 +515,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_connection_status,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_evt_connection_status,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if not self._encrypted:
             warning = "encrypt_start failed: " +\
@@ -543,8 +542,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_attclient_find_information,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_attclient_find_information,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         if self._response_return != 0:
             warning = "find_information failed " +\
@@ -554,8 +553,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for event
         self._process_packets_until(
-            [self._lib.PacketType.ble_evt_attclient_procedure_completed,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_evt_attclient_procedure_completed,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         self._procedure_completed = False
         if self._event_return != 0:
@@ -603,8 +602,8 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_connection_get_rssi,
-             self._lib.PacketType.ble_evt_connection_disconnected])
+            [PacketType.ble_rsp_connection_get_rssi,
+             PacketType.ble_evt_connection_disconnected])
         self._check_connection()
         rssi_value = self._response_return
 
@@ -638,7 +637,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_set_mode])
+            [PacketType.ble_rsp_gap_set_mode])
         if self._response_return != 0:
             log.warn("gap_set_mode failed: %s",
                      get_return_message(self._response_return))
@@ -650,7 +649,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_end_procedure])
+            [PacketType.ble_rsp_gap_end_procedure])
         if self._response_return != 0:
             log.warn("gap_end_procedure failed: %s",
                      get_return_message(self._response_return))
@@ -663,7 +662,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_sm_set_bondable_mode])
+            [PacketType.ble_rsp_sm_set_bondable_mode])
 
     def scan(self, scan_interval=75, scan_window=50, active=True,
              scan_time=1000,
@@ -693,7 +692,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_set_scan_parameters])
+            [PacketType.ble_rsp_gap_set_scan_parameters])
         if self._response_return != 0:
             log.warn("set_scan_parameters failed: %s",
                      get_return_message(self._response_return))
@@ -706,7 +705,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_discover])
+            [PacketType.ble_rsp_gap_discover])
         if self._response_return != 0:
             log.warn("gap_discover failed: %s",
                      get_return_message(self._response_return))
@@ -723,7 +722,7 @@ class BGAPIBackend(BLEBackend):
 
         # Wait for response
         self._process_packets_until(
-            [self._lib.PacketType.ble_rsp_gap_end_procedure])
+            [PacketType.ble_rsp_gap_end_procedure])
         if self._response_return != 0:
             log.warn("gap_end_procedure failed: %s",
                      get_return_message(self._response_return))
@@ -931,7 +930,7 @@ class BGAPIBackend(BLEBackend):
         Read bytes from serial and enqueue the packets if the packet is not a.
         Stops if the self._recvr_thread_stop event is set.
         """
-        att_value = self._lib.PacketType.ble_evt_attclient_attribute_value
+        att_value = PacketType.ble_evt_attclient_attribute_value
         while not self._recvr_thread_stop.is_set():
             byte = self._ser.read()
             if len(byte) > 0:

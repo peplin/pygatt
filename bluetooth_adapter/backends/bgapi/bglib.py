@@ -33,11 +33,137 @@ THE SOFTWARE.
 
 from __future__ import print_function
 
+from enum import Enum
 import logging
 from struct import pack, unpack
 
 
 log = logging.getLogger(__name__)
+
+
+class PacketType(Enum):
+    """Packet type enum for packets received."""
+    # Responses
+    ble_rsp_system_reset = 0
+    ble_rsp_system_hello = 1
+    ble_rsp_system_address_get = 2
+    ble_rsp_system_reg_write = 3
+    ble_rsp_system_reg_read = 4
+    ble_rsp_system_get_counters = 5
+    ble_rsp_system_get_connections = 6
+    ble_rsp_system_read_memory = 7
+    ble_rsp_system_get_info = 8
+    ble_rsp_system_endpoint_tx = 9
+    ble_rsp_system_whitelist_append = 10
+    ble_rsp_system_whitelist_remove = 11
+    ble_rsp_system_whitelist_clear = 12
+    ble_rsp_system_endpoint_rx = 13
+    ble_rsp_system_endpoint_set_watermarks = 14
+    ble_rsp_flash_ps_defrag = 15
+    ble_rsp_flash_ps_dump = 16
+    ble_rsp_flash_ps_erase_all = 17
+    ble_rsp_flash_ps_save = 18
+    ble_rsp_flash_ps_load = 19
+    ble_rsp_flash_ps_erase = 20
+    ble_rsp_flash_erase_page = 21
+    ble_rsp_flash_write_words = 22
+    ble_rsp_attributes_write = 23
+    ble_rsp_attributes_read = 24
+    ble_rsp_attributes_read_type = 25
+    ble_rsp_attributes_user_read_response = 26
+    ble_rsp_attributes_user_write_response = 27
+    ble_rsp_connection_disconnect = 28
+    ble_rsp_connection_get_rssi = 29
+    ble_rsp_connection_update = 30
+    ble_rsp_connection_version_update = 31
+    ble_rsp_connection_channel_map_get = 32
+    ble_rsp_connection_channel_map_set = 33
+    ble_rsp_connection_features_get = 34
+    ble_rsp_connection_get_status = 35
+    ble_rsp_connection_raw_tx = 36
+    ble_rsp_attclient_find_by_type_value = 37
+    ble_rsp_attclient_read_by_group_type = 38
+    ble_rsp_attclient_read_by_type = 39
+    ble_rsp_attclient_find_information = 40
+    ble_rsp_attclient_read_by_handle = 41
+    ble_rsp_attclient_attribute_write = 42
+    ble_rsp_attclient_write_command = 43
+    ble_rsp_attclient_indicate_confirm = 44
+    ble_rsp_attclient_read_long = 45
+    ble_rsp_attclient_prepare_write = 46
+    ble_rsp_attclient_execute_write = 47
+    ble_rsp_attclient_read_multiple = 48
+    ble_rsp_sm_encrypt_start = 49
+    ble_rsp_sm_set_bondable_mode = 50
+    ble_rsp_sm_delete_bonding = 51
+    ble_rsp_sm_set_parameters = 52
+    ble_rsp_sm_passkey_entry = 53
+    ble_rsp_sm_get_bonds = 54
+    ble_rsp_sm_set_oob_data = 55
+    ble_rsp_gap_set_privacy_flags = 56
+    ble_rsp_gap_set_mode = 57
+    ble_rsp_gap_discover = 58
+    ble_rsp_gap_connect_direct = 59
+    ble_rsp_gap_end_procedure = 60
+    ble_rsp_gap_connect_selective = 61
+    ble_rsp_gap_set_filtering = 62
+    ble_rsp_gap_set_scan_parameters = 63
+    ble_rsp_gap_set_adv_parameters = 64
+    ble_rsp_gap_set_adv_data = 65
+    ble_rsp_gap_set_directed_connectable_mode = 66
+    ble_rsp_hardware_io_port_config_irq = 67
+    ble_rsp_hardware_set_soft_timer = 68
+    ble_rsp_hardware_adc_read = 69
+    ble_rsp_hardware_io_port_config_direction = 70
+    ble_rsp_hardware_io_port_config_function = 71
+    ble_rsp_hardware_io_port_config_pull = 72
+    ble_rsp_hardware_io_port_write = 73
+    ble_rsp_hardware_io_port_read = 74
+    ble_rsp_hardware_spi_config = 75
+    ble_rsp_hardware_spi_transfer = 76
+    ble_rsp_hardware_i2c_read = 77
+    ble_rsp_hardware_i2c_write = 78
+    ble_rsp_hardware_set_txpower = 79
+    ble_rsp_hardware_timer_comparator = 80
+    ble_rsp_test_phy_tx = 81
+    ble_rsp_test_phy_rx = 82
+    ble_rsp_test_phy_end = 83
+    ble_rsp_test_phy_reset = 84
+    ble_rsp_test_get_channel_map = 85
+    ble_rsp_test_debug = 86
+    # Events
+    ble_evt_system_boot = 87
+    ble_evt_system_debug = 88
+    ble_evt_system_endpoint_watermark_rx = 89
+    ble_evt_system_endpoint_watermark_tx = 90
+    ble_evt_system_script_failure = 91
+    ble_evt_system_no_license_key = 92
+    ble_evt_flash_ps_key = 93
+    ble_evt_attributes_value = 94
+    ble_evt_attributes_user_read_request = 95
+    ble_evt_attributes_status = 96
+    ble_evt_connection_status = 97
+    ble_evt_connection_version_ind = 98
+    ble_evt_connection_feature_ind = 99
+    ble_evt_connection_raw_rx = 100
+    ble_evt_connection_disconnected = 101
+    ble_evt_attclient_indicated = 102
+    ble_evt_attclient_procedure_completed = 103
+    ble_evt_attclient_group_found = 104
+    ble_evt_attclient_attribute_found = 105
+    ble_evt_attclient_find_information_found = 106
+    ble_evt_attclient_attribute_value = 107
+    ble_evt_attclient_read_multiple_response = 108
+    ble_evt_sm_smp_data = 109
+    ble_evt_sm_bonding_fail = 110
+    ble_evt_sm_passkey_display = 111
+    ble_evt_sm_passkey_request = 112
+    ble_evt_sm_bond_status = 113
+    ble_evt_gap_scan_response = 114
+    ble_evt_gap_mode_changed = 115
+    ble_evt_hardware_io_port_status = 116
+    ble_evt_hardware_soft_timer = 117
+    ble_evt_hardware_adc_result = 118
 
 
 class BGLib(object):
@@ -470,134 +596,6 @@ class BGLib(object):
         return pack('<4BB' + str(len(input)) + 's', 0, 1 + len(input), 8, 5,
                     len(input), b''.join(chr(i) for i in input))
 
-    class PacketType(object):
-        """Packet type enum for packets received."""
-        # Before first value
-        before_first_value = -1
-        # Responses
-        ble_rsp_system_reset = 0
-        ble_rsp_system_hello = 1
-        ble_rsp_system_address_get = 2
-        ble_rsp_system_reg_write = 3
-        ble_rsp_system_reg_read = 4
-        ble_rsp_system_get_counters = 5
-        ble_rsp_system_get_connections = 6
-        ble_rsp_system_read_memory = 7
-        ble_rsp_system_get_info = 8
-        ble_rsp_system_endpoint_tx = 9
-        ble_rsp_system_whitelist_append = 10
-        ble_rsp_system_whitelist_remove = 11
-        ble_rsp_system_whitelist_clear = 12
-        ble_rsp_system_endpoint_rx = 13
-        ble_rsp_system_endpoint_set_watermarks = 14
-        ble_rsp_flash_ps_defrag = 15
-        ble_rsp_flash_ps_dump = 16
-        ble_rsp_flash_ps_erase_all = 17
-        ble_rsp_flash_ps_save = 18
-        ble_rsp_flash_ps_load = 19
-        ble_rsp_flash_ps_erase = 20
-        ble_rsp_flash_erase_page = 21
-        ble_rsp_flash_write_words = 22
-        ble_rsp_attributes_write = 23
-        ble_rsp_attributes_read = 24
-        ble_rsp_attributes_read_type = 25
-        ble_rsp_attributes_user_read_response = 26
-        ble_rsp_attributes_user_write_response = 27
-        ble_rsp_connection_disconnect = 28
-        ble_rsp_connection_get_rssi = 29
-        ble_rsp_connection_update = 30
-        ble_rsp_connection_version_update = 31
-        ble_rsp_connection_channel_map_get = 32
-        ble_rsp_connection_channel_map_set = 33
-        ble_rsp_connection_features_get = 34
-        ble_rsp_connection_get_status = 35
-        ble_rsp_connection_raw_tx = 36
-        ble_rsp_attclient_find_by_type_value = 37
-        ble_rsp_attclient_read_by_group_type = 38
-        ble_rsp_attclient_read_by_type = 39
-        ble_rsp_attclient_find_information = 40
-        ble_rsp_attclient_read_by_handle = 41
-        ble_rsp_attclient_attribute_write = 42
-        ble_rsp_attclient_write_command = 43
-        ble_rsp_attclient_indicate_confirm = 44
-        ble_rsp_attclient_read_long = 45
-        ble_rsp_attclient_prepare_write = 46
-        ble_rsp_attclient_execute_write = 47
-        ble_rsp_attclient_read_multiple = 48
-        ble_rsp_sm_encrypt_start = 49
-        ble_rsp_sm_set_bondable_mode = 50
-        ble_rsp_sm_delete_bonding = 51
-        ble_rsp_sm_set_parameters = 52
-        ble_rsp_sm_passkey_entry = 53
-        ble_rsp_sm_get_bonds = 54
-        ble_rsp_sm_set_oob_data = 55
-        ble_rsp_gap_set_privacy_flags = 56
-        ble_rsp_gap_set_mode = 57
-        ble_rsp_gap_discover = 58
-        ble_rsp_gap_connect_direct = 59
-        ble_rsp_gap_end_procedure = 60
-        ble_rsp_gap_connect_selective = 61
-        ble_rsp_gap_set_filtering = 62
-        ble_rsp_gap_set_scan_parameters = 63
-        ble_rsp_gap_set_adv_parameters = 64
-        ble_rsp_gap_set_adv_data = 65
-        ble_rsp_gap_set_directed_connectable_mode = 66
-        ble_rsp_hardware_io_port_config_irq = 67
-        ble_rsp_hardware_set_soft_timer = 68
-        ble_rsp_hardware_adc_read = 69
-        ble_rsp_hardware_io_port_config_direction = 70
-        ble_rsp_hardware_io_port_config_function = 71
-        ble_rsp_hardware_io_port_config_pull = 72
-        ble_rsp_hardware_io_port_write = 73
-        ble_rsp_hardware_io_port_read = 74
-        ble_rsp_hardware_spi_config = 75
-        ble_rsp_hardware_spi_transfer = 76
-        ble_rsp_hardware_i2c_read = 77
-        ble_rsp_hardware_i2c_write = 78
-        ble_rsp_hardware_set_txpower = 79
-        ble_rsp_hardware_timer_comparator = 80
-        ble_rsp_test_phy_tx = 81
-        ble_rsp_test_phy_rx = 82
-        ble_rsp_test_phy_end = 83
-        ble_rsp_test_phy_reset = 84
-        ble_rsp_test_get_channel_map = 85
-        ble_rsp_test_debug = 86
-        # Events
-        ble_evt_system_boot = 87
-        ble_evt_system_debug = 88
-        ble_evt_system_endpoint_watermark_rx = 89
-        ble_evt_system_endpoint_watermark_tx = 90
-        ble_evt_system_script_failure = 91
-        ble_evt_system_no_license_key = 92
-        ble_evt_flash_ps_key = 93
-        ble_evt_attributes_value = 94
-        ble_evt_attributes_user_read_request = 95
-        ble_evt_attributes_status = 96
-        ble_evt_connection_status = 97
-        ble_evt_connection_version_ind = 98
-        ble_evt_connection_feature_ind = 99
-        ble_evt_connection_raw_rx = 100
-        ble_evt_connection_disconnected = 101
-        ble_evt_attclient_indicated = 102
-        ble_evt_attclient_procedure_completed = 103
-        ble_evt_attclient_group_found = 104
-        ble_evt_attclient_attribute_found = 105
-        ble_evt_attclient_find_information_found = 106
-        ble_evt_attclient_attribute_value = 107
-        ble_evt_attclient_read_multiple_response = 108
-        ble_evt_sm_smp_data = 109
-        ble_evt_sm_bonding_fail = 110
-        ble_evt_sm_passkey_display = 111
-        ble_evt_sm_passkey_request = 112
-        ble_evt_sm_bond_status = 113
-        ble_evt_gap_scan_response = 114
-        ble_evt_gap_mode_changed = 115
-        ble_evt_hardware_io_port_status = 116
-        ble_evt_hardware_soft_timer = 117
-        ble_evt_hardware_adc_result = 118
-        # After last value
-        after_last_value = 119
-
     def send_command(self, ser, packet):
         """
         Send a packet to the BLED12 over serial.
@@ -664,11 +662,11 @@ class BGLib(object):
                 if packet_command == 0:  # ble_rsp_system_reset
                     log.debug(
                         "received packet ble_rsp_system_reset")
-                    return self.PacketType.ble_rsp_system_reset, {}
+                    return PacketType.ble_rsp_system_reset, {}
                 elif packet_command == 1:  # ble_rsp_system_hello
                     log.debug(
                         "received packet ble_rsp_system_hello")
-                    return self.PacketType.ble_rsp_system_hello, {}
+                    return PacketType.ble_rsp_system_hello, {}
                 elif packet_command == 2:  # ble_rsp_system_address_get
                     log.debug(
                         "received packet ble_rsp_system_address_get")
@@ -677,7 +675,7 @@ class BGLib(object):
                     args = {
                         'address': address
                     }
-                    return self.PacketType.ble_rsp_system_address_get, args
+                    return PacketType.ble_rsp_system_address_get, args
                 elif packet_command == 3:  # ble_rsp_system_reg_write
                     log.debug(
                         "received packet ble_rsp_system_reg_write")
@@ -685,7 +683,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_system_reg_write, args
+                    return PacketType.ble_rsp_system_reg_write, args
                 elif packet_command == 4:  # ble_rsp_system_reg_read
                     log.debug(
                         "received packet ble_rsp_system_reg_read")
@@ -694,7 +692,7 @@ class BGLib(object):
                     args = {
                         'address': address, 'value': value
                     }
-                    return self.PacketType.ble_rsp_system_reg_read, args
+                    return PacketType.ble_rsp_system_reg_read, args
                 elif packet_command == 5:  # ble_rsp_system_get_counters
                     log.debug(
                         "received packet ble_rsp_system_get_counters")
@@ -704,7 +702,7 @@ class BGLib(object):
                         'txok': txok, 'txretry': txretry, 'rxok': rxok,
                         'rxfail': rxfail, 'mbuf': mbuf
                     }
-                    return self.PacketType.ble_rsp_system_get_counters, args
+                    return PacketType.ble_rsp_system_get_counters, args
                 elif packet_command == 6:  # ble_rsp_system_get_connections
                     log.debug(
                         "received packet ble_rsp_system_get_connections")
@@ -712,7 +710,7 @@ class BGLib(object):
                     args = {
                         'maxconn': maxconn
                     }
-                    return self.PacketType.ble_rsp_system_get_connections, args
+                    return PacketType.ble_rsp_system_get_connections, args
                 elif packet_command == 7:  # ble_rsp_system_read_memory
                     log.debug(
                         "received packet ble_rsp_system_read_memory")
@@ -722,7 +720,7 @@ class BGLib(object):
                     args = {
                         'address': address, 'data': data_data
                     }
-                    return self.PacketType.ble_rsp_system_read_memory, args
+                    return PacketType.ble_rsp_system_read_memory, args
                 elif packet_command == 8:  # ble_rsp_system_get_info
                     log.debug(
                         "received packet ble_rsp_system_get_info")
@@ -733,7 +731,7 @@ class BGLib(object):
                         'll_version': data[4], 'protocol_version': data[5],
                         'hw': data[6]
                     }
-                    return self.PacketType.ble_rsp_system_get_info, args
+                    return PacketType.ble_rsp_system_get_info, args
                 elif packet_command == 9:  # ble_rsp_system_endpoint_tx
                     log.debug(
                         "received packet ble_rsp_system_endpoint_tx")
@@ -741,7 +739,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_system_endpoint_tx, args
+                    return PacketType.ble_rsp_system_endpoint_tx, args
                 # ble_rsp_system_whitelist_append
                 elif packet_command == 10:
                     log.debug(
@@ -750,7 +748,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_system_whitelist_append, args
+                    return PacketType.ble_rsp_system_whitelist_append, args
                 # ble_rsp_system_whitelist_remove
                 elif packet_command == 11:
                     log.debug(
@@ -759,11 +757,11 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_system_whitelist_remove
+                    return PacketType.ble_rsp_system_whitelist_remove
                 elif packet_command == 12:  # ble_rsp_system_whitelist_clear
                     log.debug(
                         "received packet ble_rsp_system_whitelist_clear")
-                    return self.PacketType.ble_rsp_system_whitelist_clear, {}
+                    return PacketType.ble_rsp_system_whitelist_clear, {}
                 elif packet_command == 13:  # ble_rsp_system_endpoint_rx
                     log.debug(
                         "received packet ble_rsp_system_endpoint_rx")
@@ -773,7 +771,7 @@ class BGLib(object):
                     args = {
                         'result': result, 'data': data_data
                     }
-                    return self.PacketType.ble_rsp_system_endpoint_rx, args
+                    return PacketType.ble_rsp_system_endpoint_rx, args
                 # ble_rsp_system_endpoint_set_watermarks
                 elif packet_command == 14:
                     log.debug(
@@ -783,21 +781,21 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_system_endpoint_set_watermarks, args)
             elif packet_class == 1:
                 if packet_command == 0:  # ble_rsp_flash_ps_defrag
                     log.debug(
                         "received packet ble_rsp_flash_ps_defrag")
-                    return self.PacketType.ble_rsp_flash_ps_defrag, {}
+                    return PacketType.ble_rsp_flash_ps_defrag, {}
                 elif packet_command == 1:  # ble_rsp_flash_ps_dump
                     log.debug(
                         "received packet ble_rsp_flash_ps_dump")
-                    return self.PacketType.ble_rsp_flash_ps_dump, {}
+                    return PacketType.ble_rsp_flash_ps_dump, {}
                 elif packet_command == 2:  # ble_rsp_flash_ps_erase_all
                     log.debug(
                         "received packet ble_rsp_flash_ps_erase_all")
-                    return self.PacketType.ble_rsp_flash_ps_erase_all, {}
+                    return PacketType.ble_rsp_flash_ps_erase_all, {}
                 elif packet_command == 3:  # ble_rsp_flash_ps_save
                     log.debug(
                         "received packet ble_rsp_flash_ps_save")
@@ -805,7 +803,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_flash_ps_save, args
+                    return PacketType.ble_rsp_flash_ps_save, args
                 elif packet_command == 4:  # ble_rsp_flash_ps_load
                     log.debug(
                         "received packet ble_rsp_flash_ps_load")
@@ -815,11 +813,11 @@ class BGLib(object):
                     args = {
                         'result': result, 'value': value_data
                     }
-                    return self.PacketType.ble_rsp_flash_ps_load, args
+                    return PacketType.ble_rsp_flash_ps_load, args
                 elif packet_command == 5:  # ble_rsp_flash_ps_erase
                     log.debug(
                         "received packet ble_rsp_flash_ps_erase")
-                    return self.PacketType.ble_rsp_flash_ps_erase, {}
+                    return PacketType.ble_rsp_flash_ps_erase, {}
                 elif packet_command == 6:  # ble_rsp_flash_ps_erase_page
                     log.debug(
                         "received packet ble_rsp_flash_ps_erase_page")
@@ -827,11 +825,11 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_flash_erase_page, args
+                    return PacketType.ble_rsp_flash_erase_page, args
                 elif packet_command == 7:  # ble_rsp_flash_write_words
                     log.debug(
                         "received packet ble_rsp_flash_write_words")
-                    return self.PacketType.ble_rsp_flash_write_words, {}
+                    return PacketType.ble_rsp_flash_write_words, {}
             elif packet_class == 2:
                 if packet_command == 0:  # ble_rsp_attributes_write
                     log.debug(
@@ -840,7 +838,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_attributes_write, args
+                    return PacketType.ble_rsp_attributes_write, args
                 elif packet_command == 1:  # ble_rsp_attributes_read
                     log.debug(
                         "received packet ble_rsp_attributes_read")
@@ -852,7 +850,7 @@ class BGLib(object):
                         'handle': handle, 'offset': offset,
                         'result': result, 'value': value_data
                     }
-                    return self.PacketType.ble_rsp_attributes_read, args
+                    return PacketType.ble_rsp_attributes_read, args
                 elif packet_command == 2:  # ble_rsp_attributes_read_type
                     log.debug(
                         "received packet ble_rsp_attributes_read_type")
@@ -864,20 +862,20 @@ class BGLib(object):
                         'handle': handle, 'result': result,
                         'value': value_data
                     }
-                    return self.PacketType.ble_rsp_attributes_read_type, args
+                    return PacketType.ble_rsp_attributes_read_type, args
                 # ble_rsp_attributes_user_read_response
                 elif packet_command == 3:
                     log.debug(
                         "received packet ble_rsp_attributes_user_read_"
                         "response")
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_attributes_user_read_response, {})
                 # ble_rsp_attributes_user_write_response
                 elif packet_command == 4:
                     log.debug(
                         "received packet ble_rsp_attributes_user_write_"
                         "response")
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_attributes_user_write_response, {})
             elif packet_class == 3:
                 if packet_command == 0:  # ble_rsp_connection_disconnect
@@ -889,7 +887,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_connection_disconnect, args
+                    return PacketType.ble_rsp_connection_disconnect, args
                 elif packet_command == 1:  # ble_rsp_connection_get_rssi
                     log.debug(
                         "received packet ble_rsp_connection_get_rssi")
@@ -899,7 +897,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'rssi': rssi
                     }
-                    return self.PacketType.ble_rsp_connection_get_rssi, args
+                    return PacketType.ble_rsp_connection_get_rssi, args
                 elif packet_command == 2:  # ble_rsp_connection_update
                     log.debug(
                         "received packet ble_rsp_connection_update")
@@ -909,7 +907,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_connection_update, args
+                    return PacketType.ble_rsp_connection_update, args
                 # ble_rsp_connection_version_update
                 elif packet_command == 3:
                     log.debug(
@@ -920,7 +918,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.ble_rsp_connection_version_update,
+                    return (PacketType.ble_rsp_connection_version_update,
                             args)
                 # ble_rsp_connection_channel_map_get
                 elif packet_command == 4:
@@ -934,7 +932,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'map': map_data
                     }
-                    return (self.PacketType.ble_rsp_connection_channel_map_get,
+                    return (PacketType.ble_rsp_connection_channel_map_get,
                             args)
                 # ble_rsp_connection_channel_map_set
                 elif packet_command == 5:
@@ -947,7 +945,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.ble_rsp_connection_channel_map_set,
+                    return (PacketType.ble_rsp_connection_channel_map_set,
                             args)
                 elif packet_command == 6:  # ble_rsp_connection_features_get
                     log.debug(
@@ -957,7 +955,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_connection_features_get, args
+                    return PacketType.ble_rsp_connection_features_get, args
                 elif packet_command == 7:  # ble_rsp_connection_get_status
                     log.debug(
                         "received packet ble_rsp_connection_get_status")
@@ -965,7 +963,7 @@ class BGLib(object):
                     args = {
                         'connection': connection
                     }
-                    return self.PacketType.ble_rsp_connection_get_status, args
+                    return PacketType.ble_rsp_connection_get_status, args
                 elif packet_command == 8:  # ble_rsp_connection_raw_tx
                     log.debug(
                         "received packet ble_rsp_connection_raw_tx")
@@ -973,7 +971,7 @@ class BGLib(object):
                     args = {
                         'connection': connection
                     }
-                    return self.PacketType.ble_rsp_connection_raw_tx, args
+                    return PacketType.ble_rsp_connection_raw_tx, args
             elif packet_class == 4:
                 # ble_rsp_attclient_find_by_type_value
                 if packet_command == 0:
@@ -986,7 +984,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_attclient_find_by_type_value, args)
                 # ble_rsp_attclient_read_by_group_type
                 elif packet_command == 1:
@@ -999,7 +997,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_attclient_read_by_group_type, args)
                 elif packet_command == 2:  # ble_rsp_attclient_read_by_type
                     log.debug(
@@ -1010,7 +1008,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_read_by_type, args
+                    return PacketType.ble_rsp_attclient_read_by_type, args
                 # ble_rsp_attclient_find_information
                 elif packet_command == 3:
                     log.debug(
@@ -1022,7 +1020,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.ble_rsp_attclient_find_information,
+                    return (PacketType.ble_rsp_attclient_find_information,
                             args)
                 # ble_rsp_attclient_read_by_handle
                 elif packet_command == 4:
@@ -1034,7 +1032,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.ble_rsp_attclient_read_by_handle,
+                    return (PacketType.ble_rsp_attclient_read_by_handle,
                             args)
                 # ble_rsp_attclient_attribute_write
                 elif packet_command == 5:
@@ -1046,7 +1044,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return (self.PacketType.ble_rsp_attclient_attribute_write,
+                    return (PacketType.ble_rsp_attclient_attribute_write,
                             args)
                 elif packet_command == 6:  # ble_rsp_attclient_write_command
                     log.debug(
@@ -1057,7 +1055,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_write_command, args
+                    return PacketType.ble_rsp_attclient_write_command, args
                 # ble_rsp_attclient_indicate_confirm
                 elif packet_command == 7:
                     log.debug(
@@ -1067,7 +1065,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.ble_rsp_attclient_indicate_confirm,
+                    return (PacketType.ble_rsp_attclient_indicate_confirm,
                             args)
                 elif packet_command == 8:  # ble_rsp_attclient_read_long
                     log.debug(
@@ -1078,7 +1076,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_read_long, args
+                    return PacketType.ble_rsp_attclient_read_long, args
                 elif packet_command == 9:  # ble_rsp_attclient_prepare_write
                     log.debug(
                         "received packet ble_rsp_attclient_prepare_write")
@@ -1088,7 +1086,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_prepare_write, args
+                    return PacketType.ble_rsp_attclient_prepare_write, args
                 # ble_rsp_attclient_execute_write
                 elif packet_command == 10:
                     log.debug(
@@ -1099,7 +1097,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_execute_write, args
+                    return PacketType.ble_rsp_attclient_execute_write, args
                 # ble_rsp_attclient_read_multiple
                 elif packet_command == 11:
                     log.debug(
@@ -1110,7 +1108,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'result': result
                     }
-                    return self.PacketType.ble_rsp_attclient_read_multiple, args
+                    return PacketType.ble_rsp_attclient_read_multiple, args
             elif packet_class == 5:
                 if packet_command == 0:  # ble_rsp_sm_encrypt_start
                     log.debug(
@@ -1121,11 +1119,11 @@ class BGLib(object):
                     args = {
                         'handle': handle, 'result': result
                     }
-                    return self.PacketType.ble_rsp_sm_encrypt_start, args
+                    return PacketType.ble_rsp_sm_encrypt_start, args
                 elif packet_command == 1:  # ble_rsp_sm_set_bondable_mode
                     log.debug(
                         "received packet ble_rsp_sm_set_bondable_mode")
-                    return self.PacketType.ble_rsp_sm_set_bondable_mode, {}
+                    return PacketType.ble_rsp_sm_set_bondable_mode, {}
                 elif packet_command == 2:  # ble_rsp_sm_delete_bonding
                     log.debug(
                         "received packet ble_rsp_sm_delete_bonding")
@@ -1133,11 +1131,11 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_sm_delete_bonding, args
+                    return PacketType.ble_rsp_sm_delete_bonding, args
                 elif packet_command == 3:  # ble_rsp_sm_set_parameters
                     log.debug(
                         "received packet ble_rsp_sm_set_parameters")
-                    return self.PacketType.ble_rsp_sm_set_parameters, {}
+                    return PacketType.ble_rsp_sm_set_parameters, {}
                 elif packet_command == 4:  # ble_rsp_sm_passkey_entry
                     log.debug(
                         "received packet ble_rsp_sm_passkey_entry")
@@ -1145,7 +1143,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_sm_passkey_entry, args
+                    return PacketType.ble_rsp_sm_passkey_entry, args
                 elif packet_command == 5:  # ble_rsp_sm_get_bonds
                     log.debug(
                         "received packet ble_rsp_sm_get_bonds")
@@ -1153,16 +1151,16 @@ class BGLib(object):
                     args = {
                         'bonds': bonds
                     }
-                    return self.PacketType.ble_rsp_sm_get_bonds, args
+                    return PacketType.ble_rsp_sm_get_bonds, args
                 elif packet_command == 6:  # ble_rsp_sm_set_oob_data
                     log.debug(
                         "received packet ble_rsp_sm_set_oob_data")
-                    return self.PacketType.ble_rsp_sm_set_oob_data, {}
+                    return PacketType.ble_rsp_sm_set_oob_data, {}
             elif packet_class == 6:
                 if packet_command == 0:  # ble_rsp_gap_set_privacy_flags
                     log.debug(
                         "received packet ble_rsp_gap_set_privacy_flags")
-                    return self.PacketType.ble_rsp_gap_set_privacy_flags, {}
+                    return PacketType.ble_rsp_gap_set_privacy_flags, {}
                 elif packet_command == 1:  # ble_rsp_gap_set_mode
                     log.debug(
                         "received packet ble_rsp_gap_set_mode")
@@ -1170,7 +1168,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_set_mode, args
+                    return PacketType.ble_rsp_gap_set_mode, args
                 elif packet_command == 2:  # ble_rsp_gap_discover
                     log.debug(
                         "received packet ble_rsp_gap_discover")
@@ -1178,7 +1176,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_discover, args
+                    return PacketType.ble_rsp_gap_discover, args
                 elif packet_command == 3:  # ble_rsp_gap_connect_direct
                     log.debug(
                         "received packet ble_rsp_gap_connect_direct")
@@ -1189,7 +1187,7 @@ class BGLib(object):
                         'result': result,
                         'connection_handle': connection_handle
                     }
-                    return self.PacketType.ble_rsp_gap_connect_direct, args
+                    return PacketType.ble_rsp_gap_connect_direct, args
                 elif packet_command == 4:  # ble_rsp_gap_end_procedure
                     log.debug(
                         "received packet ble_rsp_gap_end_procedure")
@@ -1197,7 +1195,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_end_procedure, args
+                    return PacketType.ble_rsp_gap_end_procedure, args
                 elif packet_command == 5:  # ble_rsp_gap_connect_selective
                     log.debug(
                         "received packet ble_rsp_gap_connect_selective")
@@ -1208,7 +1206,7 @@ class BGLib(object):
                         'result': result,
                         'connection_handle': connection_handle
                     }
-                    return self.PacketType.ble_rsp_gap_connect_selective, args
+                    return PacketType.ble_rsp_gap_connect_selective, args
                 elif packet_command == 6:  # ble_rsp_gap_set_filtering
                     log.debug(
                         "received packet ble_rsp_gap_set_filtering")
@@ -1216,7 +1214,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_set_filtering, args
+                    return PacketType.ble_rsp_gap_set_filtering, args
                 elif packet_command == 7:  # ble_rsp_gap_set_scan_parameters
                     log.debug(
                         "received packet ble_rsp_gap_set_scan_parameters")
@@ -1224,7 +1222,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_set_scan_parameters, args
+                    return PacketType.ble_rsp_gap_set_scan_parameters, args
                 elif packet_command == 8:  # ble_rsp_gap_set_adv_parameters
                     log.debug(
                         "received packet ble_rsp_gap_set_adv_parameters")
@@ -1232,7 +1230,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_set_adv_parameters, args
+                    return PacketType.ble_rsp_gap_set_adv_parameters, args
                 elif packet_command == 9:  # ble_rsp_gap_set_adv_data
                     log.debug(
                         "received packet ble_rsp_gap_set_adv_data")
@@ -1240,7 +1238,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_gap_set_adv_data, args
+                    return PacketType.ble_rsp_gap_set_adv_data, args
                 # ble_rsp_gap_set_directed_connectable_mode
                 elif packet_command == 10:
                     log.debug(
@@ -1250,7 +1248,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_gap_set_directed_connectable_mode, args)
             elif packet_class == 7:
                 # ble_rsp_hardware_io_port_config_irq
@@ -1262,7 +1260,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.ble_rsp_hardware_io_port_config_irq,
+                    return (PacketType.ble_rsp_hardware_io_port_config_irq,
                             args)
                 elif packet_command == 1:  # ble_rsp_hardware_set_soft_timer
                     log.debug(
@@ -1271,7 +1269,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_hardware_set_soft_timer, args
+                    return PacketType.ble_rsp_hardware_set_soft_timer, args
                 elif packet_command == 2:  # ble_rsp_hardware_adc_read
                     log.debug(
                         "received packet ble_rsp_hardware_adc_read")
@@ -1279,7 +1277,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_hardware_adc_read, args
+                    return PacketType.ble_rsp_hardware_adc_read, args
                 # ble_rsp_hardware_io_port_config_direction
                 elif packet_command == 3:
                     log.debug(
@@ -1289,7 +1287,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_hardware_io_port_config_direction, args)
                 # ble_rsp_hardware_io_port_config_function
                 elif packet_command == 4:
@@ -1300,7 +1298,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_hardware_io_port_config_function, args)
                 # ble_rsp_hardware_io_port_config_pull
                 elif packet_command == 5:
@@ -1311,7 +1309,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_hardware_io_port_config_pull, args)
                 elif packet_command == 6:  # ble_rsp_hardware_io_port_write
                     log.debug(
@@ -1320,7 +1318,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_hardware_io_port_write, args
+                    return PacketType.ble_rsp_hardware_io_port_write, args
                 elif packet_command == 7:  # ble_rsp_hardware_io_port_read
                     log.debug(
                         "received packet ble_rsp_hardware_io_port_read")
@@ -1330,7 +1328,7 @@ class BGLib(object):
                     args = {
                         'result': result, 'port': port, 'data': data
                     }
-                    return self.PacketType.ble_rsp_hardware_io_port_read, args
+                    return PacketType.ble_rsp_hardware_io_port_read, args
                 elif packet_command == 8:  # ble_rsp_hardware_spi_config
                     log.debug(
                         "received packet ble_rsp_hardware_spi_config")
@@ -1338,7 +1336,7 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return self.PacketType.ble_rsp_hardware_spi_config, args
+                    return PacketType.ble_rsp_hardware_spi_config, args
                 elif packet_command == 9:  # ble_rsp_hardware_spi_transfer
                     log.debug(
                         "received packet ble_rsp_hardware_spi_transfer")
@@ -1350,7 +1348,7 @@ class BGLib(object):
                         'result': result, 'channel': channel,
                         'data': data_data
                     }
-                    return self.PacketType.ble_rsp_hardware_spi_transfer, args
+                    return PacketType.ble_rsp_hardware_spi_transfer, args
                 elif packet_command == 10:  # ble_rsp_hardware_i2c_read
                     log.debug(
                         "received packet ble_rsp_hardware_i2c_read")
@@ -1361,7 +1359,7 @@ class BGLib(object):
                     args = {
                         'result': result, 'data': data_data
                     }
-                    return self.PacketType.ble_rsp_hardware_i2c_read, args
+                    return PacketType.ble_rsp_hardware_i2c_read, args
                 elif packet_command == 11:  # ble_rsp_hardware_i2c_write
                     log.debug(
                         "received packet ble_rsp_hardware_i2c_write")
@@ -1369,11 +1367,11 @@ class BGLib(object):
                     args = {
                         'written': written
                     }
-                    return self.PacketType.ble_rsp_hardware_i2c_write, args
+                    return PacketType.ble_rsp_hardware_i2c_write, args
                 elif packet_command == 12:  # ble_rsp_hardware_set_txpower
                     log.debug(
                         "received packet ble_rsp_hardware_set_txpower")
-                    return self.PacketType.ble_rsp_hardware_set_txpower, {}
+                    return PacketType.ble_rsp_hardware_set_txpower, {}
                 # ble_rsp_hardware_timer_comparator
                 elif packet_command == 13:
                     log.debug(
@@ -1382,17 +1380,17 @@ class BGLib(object):
                     args = {
                         'result': result
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_rsp_hardware_timer_comparator, args)
             elif packet_class == 8:
                 if packet_command == 0:  # ble_rsp_test_phy_tx
                     log.debug(
                         "received packet ble_rsp_test_phy_tx")
-                    return self.PacketType.ble_rsp_test_phy_tx, {}
+                    return PacketType.ble_rsp_test_phy_tx, {}
                 elif packet_command == 1:  # ble_rsp_test_phy_rx
                     log.debug(
                         "received packet ble_rsp_test_phy_rx")
-                    return self.PacketType.ble_rsp_test_phy_rx, {}
+                    return PacketType.ble_rsp_test_phy_rx, {}
                 elif packet_command == 2:  # ble_rsp_test_phy_end
                     log.debug(
                         "received packet ble_rsp_test_phy_end")
@@ -1400,11 +1398,11 @@ class BGLib(object):
                     args = {
                         'counter': counter
                     }
-                    return self.PacketType.ble_rsp_test_phy_end, args
+                    return PacketType.ble_rsp_test_phy_end, args
                 elif packet_command == 3:  # ble_rsp_test_phy_reset
                     log.debug(
                         "received packet ble_rsp_test_phy_reset")
-                    return self.PacketType.ble_rsp_test_phy_reset, {}
+                    return PacketType.ble_rsp_test_phy_reset, {}
                 elif packet_command == 4:  # ble_rsp_test_get_channel_map
                     log.debug(
                         "received packet ble_rsp_test_get_channel_map")
@@ -1416,7 +1414,7 @@ class BGLib(object):
                     args = {
                         'channel_map': channel_map_data
                     }
-                    return self.PacketType.ble_rsp_test_get_channel_map, args
+                    return PacketType.ble_rsp_test_get_channel_map, args
                 elif packet_command == 5:  # ble_rsp_test_debug
                     log.debug(
                         "received packet ble_rsp_test_debug")
@@ -1427,7 +1425,7 @@ class BGLib(object):
                     args = {
                         'output': output_data
                     }
-                    return self.PacketType.ble_rsp_test_debug, args
+                    return PacketType.ble_rsp_test_debug, args
         elif packet_type & 0x88 == 0x80:
             # 0x80 = BLE event packet
             if packet_class == 0:
@@ -1441,7 +1439,7 @@ class BGLib(object):
                         'll_version': data[4], 'protocol_version': data[5],
                         'hw': data[6]
                     }
-                    return self.PacketType.ble_evt_system_boot, args
+                    return PacketType.ble_evt_system_boot, args
                 elif packet_command == 1:  # ble_evt_system_debug
                     log.debug(
                         "received packet ble_evt_system_debug")
@@ -1450,7 +1448,7 @@ class BGLib(object):
                     args = {
                         'data': data_data
                     }
-                    return self.PacketType.ble_evt_system_debug, args
+                    return PacketType.ble_evt_system_debug, args
                 # ble_evt_system_endpoint_watermark_rx
                 elif packet_command == 2:
                     log.debug(
@@ -1462,7 +1460,7 @@ class BGLib(object):
                     args = {
                         'endpoint': endpoint, 'data': data
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_system_endpoint_watermark_rx, args)
                 # ble_evt_system_endpoint_watermark_tx
                 elif packet_command == 3:
@@ -1475,7 +1473,7 @@ class BGLib(object):
                     args = {
                         'endpoint': endpoint, 'data': data
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_system_endpoint_watermark_tx, args)
                 elif packet_command == 4:  # ble_evt_system_script_failure
                     log.debug(
@@ -1486,11 +1484,11 @@ class BGLib(object):
                     args = {
                         'address': address, 'reason': reason
                     }
-                    return self.PacketType.ble_evt_system_script_failure, args
+                    return PacketType.ble_evt_system_script_failure, args
                 elif packet_command == 5:  # ble_evt_system_no_license_key
                     log.debug(
                         "received packet ble_evt_system_no_license_key")
-                    return self.PacketType.ble_evt_system_no_license_key, {}
+                    return PacketType.ble_evt_system_no_license_key, {}
             elif packet_class == 1:
                 if packet_command == 0:  # ble_evt_flash_ps_key
                     log.debug(
@@ -1502,7 +1500,7 @@ class BGLib(object):
                     args = {
                         'key': key, 'value': value_data
                     }
-                    return self.PacketType.ble_evt_flash_ps_key, args
+                    return PacketType.ble_evt_flash_ps_key, args
             elif packet_class == 2:
                 if packet_command == 0:  # ble_evt_attributes_value
                     log.debug(
@@ -1516,7 +1514,7 @@ class BGLib(object):
                         'handle': handle, 'offset': offset,
                         'value': value_data
                     }
-                    return self.PacketType.ble_evt_attributes_value, args
+                    return PacketType.ble_evt_attributes_value, args
                 # ble_evt_attributes_user_read_request
                 elif packet_command == 1:
                     log.debug(
@@ -1529,7 +1527,7 @@ class BGLib(object):
                         'connection': connection, 'handle': handle,
                         'offset': offset, 'maxsize': maxsize
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_attributes_user_read_request, args)
                 elif packet_command == 2:  # ble_evt_attributes_status
                     log.debug(
@@ -1538,7 +1536,7 @@ class BGLib(object):
                     args = {
                         'handle': handle, 'flags': flags
                     }
-                    return self.PacketType.ble_evt_attributes_status, args
+                    return PacketType.ble_evt_attributes_status, args
             elif packet_class == 3:
                 if packet_command == 0:  # ble_evt_connection_status
                     log.debug(
@@ -1551,7 +1549,7 @@ class BGLib(object):
                         'conn_interval': data[4], 'timeout': data[5],
                         'latency': data[6], 'bonding': data[7]
                     }
-                    return self.PacketType.ble_evt_connection_status, args
+                    return PacketType.ble_evt_connection_status, args
                 elif packet_command == 1:  # ble_evt_connection_version_ind
                     log.debug(
                         "received packet ble_evt_connection_version_ind")
@@ -1562,7 +1560,7 @@ class BGLib(object):
                         'connection': connection, 'vers_nr': vers_nr,
                         'comp_id': comp_id, 'sub_vers_nr': sub_vers_nr
                     }
-                    return self.PacketType.ble_evt_connection_version_ind, args
+                    return PacketType.ble_evt_connection_version_ind, args
                 elif packet_command == 2:  # ble_evt_connection_feature_ind
                     log.debug(
                         "received packet ble_evt_connection_feature_ind")
@@ -1574,7 +1572,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'features': features_data
                     }
-                    return self.PacketType.ble_evt_connection_feature_ind, args
+                    return PacketType.ble_evt_connection_feature_ind, args
                 elif packet_command == 3:  # ble_evt_connection_raw_rx
                     log.debug(
                         "received packet ble_evt_connection_raw_rx")
@@ -1585,7 +1583,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'data': data_data
                     }
-                    return self.PacketType.ble_evt_connection_raw_rx, args
+                    return PacketType.ble_evt_connection_raw_rx, args
                 elif packet_command == 4:  # ble_evt_connection_disconnected
                     log.debug(
                         "received packet ble_evt_connection_disconnected")
@@ -1595,7 +1593,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'reason': reason
                     }
-                    return self.PacketType.ble_evt_connection_disconnected, args
+                    return PacketType.ble_evt_connection_disconnected, args
             elif packet_class == 4:
                 if packet_command == 0:  # ble_evt_attclient_indicated
                     log.debug(
@@ -1606,7 +1604,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'attrhandle': attrhandle
                     }
-                    return self.PacketType.ble_evt_attclient_indicated, args
+                    return PacketType.ble_evt_attclient_indicated, args
                 # ble_evt_attclient_procedure_completed
                 elif packet_command == 1:
                     log.debug(
@@ -1619,7 +1617,7 @@ class BGLib(object):
                         'connection': connection, 'result': result,
                         'chrhandle': chrhandle
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_attclient_procedure_completed, args)
                 elif packet_command == 2:  # ble_evt_attclient_group_found
                     log.debug(
@@ -1632,7 +1630,7 @@ class BGLib(object):
                         'connection': connection, 'start': start,
                         'end': end, 'uuid': uuid_data
                     }
-                    return self.PacketType.ble_evt_attclient_group_found, args
+                    return PacketType.ble_evt_attclient_group_found, args
                 # ble_evt_attclient_attribute_found
                 elif packet_command == 3:
                     log.debug(
@@ -1644,7 +1642,7 @@ class BGLib(object):
                         'value': data[2], 'properties': data[3],
                         'uuid': uuid_data
                     }
-                    return (self.PacketType.ble_evt_attclient_attribute_found,
+                    return (PacketType.ble_evt_attclient_attribute_found,
                             args)
                 # ble_evt_attclient_find_information_found
                 elif packet_command == 4:
@@ -1659,7 +1657,7 @@ class BGLib(object):
                         'connection': connection, 'chrhandle': chrhandle,
                         'uuid': uuid_data
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_attclient_find_information_found, args)
                 # ble_evt_attclient_attribute_value
                 elif packet_command == 5:
@@ -1673,7 +1671,7 @@ class BGLib(object):
                         'connection': connection, 'atthandle': atthandle,
                         'type': type, 'value': value_data
                     }
-                    return (self.PacketType.ble_evt_attclient_attribute_value,
+                    return (PacketType.ble_evt_attclient_attribute_value,
                             args)
                 # ble_evt_attclient_read_multiple_response
                 elif packet_command == 6:
@@ -1688,7 +1686,7 @@ class BGLib(object):
                     args = {
                         'connection': connection, 'handles': handles_data
                     }
-                    return (self.PacketType.
+                    return (PacketType.
                             ble_evt_attclient_read_multiple_response, args)
             elif packet_class == 5:
                 if packet_command == 0:  # ble_evt_sm_smp_data
@@ -1702,7 +1700,7 @@ class BGLib(object):
                         'handle': handle, 'packet': packet,
                         'data': data_data
                     }
-                    return self.PacketType.ble_evt_sm_smp_data, args
+                    return PacketType.ble_evt_sm_smp_data, args
                 elif packet_command == 1:  # ble_evt_sm_bonding_fail
                     log.debug(
                         "received packet ble_evt_sm_bonding_fail")
@@ -1712,7 +1710,7 @@ class BGLib(object):
                     args = {
                         'handle': handle, 'result': result
                     }
-                    return self.PacketType.ble_evt_sm_bonding_fail, args
+                    return PacketType.ble_evt_sm_bonding_fail, args
                 elif packet_command == 2:  # ble_evt_sm_passkey_display
                     log.debug(
                         "received packet ble_evt_sm_passkey_display")
@@ -1722,7 +1720,7 @@ class BGLib(object):
                     args = {
                         'handle': handle, 'passkey': passkey
                     }
-                    return self.PacketType.ble_evt_sm_passkey_display, args
+                    return PacketType.ble_evt_sm_passkey_display, args
                 elif packet_command == 3:  # ble_evt_sm_passkey_request
                     log.debug(
                         "received packet ble_evt_sm_passkey_request")
@@ -1730,7 +1728,7 @@ class BGLib(object):
                     args = {
                         'handle': handle
                     }
-                    return self.PacketType.ble_evt_sm_passkey_request, args
+                    return PacketType.ble_evt_sm_passkey_request, args
                 elif packet_command == 4:  # ble_evt_sm_bond_status
                     log.debug(
                         "received packet ble_evt_sm_bond_status")
@@ -1741,7 +1739,7 @@ class BGLib(object):
                         'bond': bond, 'keysize': keysize, 'mitm': mitm,
                         'keys': keys
                     }
-                    return self.PacketType.ble_evt_sm_bond_status, args
+                    return PacketType.ble_evt_sm_bond_status, args
             elif packet_class == 6:
                 if packet_command == 0:  # ble_evt_gap_scan_response
                     log.debug(
@@ -1754,7 +1752,7 @@ class BGLib(object):
                         'sender': sender, 'address_type': data[3],
                         'bond': data[4], 'data': data_data
                     }
-                    return self.PacketType.ble_evt_gap_scan_response, args
+                    return PacketType.ble_evt_gap_scan_response, args
                 elif packet_command == 1:  # ble_evt_gap_mode_changed
                     log.debug(
                         "received packet ble_evt_gap_mode_changed")
@@ -1764,7 +1762,7 @@ class BGLib(object):
                     args = {
                         'discover': discover, 'connect': connect
                     }
-                    return self.PacketType.ble_evt_gap_mode_changed, args
+                    return PacketType.ble_evt_gap_mode_changed, args
             elif packet_class == 7:
                 if packet_command == 0:  # ble_evt_hardware_io_port_status
                     log.debug(
@@ -1776,7 +1774,7 @@ class BGLib(object):
                         'timestamp': timestamp, 'port': port, 'irq': irq,
                         'state': state
                     }
-                    return self.PacketType.ble_evt_hardware_io_port_status, args
+                    return PacketType.ble_evt_hardware_io_port_status, args
                 elif packet_command == 1:  # ble_evt_hardware_soft_timer
                     log.debug(
                         "received packet ble_evt_hardware_io_soft_timer")
@@ -1784,7 +1782,7 @@ class BGLib(object):
                     args = {
                         'handle': handle
                     }
-                    return self.PacketType.ble_evt_hardware_soft_timer, args
+                    return PacketType.ble_evt_hardware_soft_timer, args
                 elif packet_command == 2:  # ble_evt_hardware_adc_result
                     log.debug(
                         "received packet ble_evt_hardware_adc_result")
@@ -1792,4 +1790,4 @@ class BGLib(object):
                     args = {
                         'input': input, 'value': value
                     }
-                    return self.PacketType.ble_evt_hardware_adc_result, args
+                    return PacketType.ble_evt_hardware_adc_result, args
