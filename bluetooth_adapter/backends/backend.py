@@ -36,42 +36,42 @@ class BLEBackend(object):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: return connection object
     def connect(self, address):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def discover_attributes(self):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
-    def get_rssi(self, address, from_connection=False):
+    # TODO: pass in connection object
+    def get_rssi(self):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def encrypt(self):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def bond(self):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def attribute_read(self, attribute):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def attribute_write(self, attribute, value):
         log.error(ERROR)
         raise NotImplementedError()
 
-    # TODO: use connection object
+    # TODO: pass in connection object
     def subscribe(self, characteristic, notification, indication, callback):
         log.error(ERROR)
         raise NotImplementedError()

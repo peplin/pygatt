@@ -108,7 +108,6 @@ class BGAPIBackendTests(unittest.TestCase):
             self.address, ['connected', 'encrypted', 'parameters_change'])
         self.backend.bond()
 
-    @unittest.skip("FIXME")
     def test_get_rssi(self):
         """get_rssi general functionality."""
         self.mock_device.stage_start_packets()

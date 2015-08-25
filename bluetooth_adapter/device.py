@@ -40,13 +40,16 @@ class BleDevice(object):
         log.debug("Getting name %s", self._name)
         return self._name
 
+    # TODO: should this be split into two functions rather than having the
+    #       from connection option?
     def get_rssi(self, from_connection=False):
+        """Get the receiver signal strength indicator value (RSSI) in dBm."""
         log.debug("Getting RSSI from %s",
                   'connection' if from_connection else 'scan response')
-        raise NotImplementedError()
         rssi = None
         if from_connection:
-            raise NotImplementedError()
+            # TODO: pass in a connection object
+            rssi = self._backend.get_rssi()
         else:
             rssi = self._scan_response_rssi
         assert(rssi is not None)
