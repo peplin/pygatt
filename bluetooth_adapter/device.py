@@ -113,8 +113,7 @@ class BleDevice(object):
     def subscribe(self, characteristic, notifications=True, indications=False,
                   callback=None):
         log.debug("Subscribing to characteristic {0}".format(characteristic))
-        raise NotImplementedError()
         # TODO: pass in a connection object
-        self._backend.subscribe(characteristic, notifications,
-                                indications, callback)
+        self._backend.subscribe(characteristic, notifications=notifications,
+                                indications=indications, callback=callback)
         log.debug("Done subscribing")

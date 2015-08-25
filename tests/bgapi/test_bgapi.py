@@ -10,7 +10,6 @@ from bluetooth_adapter.backends.bgapi.constants import ConnectionStatusFlag
 from bluetooth_adapter import gatt
 
 from .mocker import MockBGAPISerialDevice
-from .util import uuid_to_bytearray
 
 
 class BGAPIBackendTests(unittest.TestCase):
@@ -185,28 +184,6 @@ class BGAPIBackendTests(unittest.TestCase):
         eq_('Hello!', devs[addr_0_str].name)
         eq_(-80, devs[addr_0_str].rssi)
 
-    def stage_subscribe_packets(self, uuid_char, handle_char,
-                                indications=False, connection_handle=0x00):
-        # TODO this is a candidate to move to the BGAPIBackendSpy, but why does
-        # it need to call get_handle on the backend? otherwise it would just
-        # generate its own fake ouput for the serial device.
-
-        # Stage get_handle packets
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self.mock_device.stage_get_handle_packets([
-            uuid_char, handle_char, uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char),
-                                         uuid_to_bytearray(uuid_desc))
-        # Stage char_write packets
-        if indications:
-            value = [0x02, 0x00]
-        else:
-            value = [0x01, 0x00]
-        self.mock_device.stage_char_write_packets(
-            handle, value, connection_handle=connection_handle)
-
-    @unittest.skip("FIXME")
     def test_subscribe_with_notify(self):
         """subscribe with notify general functionality."""
 
@@ -223,15 +200,21 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_run_packets()
         self.backend.start()
         self._connect()
-        # Test subscribe with indications
+        # Test subscribe with notifications
         packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
         my_handler = NotificationHandler(packet_values[0])
-        handle = 0x1234
-        uuid = '01234567-0123-0123-0123-0123456789AB'
-        self.stage_subscribe_packets(uuid, handle)
-        self.backend.subscribe(uuid, callback=my_handler.handle, indicate=True)
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
+                                   client_characteristic_configuration)
+        char.descriptors.append(desc)
+        self.mock_device.stage_attribute_write_packets(
+            desc.handle, [0x01, 0x00])
+        self.backend.subscribe(char, callback=my_handler.handle)
+
         start_time = time.time()
-        self.mock_device.stage_indication_packets(handle, packet_values)
+        self.mock_device.stage_notification_packets(char.handle, packet_values)
         while not my_handler.called.is_set():
             elapsed_time = start_time - time.time()
             if elapsed_time >= 5:

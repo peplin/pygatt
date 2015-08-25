@@ -365,7 +365,10 @@ class BGAPIBackend(BLEBackend):
         Raises BGAPIError or NotConnectedError on failure.
         """
         # Make sure there is NOT a connection
-        self._check_connection(check_if_connected=False)
+        # FIXME: because packets are processed in the process_packets until, if
+        #        we get disconnected when we aren't in a function call this
+        #        check will fail if we then try to reconnect...
+        # self._check_connection(check_if_connected=False)
 
         # Connect to the device
         bd_addr = [b for b in address]
@@ -726,7 +729,9 @@ class BGAPIBackend(BLEBackend):
 
         return self._devices_discovered
 
-    def subscribe(self, uuid, callback=None, indicate=False):
+    # TODO: pass in a connection object
+    def subscribe(self, characteristic, notifications=True, indications=False,
+                  callback=None):
         """
         Ask GATT server to receive notifications from the characteristic.
 
@@ -734,28 +739,39 @@ class BGAPIBackend(BLEBackend):
 
         uuid -- the uuid of the characteristic to subscribe to.
         callback -- funtion to call when notified/indicated.
-        indicate -- receive indications (requires application ACK) rather than
-                    notifications (does not require application ACK).
+        notifications -- receive notifications (does not require application
+                         ACK).
+        indications -- receive indications (requires application ACK).
 
         Raises BGAPIError on failure.
         """
+        assert(notifications or indications)
 
-        uuid_bytes = self._uuid_bytearray(uuid)
-        characteristic_handle = self.get_handle(uuid_bytes)
-        characteristic_config_handle = self.get_handle(
-            uuid_bytes,
-            gatt.GattCharacteristicDescriptor.
-            client_characteristic_configuration)
+        cccd = None
+        for d in characteristic.descriptors:
+            if (d.descriptor_type is gatt.GattCharacteristicDescriptor.
+                    client_characteristic_configuration):
+                cccd = d
+                break
+        if cccd is None:
+            raise BGAPIError(
+                "Cannot subscribe to {0}: no client characteristic "
+                "configuration descriptor found".format(characteristic))
 
-        # Subscribe to characteristic
-        config_val = [0x01, 0x00]  # Enable notifications 0x0001
-        if indicate:
-            config_val = [0x02, 0x00]  # Enable indications 0x0002
-        self.char_write(characteristic_config_handle, config_val)
+        config_byte = 0x00
+        if notifications:
+            config_byte |= 0x01
+        if indications:
+            config_byte |= 0x02
+
+        config_val = [config_byte, 0x00]
+        log.debug("config val = %s", str(config_val))
+        log.debug("cccd: %s", str(cccd))
+        self.attribute_write(cccd, config_val)
 
         if callback is not None:
             self._lock.acquire()
-            self._callbacks[characteristic_handle] = callback
+            self._callbacks[characteristic.handle] = callback
             self._lock.release()
 
     def stop(self):

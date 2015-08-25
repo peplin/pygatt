@@ -215,7 +215,7 @@ class MockBGAPISerialDevice(object):
             BGAPIPacketBuilder.attclient_procedure_completed(
                 connection_handle, 0x0000, handle))
 
-    def stage_indication_packets(
+    def stage_notification_packets(
             self, handle, packet_values, connection_handle=0x00):
         # Stage ble_evt_attclient_attribute_value
         for value in packet_values:
