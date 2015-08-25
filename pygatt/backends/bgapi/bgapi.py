@@ -5,7 +5,6 @@ import Queue
 import serial
 import time
 import threading
-import collections
 from binascii import hexlify, unhexlify
 
 from pygatt.constants import LOG_FORMAT, LOG_LEVEL
@@ -134,8 +133,7 @@ class BGAPIBackend(BLEBackend):
         self._encrypted = False  # connection is encrypted
         self._bond_expected = False  # tell bond_status handler to set _bonded
 
-        self._packet_handlers = collections.defaultdict(self._generic_handler)
-        self._packet_handlers.update({
+        self._packet_handlers = {
             ResponsePacketType.attclient_attribute_write: (
                 self._ble_rsp_attclient_attribute_write),
             ResponsePacketType.attclient_find_information: (
@@ -172,7 +170,7 @@ class BGAPIBackend(BLEBackend):
             EventPacketType.gap_scan_response: self._ble_evt_gap_scan_response,
             EventPacketType.sm_bond_status: self._ble_evt_sm_bond_status,
             EventPacketType.sm_bonding_fail: self._ble_evt_sm_bonding_fail,
-        })
+        }
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
         if run:
@@ -774,6 +772,10 @@ class BGAPIBackend(BLEBackend):
             packet_type, response = self._lib.decode_packet(packet)
             log.debug("Received a %s packet", packet_type)
 
+            if packet_type not in self._packet_handlers:
+                log.warn("Ignore unhandled packet type %s", packet_type)
+                continue
+
             self._packet_handlers[packet_type](response)
             return_code = response.get('result', 0)
             if packet_type in expected_packet_choices:
@@ -822,17 +824,6 @@ class BGAPIBackend(BLEBackend):
                         self._recvr_queue.put(packet, block=True, timeout=0.1)
 
         self._recvr_thread_is_done.set()
-
-    def _generic_handler(self, args):
-        """
-        Generic event/response handler. Used for receiving packets from the
-        interface that don't need any specific action taken.
-
-        args -- dictionary containing the parameters for the event/response
-                given in the Bluegia Bluetooth Smart Software API.
-        """
-        # TODO remove this handler
-        log.warn("Unhandled packet type.")
 
     def _ble_evt_attclient_attribute_value(self, args):
         """
