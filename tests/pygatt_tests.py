@@ -62,7 +62,7 @@ class SerialMock(object):
     #    self._expected_input_queue.put(next_input)
 
 
-class BLED112_BackendTests(unittest.TestCase):
+class BLED112_backendTests(unittest.TestCase):
     """
     Test the functionality of the BLED112Backend class.
     """
@@ -423,14 +423,14 @@ class BLED112_BackendTests(unittest.TestCase):
                 value=[len(val)+1]+val))
 
     # --------------------------- Tests ----------------------------------------
-    def test_create_BLED112_Backend(self):
+    def test_create_BLED112_backend(self):
         """__init__ general functionality."""
         bled112 = None
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
         assert(bled112 is not None)
 
-    def test_BLED112_Backend_run(self):
+    def test_bled112_backend_run(self):
         """run general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -441,7 +441,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_connect(self):
+    def test_bled112_backend_connect(self):
         """connect general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -456,7 +456,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_disconnect_when_connected(self):
+    def test_bled112_backend_disconnect_when_connected(self):
         """disconnect general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -473,7 +473,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_char_read(self):
+    def test_bled112_backend_char_read(self):
         """read general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -500,7 +500,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_char_write(self):
+    def test_bled112_backend_char_write(self):
         """char_write general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -526,7 +526,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_encrypt(self):
+    def test_bled112_backend_encrypt(self):
         """encrypt general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -544,7 +544,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_bond(self):
+    def test_bled112_backend_bond(self):
         """bond general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -563,7 +563,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_get_rssi(self):
+    def test_bled112_backend_get_rssi(self):
         """get_rssi general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -580,7 +580,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_get_handle(self):
+    def test_bled112_backend_get_handle(self):
         """get_handle general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -607,7 +607,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_scan_and_get_devices_discovered(self):
+    def test_bled112_backend_scan_and_get_devices_discovered(self):
         """scan/get_devices_discovered general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -636,7 +636,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_subscribe_with_notify(self):
+    def test_bled112_backend_subscribe_with_notify(self):
         """subscribe with notify general functionality."""
         class NotificationHandler(object):
             def __init__(self, expected_value_bytearray):
@@ -679,7 +679,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_delete_stored_bonds(self):
+    def test_bled112_backend_delete_stored_bonds(self):
         """delete_stored_bonds general functionality."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
@@ -693,7 +693,7 @@ class BLED112_BackendTests(unittest.TestCase):
         finally:
             bled112.stop()
 
-    def test_BLED112_Backend_delete_stored_bonds_disconnect(self):
+    def test_bled112_backend_delete_stored_bonds_disconnect(self):
         """delete_stored_bonds shouldn't abort if disconnected."""
         bled112 = BLED112Backend(
             serial_port='dummy', logfile=self.null_file, run=False)
