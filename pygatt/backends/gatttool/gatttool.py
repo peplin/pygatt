@@ -22,6 +22,8 @@ __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
 __copyright__ = 'Copyright 2015 Orion Labs'
 
+log = logging.getLogger(__name__)
+
 
 class GATTToolBackend(BLEBackend):
     """
@@ -40,15 +42,14 @@ class GATTToolBackend(BLEBackend):
         """
         # Set up logging
         self._loglock = threading.Lock()
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(loglevel)
+        log.setLevel(loglevel)
         if loghandler is None:
             loghandler = logging.StreamHandler()  # prints to stderr
             formatter = logging.Formatter(
                 '%(asctime)s %(name)s %(levelname)s - %(message)s')
             loghandler.setLevel(loglevel)
             loghandler.setFormatter(formatter)
-        self._logger.addHandler(loghandler)
+        log.addHandler(loghandler)
 
         # Internal state
         self._handles = {}
@@ -67,7 +68,7 @@ class GATTToolBackend(BLEBackend):
             hci_device,
             '-I'
         ])
-        self._logger.debug('gatttool_cmd=%s', gatttool_cmd)
+        log.debug('gatttool_cmd=%s', gatttool_cmd)
         self._con = pexpect.spawn(
             gatttool_cmd,
             logfile=gatttool_logfile if gatttool_logfile else None)
@@ -81,13 +82,13 @@ class GATTToolBackend(BLEBackend):
 
     def bond(self):
         """Securely Bonds to the BLE device."""
-        self._logger.info('Bonding')
+        log.info('Bonding')
         self._con.sendline('sec-level medium')
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
 
     def connect(self, address, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
-        self._logger.info('Connecting with timeout=%s', timeout)
+        log.info('Connecting with timeout=%s', timeout)
         self._address = address
         try:
             with self._connection_lock:
@@ -96,7 +97,7 @@ class GATTToolBackend(BLEBackend):
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."
                        % (self._address, timeout))
-            self._logger.error(message)
+            log.error(message)
             raise exceptions.NotConnectedError(message)
 
     def get_handle(self, uuid, descriptor_uuid=None):
@@ -107,7 +108,7 @@ class GATTToolBackend(BLEBackend):
         :return: None if the UUID was not found.
         """
         if uuid not in self._handles:
-            self._logger.debug("Looking up handle for characteristic %s", uuid)
+            log.debug("Looking up handle for characteristic %s", uuid)
             with self._connection_lock:
                 self._con.sendline('characteristics')
 
@@ -129,7 +130,7 @@ class GATTToolBackend(BLEBackend):
                             handle = int(self._con.match.group(1), 16)
                             char_uuid = self._con.match.group(2).strip()
                             self._handles[char_uuid] = handle
-                            self._logger.debug(
+                            log.debug(
                                 "Found characteristic %s, handle: %d",
                                 char_uuid,
                                 handle)
@@ -148,10 +149,10 @@ class GATTToolBackend(BLEBackend):
         handle = self._handles.get(uuid)
         if handle is None:
             message = "No characteristic found matching %s" % uuid
-            self._logger.warn(message)
+            log.warn(message)
             raise exceptions.BluetoothLEError(message)
 
-        self._logger.debug(
+        log.debug(
             "Characteristic %s, handle: %d", uuid, handle)
         return handle
 
@@ -188,7 +189,7 @@ class GATTToolBackend(BLEBackend):
                         if self._running:
                             message = ("Unexpectedly disconnected - do you "
                                        "need to clear bonds?")
-                            self._logger.error(message)
+                            log.error(message)
                             self._running = False
                         raise exceptions.NotConnectedError(message)
                 except pexpect.TIMEOUT:
@@ -217,17 +218,17 @@ class GATTToolBackend(BLEBackend):
 
             cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
 
-            self._logger.debug('Sending cmd=%s', cmd)
+            log.debug('Sending cmd=%s', cmd)
             self._con.sendline(cmd)
 
             if wait_for_response:
                 try:
                     self._expect('Characteristic value written successfully')
                 except exceptions.NoResponseError:
-                    self._logger.error("No response received", exc_info=True)
+                    log.error("No response received", exc_info=True)
                     raise
 
-            self._logger.info('Sent cmd=%s', cmd)
+            log.info('Sent cmd=%s', cmd)
 
     def char_read_uuid(self, uuid):
         """
@@ -270,7 +271,7 @@ class GATTToolBackend(BLEBackend):
         :return:
         :rtype:
         """
-        self._logger.info(
+        log.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
         definition_handle = self.get_handle(uuid)
@@ -296,10 +297,10 @@ class GATTToolBackend(BLEBackend):
                     properties,
                     wait_for_response=False
                 )
-                self._logger.debug("Subscribed to uuid=%s", uuid)
+                log.debug("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
             else:
-                self._logger.debug("Already subscribed to uuid=%s", uuid)
+                log.debug("Already subscribed to uuid=%s", uuid)
         finally:
             self._lock.release()
 
@@ -312,8 +313,8 @@ class GATTToolBackend(BLEBackend):
         handle = int(hex_handle, 16)
         value = bytearray.fromhex(hex_value)
 
-        self._logger.info('Received notification on handle=%s, value=%s',
-                          hex_handle, hex_value)
+        log.info('Received notification on handle=%s, value=%s',
+                 hex_handle, hex_value)
         try:
             self._lock.acquire()
 
@@ -328,7 +329,7 @@ class GATTToolBackend(BLEBackend):
         Stop the backgroud notification handler in preparation for a
         disconnect.
         """
-        self._logger.info('Stopping')
+        log.info('Stopping')
         self._running = False
 
         if self._con.isalive():
@@ -343,7 +344,7 @@ class GATTToolBackend(BLEBackend):
         """
         Run a background thread to listen for notifications.
         """
-        self._logger.info('Running...')
+        log.info('Running...')
         while self._running:
             with self._connection_lock:
                 try:
@@ -356,4 +357,4 @@ class GATTToolBackend(BLEBackend):
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request
             time.sleep(.01)
-        self._logger.info("Listener thread finished")
+        log.info("Listener thread finished")

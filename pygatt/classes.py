@@ -5,6 +5,8 @@ import logging
 from constants import DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
 from pygatt.backends import GATTToolBackend
 
+log = logging.getLogger(__name__)
+
 
 class BluetoothLEDevice(object):
     """
@@ -31,9 +33,7 @@ class BluetoothLEDevice(object):
         self._backend = backend
         self._mac_address = mac_address
 
-        # Set up logging
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(LOG_LEVEL)
+        log.setLevel(LOG_LEVEL)
         if logfile is not None:
             handler = logging.FileHandler(logfile)
         else:  # print to stderr
@@ -41,14 +41,14 @@ class BluetoothLEDevice(object):
         formatter = logging.Formatter(fmt=LOG_FORMAT)
         handler.setLevel(LOG_LEVEL)
         handler.setFormatter(formatter)
-        self._logger.addHandler(handler)
+        log.addHandler(handler)
 
     def bond(self):
         """
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.
         """
-        self._logger.info("bond")
+        log.info("bond")
         self._backend.bond()
 
     def connect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
@@ -63,7 +63,7 @@ class BluetoothLEDevice(object):
             my_ble_device.connect(timeout=5)
 
         """
-        self._logger.info("connect")
+        log.info("connect")
         self._backend.connect(self._mac_address, timeout=timeout)
 
     def char_read(self, uuid):
@@ -78,7 +78,7 @@ class BluetoothLEDevice(object):
         Example:
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
-        self._logger.info("char_read %s", uuid)
+        log.info("char_read %s", uuid)
         return self._backend.char_read_uuid(uuid)
 
     def char_write(self, uuid, value, wait_for_response=False):
@@ -93,7 +93,7 @@ class BluetoothLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        self._logger.info("char_write %s", uuid)
+        log.info("char_write %s", uuid)
         handle = self._backend.get_handle(uuid)
         self._backend.char_write(handle, value,
                                  wait_for_response=wait_for_response)
@@ -102,7 +102,7 @@ class BluetoothLEDevice(object):
         """
         Form an encrypted, but not bonded, connection.
         """
-        self._logger.info("encrypt")
+        log.info("encrypt")
         self._backend.encrypt()
 
     def get_rssi(self):
@@ -113,14 +113,14 @@ class BluetoothLEDevice(object):
         Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
-        self._logger.info("get_rssi")
+        log.info("get_rssi")
         return self._backend.get_rssi()
 
     def run(self):
         """
         Run a background thread to listen for notifications (GATTTOOL only).
         """
-        self._logger.info("run")
+        log.info("run")
         # TODO This is an odd architecture, why does the backend have to bleed
         # up to this level?
         if isinstance(self._backend, GATTToolBackend):
@@ -130,7 +130,7 @@ class BluetoothLEDevice(object):
         """
         Stop the any background threads and disconnect.
         """
-        self._logger.info("stop")
+        log.info("stop")
         self._backend.stop()
 
     def subscribe(self, uuid, callback=None, indication=False):
@@ -143,6 +143,6 @@ class BluetoothLEDevice(object):
         indication -- use indications (requires application ACK) rather than
                       notifications (does not requrie application ACK).
         """
-        self._logger.info("subscribe to %s with callback %s. indicate = %d",
-                          uuid, callback.__name__, indication)
+        log.info("subscribe to %s with callback %s. indicate = %d",
+                 uuid, callback.__name__, indication)
         self._backend.subscribe(uuid, callback=callback, indication=indication)
