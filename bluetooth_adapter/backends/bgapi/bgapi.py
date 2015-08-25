@@ -22,26 +22,6 @@ class BGAPIError(BluetoothLEError):
     pass
 
 
-class Characteristic(object):
-    """
-    GATT characteristic. For internal use within BGAPIBackend.
-    """
-    def __init__(self, name, handle):
-        """
-        Sets the characteritic name and handle.
-        """
-        self.handle = handle  # bytearray
-        self.descriptors = {
-            # uuid_string: handle
-        }
-
-    def add_descriptor(self, uuid, handle):
-        """
-        Add a characteristic descriptor to the dictionary of descriptors.
-        """
-        self.descriptors[uuid] = handle
-
-
 class AdvertisingAndScanInfo(object):
     """
     Holds the advertising and scan response packet data from a device at a given
