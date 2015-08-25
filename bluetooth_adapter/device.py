@@ -106,7 +106,6 @@ class BleDevice(object):
     def char_write(self, characteristic, value_bytearray):
         log.debug("Writing value {0} to characteristic {1}"
                   .format(value_bytearray, characteristic))
-        raise NotImplementedError()
         # TODO: pass in a connection object
         self._backend.attribute_write(characteristic, value_bytearray)
         log.debug("Done writing")

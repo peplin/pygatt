@@ -250,20 +250,18 @@ class BGAPIBackend(BLEBackend):
             self._logger.warn(warning)
             raise BGAPIError(warning)
 
-    def char_write(self, handle, value, wait_for_response=False):
+    # TODO: pass in a connection object
+    def attribute_write(self, attribute, value):
         """
         Write a value to a characteristic on the device.
 
         This requires that a connection is already extablished with the device.
 
-        handle -- the characteristic/descriptor handle (integer) to write to.
+        attribute -- GattCharacteristic or GattDescriptor object to write to.
         value -- a bytearray holding the value to write.
 
         Raises BGAPIError on failure.
         """
-        if wait_for_response:
-            raise NotImplementedError("bgapi subscribe wait for response")
-
         # Make sure there is a connection
         self._check_connection()
 
@@ -271,7 +269,7 @@ class BGAPIBackend(BLEBackend):
         value_list = [b for b in value]
         self._logger.info("attribute_write")
         cmd = self._lib.ble_cmd_attclient_attribute_write(
-            self._connection_handle, handle, value_list)
+            self._connection_handle, attribute.handle, value_list)
         self._lib.send_command(self._ser, cmd)
 
         # Wait for response

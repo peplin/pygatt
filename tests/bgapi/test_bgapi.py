@@ -69,28 +69,24 @@ class BGAPIBackendTests(unittest.TestCase):
         # Test char_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self.mock_device.stage_char_read_packets(
-            0x02, 0x00, expected_value)
+            char.handle, 0x00, expected_value)
         value = self.backend.attribute_read(char)
         eq_(value, bytearray(expected_value))
 
-    @unittest.skip("FIXME")
-    def test_char_write(self):
-        """char_write general functionality."""
+    def test_attribute_write(self):
+        """attribute_write general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         self._connect()
-        uuid_char = '01234567-0123-0123-0123-0123456789AB'
-        handle_char = 0x1234
-        uuid_desc = '2902'
-        handle_desc = 0x5678
-        self.mock_device.stage_get_handle_packets([
-            uuid_char, handle_char,
-            uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char))
+
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+
         # Test char_write
         value = [0xF0, 0x0F, 0x00]
-        self.mock_device.stage_char_write_packets(handle, value)
-        self.backend.char_write(handle, bytearray(value))
+        self.mock_device.stage_char_write_packets(char.handle, value)
+        self.backend.attribute_write(char, bytearray(value))
 
     @unittest.skip("FIXME")
     def test_encrypt(self):
