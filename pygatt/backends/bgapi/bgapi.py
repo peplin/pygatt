@@ -22,6 +22,12 @@ class BGAPIError(BluetoothLEError):
     pass
 
 
+class ExpectedResponseTimeout(BGAPIError):
+    def __init__(self, expected_packets, timeout):
+        super(ExpectedResponseTimeout, self).__init__(
+            "Timed out after %d waiting for %s" % (timeout, expected_packets))
+
+
 class Characteristic(object):
     """
     GATT characteristic. For internal use within BGAPIBackend.
@@ -395,9 +401,11 @@ class BGAPIBackend(BLEBackend):
                      get_return_message(self._response_return))
             raise BGAPIError("Connection command failed")
 
-        self.expect(self._lib.PacketType.ble_evt_connection_status,
-                    timeout=timeout,
-                    exception_type=NotConnectedError)
+        try:
+            self.expect(self._lib.PacketType.ble_evt_connection_status,
+                        timeout=timeout)
+        except ExpectedResponseTimeout:
+            raise NotConnectedError()
 
     def delete_stored_bonds(self):
         """
@@ -883,8 +891,7 @@ class BGAPIBackend(BLEBackend):
     def expect(self, expected, *args, **kargs):
         return self.expect_any([expected], *args, **kargs)
 
-    def expect_any(self, expected_packet_choices, timeout=None,
-                   exception_type=BGAPIError):
+    def expect_any(self, expected_packet_choices, timeout=None):
         """
         Process packets until a packet of one of the expected types is found.
 
@@ -893,13 +900,8 @@ class BGAPIBackend(BLEBackend):
                                    the list, this function will return.
         timeout -- maximum time in seconds to process packets.
 
-        exception_type -- the type of exception to raise if a timeout occurs.
-
-        TODO This is odd - the function should raise a context-specific
-            exception, and the caller is free to catch and raise a different
-            exception.
-
-        Raises an exception of exception_type if a timeout occurs.
+        Raises an ExpectedResponseTimeout if one of the expected responses is
+            not receiving withint the time limit.
         """
         epc_str = ""
         for pt in expected_packet_choices:
@@ -920,8 +922,8 @@ class BGAPIBackend(BLEBackend):
                 if timeout is not None:
                     elapsed_time = time.time() - start_time
                     if elapsed_time >= timeout:
-                        raise exception_type(
-                            "timed out after %d seconds" % elapsed_time)
+                        raise ExpectedResponseTimeout(expected_packet_choices,
+                                                      elapsed_time)
                     continue
 
             # Process packet
