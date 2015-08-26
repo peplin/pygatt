@@ -3,6 +3,7 @@ from mock import Mock, patch
 import unittest
 
 from bluetooth_adapter import BleDevice
+from bluetooth_adapter import gatt
 
 
 class BleDeviceTest(unittest.TestCase):
@@ -67,3 +68,23 @@ class BleDeviceTest(unittest.TestCase):
         dev.connect()
         dev.disconnect()
         ok_(self.mock_backend.disconnect.called)
+
+    def test_list_services(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+
+        services = []
+        serv = gatt.GattService(0x01, gatt.GattAttributeType.primary_service)
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
+                                   client_characteristic_configuration)
+        char.descriptors.append(desc)
+        serv.characteristics.append(char)
+        services.append(serv)
+
+        self.mock_backend.discover_attributes.return_value = services
+        service_list = dev.list_services()
+        eq_(service_list, services)
