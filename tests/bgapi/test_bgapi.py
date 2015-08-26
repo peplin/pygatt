@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from nose.tools import eq_, assert_in
+from nose.tools import eq_, ok_
 import unittest
 import threading
 import time
@@ -151,7 +151,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
         self.backend.scan()
         devs = self.backend.get_devices_discovered()
-        assert_in(addr_0_str, devs)
+        ok_(addr_0_str in devs)
         eq_('Hello!', devs[addr_0_str].name)
         eq_(-80, devs[addr_0_str].rssi)
 
