@@ -88,3 +88,17 @@ class BleDeviceTest(unittest.TestCase):
         self.mock_backend.discover_attributes.return_value = services
         service_list = dev.list_services()
         eq_(service_list, services)
+
+    def test_encrypt(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+        dev.encrypt()
+        ok_(self.mock_backend.encrypt.called)
+
+    def test_bond(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+        dev.bond()
+        ok_(self.mock_backend.bond.called)
