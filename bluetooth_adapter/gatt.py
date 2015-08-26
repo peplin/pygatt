@@ -38,7 +38,7 @@ class GattAttribute(object):
     def __repr__(self):
         return ("<{0}.{1} object at {2}: attribute_type={3} handle={4} "
                 "uuid={5}>"
-                .format(self.__module__, self.__class__.__name__, id(self),
+                .format(self.__module__, self.__class__.__name__, hex(id(self)),
                         self.attribute_type, self.handle, self.uuid))
 
 
@@ -60,12 +60,26 @@ class Characteristic(GattAttribute):
         self.characteristic_type = characteristic_type
         self.descriptors = []
 
+    def __repr__(self):
+        return ("<{0}.{1} object at {2}: attribute_type={3} handle={4} "
+                "uuid={5} characteristic_type={6}>"
+                .format(self.__module__, self.__class__.__name__, hex(id(self)),
+                        self.attribute_type, self.handle, self.uuid,
+                        self.characteristic_type))
+
 
 class Descriptor(GattAttribute):
 
     def __init__(self, handle, uuid=None, descriptor_type=None):
         super(Descriptor, self).__init__(None, handle, uuid=uuid)
         self.descriptor_type = descriptor_type
+
+    def __repr__(self):
+        return ("<{0}.{1} object at {2}: attribute_type={3} handle={4} "
+                "uuid={5} descriptor_type={6}>"
+                .format(self.__module__, self.__class__.__name__, hex(id(self)),
+                        self.attribute_type, self.handle, self.uuid,
+                        self.descriptor_type))
 
 
 AttributeType = Enum('AttributeType', [

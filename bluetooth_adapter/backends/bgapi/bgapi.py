@@ -779,7 +779,7 @@ class BGAPIBackend(BLEBackend):
 
         cccd = None
         for d in characteristic.descriptors:
-            if (d.descriptor_type ==
+            if (d.descriptor_type is
                     gatt.DescriptorType.client_characteristic_configuration):
                 cccd = d
                 break
@@ -1064,10 +1064,12 @@ class BGAPIBackend(BLEBackend):
 
         if len(uuid) == 128:
             log.debug('Custom 128-bit UUID')
-            char = gatt.Characteristic(args['chrhandle'], uuid=uuid,
-                                       custom=True)
-            log.debug(char)
-            self._services[-1].characteristics.append(char)
+            # TODO: Clean this up because it is hacky an weird because I don't
+            #       fully understand the order in which find_information_found
+            #       events arrive and I can't find it documented clearly.
+            self._services[-1].characteristics[-1].custom = True
+            self._services[-1].characteristics[-1].uuid = uuid
+            self._services[-1].characteristics[-1].handle = args['chrhandle']
 
         elif str(uuid) in gatt.UUID_STRING_TO_ATTRIBUTE_TYPE:
             att_type = gatt.UUID_STRING_TO_ATTRIBUTE_TYPE[str(uuid)]
@@ -1105,7 +1107,8 @@ class BGAPIBackend(BLEBackend):
             desc_type = gatt.UUID_STRING_TO_DESCRIPTOR_TYPE[str(uuid)]
             log.debug(desc_type)
 
-            desc = gatt.Descriptor(args['chrhandle'])
+            desc = gatt.Descriptor(args['chrhandle'], uuid=uuid,
+                                   descriptor_type=desc_type)
             self._services[-1].characteristics[-1].descriptors.append(desc)
             log.debug("added descriptor to {0}".format(
                 self._services[-1].characteristics[-1]))
@@ -1237,10 +1240,11 @@ class BGAPIBackend(BLEBackend):
                 'packet_data': {},
             }
         dev = self._devices_discovered[address]
+        if dev['name'] == '':
+            dev['name'] = name
         if (packet_type not in dev['packet_data']) or\
                 len(dev['packet_data'][packet_type]) < len(data_dict):
             dev['packet_data'][packet_type] = data_dict
-        # FIXME name sometimes comes out as '' so replace it
 
         log.debug("rssi = %d dBm", args['rssi'])
         log.debug("packet type = %s", packet_type)

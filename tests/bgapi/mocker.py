@@ -1,5 +1,6 @@
 from mock import patch
 
+from bluetooth_adapter import gatt
 from tests.serial_mock import SerialMock
 
 from .packets import BGAPIPacketBuilder
@@ -167,6 +168,17 @@ class MockBGAPISerialDevice(object):
                     (u+list(reversed(
                         [ord(b) for b in s.uuid.to_bytearray()])))))
             for c in s.characteristics:
+                if len(c.uuid) == 128:
+                    # Send a gatt.AttributeType uuid and handle first
+                    uuid = gatt.ATTRIBUTE_TYPE_NAME_TO_UUID[
+                        gatt.AttributeType.characteristic.name]
+                    u = [len(uuid.to_bytearray()) + 1]
+                    self.mocked_serial.stage_output(
+                        BGAPIPacketBuilder.
+                        ble_evt_attclient_find_information_found(
+                            connection_handle, 0x00,
+                            (u+list(reversed([
+                                ord(b) for b in uuid.to_bytearray()])))))
                 u = [len(c.uuid.to_bytearray()) + 1]
                 self.mocked_serial.stage_output(
                     BGAPIPacketBuilder.ble_evt_attclient_find_information_found(
