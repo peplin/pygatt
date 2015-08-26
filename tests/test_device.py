@@ -54,3 +54,16 @@ class BleDeviceTest(unittest.TestCase):
         self.mock_backend.get_rssi.return_value = expected_rssi
         rssi = dev.get_rssi(from_connection=True)
         eq_(rssi, expected_rssi)
+
+    def test_connect(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+        ok_(self.mock_backend.connect.called)
+
+    def test_disconnect(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+        dev.disconnect()
+        ok_(self.mock_backend.disconnect.called)
