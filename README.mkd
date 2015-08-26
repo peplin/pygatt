@@ -9,6 +9,8 @@ pygatt provides a Pythonic API by wrapping two different backends:
 * BlueZ's `gatttool` command-line utility.
 * Bluegiga's BGAPI, compatble with dongles like the BLED112.
 
+Requires Python 2.7.
+
 ## Motivation
 
 Despite the popularilty of BLE, we have yet to find a good programming interface
