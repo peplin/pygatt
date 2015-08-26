@@ -761,10 +761,9 @@ class BGAPIBackend(BLEBackend):
             log.debug("Received a %s packet with return code: %s",
                       packet_type, get_return_message(return_code))
 
-            if packet_type not in self._packet_handlers:
-                log.warn("Ignore unhandled packet type %s", packet_type)
-            else:
+            if packet_type in self._packet_handlers:
                 self._packet_handlers[packet_type](response)
+
             if packet_type in expected_packet_choices:
                 if assert_return_success and return_code != 0:
                     exc = BGAPIError(
