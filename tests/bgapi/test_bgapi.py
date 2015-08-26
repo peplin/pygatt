@@ -181,8 +181,8 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
         devs = self.backend.scan()
         assert_in(addr_0_str, devs)
-        eq_('Hello!', devs[addr_0_str].name)
-        eq_(-80, devs[addr_0_str].rssi)
+        eq_('Hello!', devs[addr_0_str]['name'])
+        eq_(-80, devs[addr_0_str]['rssi'])
 
     def test_subscribe_with_notify(self):
         """subscribe with notify general functionality."""

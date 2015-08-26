@@ -71,8 +71,8 @@ class BluetoothAdapter(object):
         scan_results = self._backend.scan(scan_time=scan_time_seconds*1000)
         devs = []
         for addr, d in scan_results.iteritems():
-            devs.append(BleDevice(self._backend, addr, name=d.name,
-                                  scan_response_rssi=d.rssi))
+            devs.append(BleDevice(self._backend, addr, name=d['name'],
+                                  scan_response_rssi=d['rssi']))
         log.debug("Devices found: {0}".format(devs))
         return devs
 

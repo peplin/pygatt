@@ -22,20 +22,6 @@ class BGAPIError(BluetoothLEError):
     pass
 
 
-class AdvertisingAndScanInfo(object):
-    """
-    Holds the advertising and scan response packet data from a device at a given
-    address.
-    """
-    def __init__(self):
-        self.name = ""
-        self.address = ""
-        self.rssi = None
-        self.packet_data = {
-            # scan_response_packet_type[xxx]: data_dictionary,
-        }
-
-
 class BGAPIBackend(BLEBackend):
     """
     Pygatt BLE device backend using a Bluegiga BGAPI compatible dongle.
@@ -75,7 +61,11 @@ class BGAPIBackend(BLEBackend):
         self._stored_bonds = []  # bond handles stored on the dongle
         self._connection_handle = 0x00  # handle for the device connection
         self._devices_discovered = {
-            # 'address': AdvertisingAndScanInfo,
+            # 'address': {
+            #    'name': the name of the device,
+            #    'address': the device mac address,
+            #    'rssi': the scan response rssi value,
+            #    'packet_data': a dictionary of packet data,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
         self._attribute_value = None  # attribute_value event value
@@ -1241,16 +1231,16 @@ class BGAPIBackend(BLEBackend):
 
         # Store device information
         if address not in self._devices_discovered:
-            self._devices_discovered[address] = AdvertisingAndScanInfo()
+            self._devices_discovered[address] = {
+                'name': name,
+                'address': address,
+                'rssi': args['rssi'],
+                'packet_data': {},
+            }
         dev = self._devices_discovered[address]
-        if dev.name == "":
-            dev.name = name
-        if dev.address == "":
-            dev.address = address
-        if (packet_type not in dev.packet_data) or\
-                len(dev.packet_data[packet_type]) < len(data_dict):
-            dev.packet_data[packet_type] = data_dict
-        dev.rssi = args['rssi']
+        if (packet_type not in dev['packet_data']) or\
+                len(dev['packet_data'][packet_type]) < len(data_dict):
+            dev['packet_data'][packet_type] = data_dict
 
         log.debug("rssi = %d dBm", args['rssi'])
         log.debug("packet type = %s", packet_type)
