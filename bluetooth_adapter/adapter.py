@@ -44,20 +44,26 @@ class BluetoothAdapter(object):
         log.debug("Resetting BluetoothAdapter")
         self._require_enabled()
         raise NotImplementedError()
-        self._backend.stop()
-        self._backend.start()
+        # TODO: This will probably mean that the backend needs a reset method
         log.debug("BluetoothAdapter reset")
 
     def list_bonds(self):
         log.debug("Listing bonds")
         self._require_enabled()
-        raise NotImplementedError()
-        log.debug("Bonds: {0}".format([]))  # TODO actually log bonds
+        bonds = self._backend.list_bonds()
+        log.debug("Bonds: {0}".format(bonds))  # TODO actually log bonds
+        return bonds
 
-    def clear_bonds(self):
+    def clear_bond(self, bond):
+        log.debug("Clearing bond {0}".format(bond))
+        self._require_enabled()
+        self._backend.clear_bond(bond)
+        log.debug("Bond cleared")
+
+    def clear_all_bonds(self):
         log.debug("Clearing bonds")
         self._require_enabled()
-        raise NotImplementedError()
+        self._backend.clear_all_bonds()
         log.debug("Bonds cleared")
 
     def scan(self, scan_time_seconds=1):
@@ -79,7 +85,8 @@ class BluetoothAdapter(object):
         log.debug("BluetoothAdapter was enabled")
 
     # TODO: this factory method should probably be moved to a backend related
-    #       file (BluetoothAdapter shouldn't have to know how to make a backend)
+    #       file (BluetoothAdapter shouldn't have to know how to create all of
+    #       the different backend types).
     def _get_backend(self, backend):
         log.debug("Getting backend instance for %s", backend.name)
         backend_instance = None
