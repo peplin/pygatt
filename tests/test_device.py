@@ -127,3 +127,16 @@ class BleDeviceTest(unittest.TestCase):
                 '01234567-0123-0123-0123-0123456789AB'))
         dev.char_write(char, value)
         self.mock_backend.attribute_write.assert_called_once_with(char, value)
+
+    def test_subscribe(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+        dev.subscribe(char, notifications=True, indications=False,
+                      callback=None)
+        self.mock_backend.subscribe.assert_called_once_with(
+            char, notifications=True, indications=False, callback=None)
