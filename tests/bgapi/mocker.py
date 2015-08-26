@@ -160,32 +160,27 @@ class MockBGAPISerialDevice(object):
 
         # Stage ble_evt_attclient_find_information_found
         for s in services:
-            u = [len(s.service_type.value.bytearray) + 1]
+            u = [len(s.uuid.to_bytearray()) + 1]
             self.mocked_serial.stage_output(
                 BGAPIPacketBuilder.ble_evt_attclient_find_information_found(
                     connection_handle, s.handle,
                     (u+list(reversed(
-                        [ord(b) for b in s.service_type.value.bytearray])))))
+                        [ord(b) for b in s.uuid.to_bytearray()])))))
             for c in s.characteristics:
-                uuid = None
-                if c.custom_128_bit_uuid is not None:
-                    uuid = c.custom_128_bit_uuid
-                else:
-                    uuid = c.characteristic_type.value
-                u = [len(uuid.bytearray) + 1]
+                u = [len(c.uuid.to_bytearray()) + 1]
                 self.mocked_serial.stage_output(
                     BGAPIPacketBuilder.ble_evt_attclient_find_information_found(
                         connection_handle, c.handle,
-                        (u+list(reversed([ord(b) for b in uuid.bytearray])))))
+                        (u+list(reversed([
+                            ord(b) for b in c.uuid.to_bytearray()])))))
                 for d in c.descriptors:
-                    u = [len(d.descriptor_type.value.bytearray) + 1]
+                    u = [len(d.uuid.to_bytearray()) + 1]
                     self.mocked_serial.stage_output(
                         BGAPIPacketBuilder.
                         ble_evt_attclient_find_information_found(
                             connection_handle, d.handle,
                             (u+list(reversed(
-                                [ord(b) for b in d.descriptor_type.value.
-                                 bytearray])))))
+                                [ord(b) for b in d.uuid.to_bytearray()])))))
 
         # Stage ble_evt_attclient_procedure_completed (success)
         self.mocked_serial.stage_output(

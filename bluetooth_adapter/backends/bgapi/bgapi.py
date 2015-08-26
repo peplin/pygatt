@@ -230,7 +230,7 @@ class BGAPIBackend(BLEBackend):
 
         This requires that a connection is already extablished with the device.
 
-        attribute -- GattCharacteristic or GattDescriptor object to write to.
+        attribute -- Characteristic or Descriptor object to write to.
         value -- a bytearray holding the value to write.
 
         Raises BGAPIError on failure.
@@ -277,7 +277,7 @@ class BGAPIBackend(BLEBackend):
 
         This requires that a connection is already established with the device.
 
-        attribute -- the GattCharacteristic or GattDescriptor object to read.
+        attribute -- the Characteristic or Descriptor object to read.
 
         Returns a bytearray containing the value read, on success.
         Raised BGAPIError on failure.
@@ -779,8 +779,8 @@ class BGAPIBackend(BLEBackend):
 
         cccd = None
         for d in characteristic.descriptors:
-            if (d.descriptor_type is gatt.GattCharacteristicDescriptor.
-                    client_characteristic_configuration):
+            if (d.descriptor_type ==
+                    gatt.DescriptorType.client_characteristic_configuration):
                 cccd = d
                 break
         if cccd is None:
@@ -1033,6 +1033,10 @@ class BGAPIBackend(BLEBackend):
         log.debug("attribute value = %s",
                   hexlify(bytearray(args['value'])))
 
+    # TODO: I think that actually I am sort of misinterpreting the way the
+    #       information comes in... Run this with DEBUG log levels and take
+    #       a look. Specifically with the service uuids...
+    #       The code is still functional though.
     def _ble_evt_attclient_find_information_found(self, args):
         """
         Handles the event for attribute discovery.
@@ -1056,63 +1060,58 @@ class BGAPIBackend(BLEBackend):
         log.debug("_ble_evt_attclient_find_information_found")
         log.debug("connection handle = %s", hex(args['connection']))
         log.debug("characteristic handle = %s", hex(args['chrhandle']))
-        log.debug("characteristic UUID = %s", uuid.string)
+        log.debug("characteristic UUID = %s", str(uuid))
 
-        if len(uuid.string) == 32:  # 32 hex digits --> 128-bit
+        if len(uuid) == 128:
             log.debug('Custom 128-bit UUID')
-            char = gatt.GattCharacteristic(args['chrhandle'],
-                                           custom_128_bit_uuid=uuid)
+            char = gatt.Characteristic(args['chrhandle'], uuid=uuid,
+                                       custom=True)
             log.debug(char)
             self._services[-1].characteristics.append(char)
-            return
 
-        if uuid == gatt.GattAttributeType.characteristic.value:
-            log.debug(gatt.GattAttributeType.characteristic.name)
-            char = gatt.GattCharacteristic(args['chrhandle'])
-            log.debug(char)
-            self._services[-1].characteristics.append(char)
-            return
+        elif str(uuid) in gatt.UUID_STRING_TO_ATTRIBUTE_TYPE:
+            att_type = gatt.UUID_STRING_TO_ATTRIBUTE_TYPE[str(uuid)]
+            log.debug(att_type)
 
-        if (uuid == gatt.GattAttributeType.primary_service.value):
-            log.debug(gatt.GattAttributeType.primary_service.name)
-            serv = gatt.GattService(args['chrhandle'],
-                                    gatt.GattAttributeType.primary_service)
-            log.debug(serv)
-            self._services.append(serv)
-            return
+            if att_type is gatt.AttributeType.characteristic:
+                char = gatt.Characteristic(args['chrhandle'], uuid=uuid)
+                log.debug(char)
+                self._services[-1].characteristics.append(char)
 
-        if (uuid == gatt.GattAttributeType.secondary_service.value):
-            log.debug(gatt.GattAttributeType.secondary_service.name)
-            serv = gatt.GattService(args['chrhandle'],
-                                    gatt.GattAttributeType.secondary_service)
-            log.debug(serv)
-            self._services.append(serv)
-            return
+            elif att_type is gatt.AttributeType.primary_service:
+                serv = gatt.Service(args['chrhandle'], uuid=uuid)
+                log.debug(serv)
+                self._services.append(serv)
 
-        for u in gatt.GattCharacteristicType:
-            if u.value == uuid:
-                log.debug('%s: %s', u.__class__.__name__, u.name)
-                self._services[-1].characteristics[-1].characteristic_type = u
-                log.debug("added type to {0}".format(
-                    self._services[-1].characteristics[-1]))
-                return
+            elif att_type is gatt.AttributeType.secondary_service:
+                serv = gatt.Service(args['chrhandle'], uuid=uuid,
+                                    secondary=True)
+                log.debug(serv)
+                self._services.append(serv)
 
-        for u in gatt.GattCharacteristicDescriptor:
-            if u.value == uuid:
-                log.debug('%s: %s', u.__class__.__name__, u.name)
-                desc = gatt.GattDescriptor(args['chrhandle'], u)
-                self._services[-1].characteristics[-1].descriptors.append(desc)
-                log.debug("added descriptor to {0}".format(
-                    self._services[-1].characteristics[-1]))
-                return
+            else:
+                log.warning('Ignoring unhandled attribute type %s',
+                            str(att_type))
 
-        # Unhandled known attribute types
-        for u in gatt.GattAttributeType:
-            if u.value == uuid:
-                log.warning('Unhandled: %s %s', u.__class__.__name__, u.name)
-                return
+        elif str(uuid) in gatt.UUID_STRING_TO_CHARACTERISTIC_TYPE:
+            char_type = gatt.UUID_STRING_TO_CHARACTERISTIC_TYPE[str(uuid)]
+            log.debug(char_type)
+            self._services[-1].characteristics[-1].characteristic_type =\
+                char_type
+            log.debug("added type to {0}".format(
+                self._services[-1].characteristics[-1]))
 
-        log.warning('Ignoring unrecognized UUID %s', uuid.string)
+        elif str(uuid) in gatt.UUID_STRING_TO_DESCRIPTOR_TYPE:
+            desc_type = gatt.UUID_STRING_TO_DESCRIPTOR_TYPE[str(uuid)]
+            log.debug(desc_type)
+
+            desc = gatt.Descriptor(args['chrhandle'])
+            self._services[-1].characteristics[-1].descriptors.append(desc)
+            log.debug("added descriptor to {0}".format(
+                self._services[-1].characteristics[-1]))
+
+        else:
+            log.warning('Ignoring unrecognized UUID %s', str(uuid))
 
     def _ble_evt_attclient_procedure_completed(self, args):
         """
@@ -1241,6 +1240,7 @@ class BGAPIBackend(BLEBackend):
         if (packet_type not in dev['packet_data']) or\
                 len(dev['packet_data'][packet_type]) < len(data_dict):
             dev['packet_data'][packet_type] = data_dict
+        # FIXME name sometimes comes out as '' so replace it
 
         log.debug("rssi = %d dBm", args['rssi'])
         log.debug("packet type = %s", packet_type)

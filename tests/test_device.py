@@ -75,12 +75,12 @@ class BleDeviceTest(unittest.TestCase):
         dev.connect()
 
         services = []
-        serv = gatt.GattService(0x01, gatt.GattAttributeType.primary_service)
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
-        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
-                                   client_characteristic_configuration)
+        serv = gatt.Service(0x01)
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
+        desc = gatt.Descriptor(
+            0x03, descriptor_type=gatt.DescriptorType
+            .client_characteristic_configuration)
         char.descriptors.append(desc)
         serv.characteristics.append(char)
         services.append(serv)
@@ -109,9 +109,8 @@ class BleDeviceTest(unittest.TestCase):
         dev.connect()
 
         expected_value_bytearray = bytearray([0x00, 0x01, 0x02, 0x03, 0x04])
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
         self.mock_backend.attribute_read.return_value = expected_value_bytearray
         value = dev.char_read(char)
         eq_(value, expected_value_bytearray)
@@ -122,9 +121,8 @@ class BleDeviceTest(unittest.TestCase):
         dev.connect()
 
         value = bytearray([0x00, 0x01, 0x02, 0x03, 0x04])
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
         dev.char_write(char, value)
         self.mock_backend.attribute_write.assert_called_once_with(char, value)
 
@@ -133,9 +131,8 @@ class BleDeviceTest(unittest.TestCase):
                         scan_response_rssi=-72)
         dev.connect()
 
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
         dev.subscribe(char, notifications=True, indications=False,
                       callback=None)
         self.mock_backend.subscribe.assert_called_once_with(

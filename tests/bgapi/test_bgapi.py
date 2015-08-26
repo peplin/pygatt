@@ -61,9 +61,8 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.start()
         self._connect()
 
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
 
         # Test attribute_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
@@ -78,9 +77,8 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.start()
         self._connect()
 
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
 
         # Test attribute_write
         value = [0xF0, 0x0F, 0x00]
@@ -125,12 +123,15 @@ class BGAPIBackendTests(unittest.TestCase):
         self._connect()
 
         services = []
-        serv = gatt.GattService(0x01, gatt.GattAttributeType.primary_service)
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
-        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
-                                   client_characteristic_configuration)
+        serv_uuid = gatt.ATTRIBUTE_TYPE_NAME_TO_UUID[
+            gatt.AttributeType.primary_service.name]
+        serv = gatt.Service(0x01, uuid=serv_uuid)
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
+        desc_type = gatt.DescriptorType.client_characteristic_configuration
+        desc = gatt.Descriptor(
+            0x03, uuid=gatt.DESCRIPTOR_TYPE_NAME_TO_UUID[desc_type.name],
+            descriptor_type=desc_type)
         char.descriptors.append(desc)
         serv.characteristics.append(char)
         services.append(serv)
@@ -144,15 +145,13 @@ class BGAPIBackendTests(unittest.TestCase):
             serv = services[i]
             serv_d = discovered_services[i]
             eq_(serv.handle, serv_d.handle)
-            eq_(serv.service_type, serv_d.service_type)
             eq_(len(serv.characteristics),
                 len(serv_d.characteristics))
             for j in range(len(serv.characteristics)):
                 char = serv.characteristics[j]
                 char_d = serv_d.characteristics[j]
                 eq_(char.handle, char_d.handle)
-                eq_(char.characteristic_type, char_d.characteristic_type)
-                eq_(char.custom_128_bit_uuid, char_d.custom_128_bit_uuid)
+                eq_(char.uuid, char.uuid)
                 eq_(len(char.descriptors),
                     len(char_d.descriptors))
                 for k in range(len(char.descriptors)):
@@ -203,11 +202,10 @@ class BGAPIBackendTests(unittest.TestCase):
         # Test subscribe with notifications
         packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
         my_handler = NotificationHandler(packet_values[0])
-        char = gatt.GattCharacteristic(
-            0x02, custom_128_bit_uuid=gatt.Uuid(
-                '01234567-0123-0123-0123-0123456789AB'))
-        desc = gatt.GattDescriptor(0x03, gatt.GattCharacteristicDescriptor.
-                                   client_characteristic_configuration)
+        char = gatt.Characteristic(
+            0x02, uuid=gatt.Uuid('01234567-0123-0123-0123-0123456789AB'))
+        desc = gatt.Descriptor(0x03, descriptor_type=gatt.DescriptorType.
+                               client_characteristic_configuration)
         char.descriptors.append(desc)
         self.mock_device.stage_attribute_write_packets(
             desc.handle, [0x01, 0x00])
