@@ -31,3 +31,10 @@ class BleDeviceTest(unittest.TestCase):
                         scan_response_rssi='-80')
         name = dev.get_name()
         eq_(name, expected_name)
+
+    def test_get_mac_address(self):
+        expected_mac = '01:23:45:67:89:AB'
+        dev = BleDevice(Mock(), expected_mac, name='Foobar',
+                        scan_response_rssi='-80')
+        mac = dev.get_mac_address()
+        eq_(mac, expected_mac)
