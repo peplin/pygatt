@@ -40,3 +40,20 @@ class BluetoothAdapterTest(unittest.TestCase):
         bonds = adapter.list_bonds()
         eq_(bonds, self.EXAMPLE_BONDS)
         adapter.disable()
+
+    def test_clear_bond(self):
+        self.mock_bgapi_backend.clear_bond.return_value = Mock()
+        adapter = BluetoothAdapter(BackendEnum.bgapi)
+        adapter.enable()
+        bond = 0xEF
+        adapter.clear_bond(bond)
+        self.mock_bgapi_backend.clear_bond.assert_called_once_with(bond)
+        adapter.disable()
+
+    def test_clear_all_bonds(self):
+        self.mock_bgapi_backend.clear_all_bonds.return_value = Mock()
+        adapter = BluetoothAdapter(BackendEnum.bgapi)
+        adapter.enable()
+        adapter.clear_all_bonds()
+        ok_(self.mock_bgapi_backend.clear_all_bonds.called)
+        adapter.disable()
