@@ -9,6 +9,24 @@ from bluetooth_adapter.backends import BackendEnum
 class BluetoothAdapterTest(unittest.TestCase):
 
     EXAMPLE_BONDS = [0x00, 0x01, 0x02, 0x03, 0x04]
+    EXAMPLE_SCAN_DICT = {
+        '01:23:45:67:89:AB': {
+            'name': 'Device_1',
+            'address': '01:23:45:67:89:AB',
+            'rssi': -65,
+        },
+        'BE:EF:15:F0:0D:11': {
+            'name': 'Device_2',
+            'address': 'BE:EF:15:F0:0D:11',
+            'rssi': -75,
+        },
+        'FF:FF:FF:FF:FF:FF': {
+            'name': 'Device_3',
+            'address': 'FF:FF:FF:FF:FF:FF',
+            'rssi': -100,
+        },
+    }
+
     mock_bgapi_backend = Mock()
 
     def make_patch(self, *args, **kwargs):
@@ -56,4 +74,17 @@ class BluetoothAdapterTest(unittest.TestCase):
         adapter.enable()
         adapter.clear_all_bonds()
         ok_(self.mock_bgapi_backend.clear_all_bonds.called)
+        adapter.disable()
+
+    def test_scan(self):
+        self.mock_bgapi_backend.scan.return_value = self.EXAMPLE_SCAN_DICT
+        adapter = BluetoothAdapter(BackendEnum.bgapi)
+        adapter.enable()
+        devices = adapter.scan()
+        for d in devices:
+            address = d.get_mac_address()
+            ok_(address in self.EXAMPLE_SCAN_DICT)
+            dev_dict = self.EXAMPLE_SCAN_DICT[address]
+            eq_(d.get_name(), dev_dict['name'])
+            eq_(d.get_rssi(from_connection=False), dev_dict['rssi'])
         adapter.disable()
