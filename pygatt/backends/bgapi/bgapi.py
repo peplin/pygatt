@@ -967,11 +967,6 @@ class BGAPIBackend(BLEBackend):
         packet_type = constants.scan_response_packet_type[args['packet_type']]
         address = ":".join(list(reversed(
             [format(b, '02x') for b in args['sender']])))
-        address_type = "unknown"
-        for name, value in constants.ble_address_type.iteritems():
-            if value == args['address_type']:
-                address_type = name
-                break
         name, data_dict = self._scan_rsp_data(args['data'])
 
         # Store device information
@@ -986,12 +981,9 @@ class BGAPIBackend(BLEBackend):
                 len(dev.packet_data[packet_type]) < len(data_dict)):
             dev.packet_data[packet_type] = data_dict
         dev.rssi = args['rssi']
-
-        log.debug("rssi = %d dBm", args['rssi'])
-        log.debug("packet type = %s", packet_type)
-        log.info("sender address = %s", address)
-        log.debug("address type = %s", address_type)
-        log.debug("data %s", str(data_dict))
+        log.info("Received a scan response from %s with rssi=%d dBM "
+                 "and data=%s",
+                 address, args['rssi'], data_dict)
 
     def _ble_evt_sm_bond_status(self, args):
         """
