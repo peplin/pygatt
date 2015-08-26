@@ -115,3 +115,15 @@ class BleDeviceTest(unittest.TestCase):
         self.mock_backend.attribute_read.return_value = expected_value_bytearray
         value = dev.char_read(char)
         eq_(value, expected_value_bytearray)
+
+    def test_char_write(self):
+        dev = BleDevice(self.mock_backend, '01:23:45:67:89:AB', name='Foobar',
+                        scan_response_rssi=-72)
+        dev.connect()
+
+        value = bytearray([0x00, 0x01, 0x02, 0x03, 0x04])
+        char = gatt.GattCharacteristic(
+            0x02, custom_128_bit_uuid=gatt.Uuid(
+                '01234567-0123-0123-0123-0123456789AB'))
+        dev.char_write(char, value)
+        self.mock_backend.attribute_write.assert_called_once_with(char, value)
