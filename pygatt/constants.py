@@ -1,14 +1,8 @@
-import logging
-
-
 """
 Constants for pygatt Module.
 """
 
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
-
+import logging
 
 # Logging
 LOG_LEVEL = logging.DEBUG

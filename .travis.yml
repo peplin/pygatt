@@ -1,9 +1,11 @@
 language: python
-
+sudo: false
 python:
-  - "2.6"
-  - "2.7"
-
-install: make
-
-script: make test
+- '2.7'
+cache:
+  directories:
+  - $HOME/.cache/pip
+  - .tox
+install:
+  - pip install tox
+script: tox --recreate

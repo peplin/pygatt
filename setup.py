@@ -3,9 +3,8 @@ import sys
 
 __title__ = 'pygatt'
 __version__ = '1.0.1'
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
+__license__ = 'Apache License, Version 2.0 and MIT License'
+__copyright__ = 'Copyright 2015 Stratos Inc. and Orion Labs'
 
 try:
     from setuptools import setup
@@ -23,7 +22,7 @@ def publish():
 publish()
 
 setup(
-    name='pygatt',
+    name=__title__,
     version=__version__,
     description='Python GATT Module',
     author='Greg Albrecht <gba@orionlabs.co',
@@ -34,7 +33,8 @@ setup(
     long_description=open('README.mkd').read(),
     url='https://github.com/ampledata/pygatt',
     install_requires=[
-        'pyserial'
+        'pyserial',
+        'enum34'
     ],
     extras_require={
         'GATTTOOL': ["pexpect"],

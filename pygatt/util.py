@@ -13,17 +13,7 @@ except Exception as e:
 
 from exceptions import BluetoothLEError
 
-
-"""
-MODIFIED Utils for pygatt Module.
-"""
-
-__author__ = 'Greg Albrecht <gba@orionlabs.co>'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015 Orion Labs'
-
-
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # TODO since adding support for multiple backends, the interface in this
 # utilities module got a little weird. we need to create an abstraction for a
@@ -70,7 +60,7 @@ def lescan(timeout=5, use_sudo=True, bled112=None):
         if use_sudo:
             cmd = 'sudo %s' % cmd
 
-        logger.info("Starting BLE scan")
+        log.info("Starting BLE scan")
         scan = pexpect.spawn(cmd)
         # "lescan" doesn't exit, so we're forcing a timeout here:
         try:
@@ -79,7 +69,7 @@ def lescan(timeout=5, use_sudo=True, bled112=None):
             message = "Unexpected error when scanning"
             if "No such device" in scan.before:
                 message = "No BLE adapter found"
-            logger.error(message)
+            log.error(message)
             raise BluetoothLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
@@ -96,16 +86,16 @@ def lescan(timeout=5, use_sudo=True, bled112=None):
                     if address in devices:
                         if (devices[address]['name'] is None) and (name is not
                                                                    None):
-                            logger.info("Discovered name of %s as %s",
-                                        address, name)
+                            log.info("Discovered name of %s as %s",
+                                     address, name)
                             devices[address]['name'] = name
                     else:
-                        logger.info("Discovered %s (%s)", address, name)
+                        log.info("Discovered %s (%s)", address, name)
                         devices[address] = {
                             'address': address,
                             'name': name
                         }
-            logger.info("Found %d BLE devices", len(devices))
+            log.info("Found %d BLE devices", len(devices))
             return [device for device in devices.values()]
         return []
     else:  # BLED112

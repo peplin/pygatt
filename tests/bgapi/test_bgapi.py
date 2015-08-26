@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from nose.tools import eq_, assert_in
+from nose.tools import eq_, ok_
 import unittest
 import threading
 import time
@@ -37,18 +37,15 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.connect(self.address_string)
 
     def test_run_backend(self):
-        """run general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
 
     def test_connect(self):
-        """connect general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
 
     def test_disconnect_when_connected(self):
-        """disconnect general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -57,7 +54,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.disconnect()
 
     def test_char_read(self):
-        """read general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -77,7 +73,6 @@ class BGAPIBackendTests(unittest.TestCase):
         assert(value == bytearray(expected_value))
 
     def test_char_write(self):
-        """char_write general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -95,7 +90,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.char_write(handle, bytearray(value))
 
     def test_encrypt(self):
-        """encrypt general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -105,7 +99,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.encrypt()
 
     def test_bond(self):
-        """bond general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -114,7 +107,6 @@ class BGAPIBackendTests(unittest.TestCase):
         self.backend.bond()
 
     def test_get_rssi(self):
-        """get_rssi general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -123,7 +115,6 @@ class BGAPIBackendTests(unittest.TestCase):
         assert(self.backend.get_rssi() == -80)
 
     def test_get_handle(self):
-        """get_handle general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         self._connect()
@@ -142,7 +133,6 @@ class BGAPIBackendTests(unittest.TestCase):
         assert(handle == handle_desc)
 
     def test_scan_and_get_devices_discovered(self):
-        """scan/get_devices_discovered general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         # Test scan
@@ -161,7 +151,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
         self.backend.scan()
         devs = self.backend.get_devices_discovered()
-        assert_in(addr_0_str, devs)
+        ok_(addr_0_str in devs)
         eq_('Hello!', devs[addr_0_str].name)
         eq_(-80, devs[addr_0_str].rssi)
 
@@ -187,8 +177,6 @@ class BGAPIBackendTests(unittest.TestCase):
             handle, value, connection_handle=connection_handle)
 
     def test_subscribe_with_notify(self):
-        """subscribe with notify general functionality."""
-
         class NotificationHandler(object):
             def __init__(self, expected_value_bytearray):
                 self.expected_value_bytearray = expected_value_bytearray
@@ -222,7 +210,6 @@ class BGAPIBackendTests(unittest.TestCase):
                my_handler.received_value_bytearray)
 
     def test_delete_stored_bonds(self):
-        """delete_stored_bonds general functionality."""
         self.mock_device.stage_run_packets()
         self.backend.run()
         # Test delete stored bonds

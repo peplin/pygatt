@@ -32,14 +32,5 @@ clean:
 publish:
 	python setup.py register sdist upload
 
-nosetests:
-	python setup.py nosetests
-
-pep8: install_requirements
-	flake8 --max-complexity 12 --exit-zero pygatt/*.py tests/*.py
-
-lint: install_requirements
-	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
-		-r n pygatt/*.py tests/*.py || exit 0
-
-test: lint pep8 nosetests
+test:
+	tox

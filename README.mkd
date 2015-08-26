@@ -9,6 +9,8 @@ pygatt provides a Pythonic API by wrapping two different backends:
 * BlueZ's `gatttool` command-line utility.
 * Bluegiga's BGAPI, compatble with dongles like the BLED112.
 
+Requires Python 2.7.
+
 ## Motivation
 
 Despite the popularilty of BLE, we have yet to find a good programming interface
@@ -89,10 +91,11 @@ backend, install the optional dependencies with:
 - Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
 - Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
+
 Derived from the work of several others, see NOTICE.
 
 ## License
 
-Copyright 2015 Stratos Inc.
+Copyright 2015 Stratos Inc. and Orion Labs
 
 Apache License, Version 2.0 and MIT License. See LICENSE.
