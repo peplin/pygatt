@@ -6,7 +6,7 @@ from bluetooth_adapter.backends import BackendEnum
 
 def main():
     """
-    Basic example of how to use the Bluetooth Adapter methods. This example
+    Basic example of how to use the BluetoothAdapter methods. This example
     uses the BGAPIBackend.
     """
     click.secho("Creating BluetoothAdapter", fg='green')
