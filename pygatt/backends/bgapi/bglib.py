@@ -384,7 +384,6 @@ class BGLib(object):
             # TODO unrecognized packet, log something?
             return
 
-        log.info("Received response packet %s", packet_type)
         response = {}
         if packet_type == ResponsePacketType.system_address_get:
             address = unpack('<6s', payload[:6])[0]
@@ -624,7 +623,6 @@ class BGLib(object):
             # TODO unrecognized packet, log something?
             return
 
-        log.info("Received event packet %s", packet_type)
         response = {}
         if packet_type == EventPacketType.system_boot:
             data = unpack('<HHHHHBB', payload[:12])
