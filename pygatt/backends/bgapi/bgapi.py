@@ -134,19 +134,6 @@ class BGAPIBackend(BLEBackend):
         self._bond_expected = False  # tell bond_status handler to set _bonded
 
         self._packet_handlers = {
-            ResponsePacketType.attclient_attribute_write: (
-                self._ble_rsp_attclient_attribute_write),
-            ResponsePacketType.attclient_find_information: (
-                self._ble_rsp_attclient_find_information),
-            ResponsePacketType.attclient_read_by_handle: (
-                self._ble_rsp_attclient_read_by_handle),
-            ResponsePacketType.connection_disconnect: (
-                self._ble_rsp_connection_disconnect),
-            ResponsePacketType.connection_get_rssi: (
-                self._ble_rsp_connection_get_rssi),
-            ResponsePacketType.gap_connect_direct: (
-                self._ble_rsp_gap_connect_direct),
-            ResponsePacketType.sm_encrypt_start: self._ble_rsp_sm_encrypt_start,
             ResponsePacketType.sm_get_bonds: self._ble_rsp_sm_get_bonds,
             EventPacketType.attclient_attribute_value: (
                 self._ble_evt_attclient_attribute_value),
@@ -758,8 +745,10 @@ class BGAPIBackend(BLEBackend):
 
             packet_type, response = self._lib.decode_packet(packet)
             return_code = response.get('result', 0)
-            log.debug("Received a %s packet with return code: %s",
-                      packet_type, get_return_message(return_code))
+            log.debug("Received a %s packet "
+                      "(status: %s, connection handle: %x)",
+                      packet_type, get_return_message(return_code),
+                      response.get('connection_handle', 0))
 
             if packet_type in self._packet_handlers:
                 self._packet_handlers[packet_type](response)
@@ -815,11 +804,9 @@ class BGAPIBackend(BLEBackend):
         """
         Handles the event for values of characteristics.
 
-        args -- dictionary containing the connection handle ('connection'),
-                attribute handle ('atthandle'), attribute type ('type'),
-                and attribute value ('value')
+        args -- dictionary containing the attribute handle ('atthandle'),
+        attribute type ('type'), and attribute value ('value')
         """
-        log.debug("connection handle = %x", args['connection'])
         log.debug("attribute handle = %x", args['atthandle'])
         log.debug("attribute type = %x", args['type'])
         log.debug("attribute value = 0x%s", hexlify(bytearray(args['value'])))
@@ -838,14 +825,12 @@ class BGAPIBackend(BLEBackend):
         4) 0 or more descriptors
         5) repeat steps 3-4
 
-        args -- dictionary containing the connection handle ('connection'),
-                characteristic handle ('chrhandle'), and characteristic UUID
-                ('uuid')
+        args -- dictionary containing the characteristic handle ('chrhandle'),
+        and characteristic UUID ('uuid')
         """
         uuid = bytearray(list(reversed(args['uuid'])))
         uuid_str = "0x"+hexlify(uuid)
 
-        log.debug("connection handle = %s", hex(args['connection']))
         log.debug("characteristic handle = %s", hex(args['chrhandle']))
         log.debug("characteristic UUID = %s", uuid_str)
 
@@ -866,10 +851,9 @@ class BGAPIBackend(BLEBackend):
         """
         Handles the event for completion of writes to remote device.
 
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('result'), characteristic handle ('chrhandle')
+        args -- dictionary containing the return code ('result'), characteristic
+        handle ('chrhandle')
         """
-        log.debug("connection handle = %s", hex(args['connection']))
         log.debug("characteristic handle = %s", hex(args['chrhandle']))
         log.info("return code = %s",
                  get_return_message(args['result']))
@@ -877,17 +861,7 @@ class BGAPIBackend(BLEBackend):
     def _ble_evt_connection_disconnected(self, args):
         """
         Handles the event for the termination of a connection.
-
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('reason')
         """
-        msg = "disconnected by local user"
-        if args['reason'] != 0:
-            msg = get_return_message(args['reason'])
-
-        log.debug("connection handle = %s", hex(args['connection']))
-        log.info("return code = %s", msg)
-
         self._connected = False
         self._encrypted = False
         self._bonded = False
@@ -897,13 +871,13 @@ class BGAPIBackend(BLEBackend):
         """
         Handles the event for reporting connection parameters.
 
-        args -- dictionary containing the connection handle ('connection'),
-                connection status flags ('flags'), device address ('address'),
-                device address type ('address_type'), connection interval
-                ('conn_interval'), connection timeout (timeout'), device latency
-                ('latency'), device bond handle ('bonding')
+        args -- dictionary containing the connection status flags ('flags'),
+            device address ('address'), device address type ('address_type'),
+            connection interval ('conn_interval'), connection timeout
+            (timeout'), device latency ('latency'), device bond handle
+            ('bonding')
         """
-        self._connection_handle = args['connection']
+        self._connection_handle = args['connection_handle']
         flags = ""
         if self._connection_status_flag(
                 args['flags'], constants.connection_status_flag['connected']):
@@ -921,7 +895,7 @@ class BGAPIBackend(BLEBackend):
                 constants.connection_status_flag['parameters_change']):
             flags += 'parameters_change, '
 
-        log.debug("connection = %s", hex(args['connection']))
+        log.debug("connection = %s", hex(args['connection_handle']))
         log.info("flags = %s", flags)
         addr_str = "0x"+hexlify(bytearray(args['address']))
         log.debug("address = %s", addr_str)
@@ -996,69 +970,6 @@ class BGAPIBackend(BLEBackend):
         log.debug("man in the middle = %d", args['mitm'])
         log.debug("keys = %s", hex(args['keys']))
 
-    def _ble_rsp_attclient_attribute_write(self, args):
-        """
-        Handles the response for writing values of characteristics.
-
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('result')
-        """
-        log.debug("connection handle = %s", hex(args['connection']))
-
-    def _ble_rsp_attclient_find_information(self, args):
-        """
-        Handles the response for characteristic discovery. Note that this only
-        indicates success or failure. The find_information_found event contains
-        the characteristic/descriptor information.
-
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('result')
-        """
-
-        log.debug("connection handle = %s", hex(args['connection']))
-
-    def _ble_rsp_attclient_read_by_handle(self, args):
-        """
-        Handles the response for characteristic reads. Note that this only
-        indicates success or failure. The attribute_value event contains the
-        characteristic value.
-
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('result')
-        """
-        log.debug("connection handle = %s", hex(args['connection']))
-
-    def _ble_rsp_connection_disconnect(self, args):
-        """
-        Handles the response for connection disconnection.
-
-        args -- dictionary containing the connection handle ('connection'),
-                return code ('result')
-        """
-        log.debug("connection handle = %s", hex(args['connection']))
-
-    def _ble_rsp_connection_get_rssi(self, args):
-        """
-        Handles the response that contains the RSSI for the connection.
-
-        args -- dictionary containing the connection handle ('connection'),
-                receiver signal strength indicator ('rssi')
-        """
-        log.debug("connection handle = %s", hex(args['connection']))
-        log.debug("rssi = %d", args['rssi'])
-
-    def _ble_rsp_gap_connect_direct(self, args):
-        """
-        Handles the response for direct connection to a device. Note that this
-        only indicates success or failure of the initiation of the command. The
-        the connection will not have been established until an advertising
-        packet from the device is received and the connection_status received.
-
-        args -- dictionary containing the connection handle
-                ('connection_handle'), return code ('result')
-        """
-        log.debug("connection handle = %s", hex(args['connection_handle']))
-
     def _ble_rsp_sm_delete_bonding(self, args):
         """
         Handles the response for the deletion of a stored bond.
@@ -1070,15 +981,6 @@ class BGAPIBackend(BLEBackend):
             self._stored_bonds.pop()
         return result
 
-    def _ble_rsp_sm_encrypt_start(self, args):
-        """
-        Handles the response for the start of an encrypted connection.
-
-        args -- dictionary containing the connection handle ('handle'),
-                return code ('result')
-        """
-        log.debug("connection handle = %x", args['handle'])
-
     def _ble_rsp_sm_get_bonds(self, args):
         """
         Handles the response for the start of stored bond enumeration. Sets
@@ -1087,7 +989,6 @@ class BGAPIBackend(BLEBackend):
         args -- dictionary containing the number of stored bonds ('bonds),
         """
         self._num_bonds = args['bonds']
-
         log.info("num bonds = %d", args['bonds'])
 
     def _uuid_bytearray(self, uuid):

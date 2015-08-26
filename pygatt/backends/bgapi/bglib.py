@@ -509,14 +509,14 @@ class BGLib(object):
                 '<BH', payload[:3]
             )
             response = {
-                'connection': connection, 'result': result
+                'connection_handle': connection, 'result': result
             }
         elif packet_type == ResponsePacketType.connection_get_rssi:
             connection, rssi = unpack(
                 '<Bb', payload[:2]
             )
             response = {
-                'connection': connection, 'rssi': rssi
+                'connection_handle': connection, 'rssi': rssi
             }
         elif packet_type == ResponsePacketType.connection_channel_map_get:
             connection, map_len = unpack(
@@ -524,17 +524,17 @@ class BGLib(object):
             )
             map_data = [ord(b) for b in payload[2:]]
             response = {
-                'connection': connection, 'map': map_data
+                'connection_handle': connection, 'map': map_data
             }
         elif packet_type == ResponsePacketType.connection_get_status:
             connection = unpack('<B', payload[:1])[0]
             response = {
-                'connection': connection
+                'connection_handle': connection
             }
         elif packet_type == ResponsePacketType.connection_raw_tx:
             connection = unpack('<B', payload[:1])[0]
             response = {
-                'connection': connection
+                'connection_handle': connection
             }
         elif packet_type == ResponsePacketType.sm_encrypt_start:
             handle, result = unpack(
@@ -665,7 +665,7 @@ class BGLib(object):
             )
             value_data = [ord(b) for b in payload[7:]]
             response = {
-                'connection': connection, 'reason': reason,
+                'connection_handle': connection, 'reason': reason,
                 'handle': handle, 'offset': offset,
                 'value': value_data
             }
@@ -674,7 +674,7 @@ class BGLib(object):
                 '<BHHB', payload[:6]
             )
             response = {
-                'connection': connection, 'handle': handle,
+                'connection_handle': connection, 'handle': handle,
                 'offset': offset, 'maxsize': maxsize
             }
         elif packet_type == EventPacketType.attributes_status:
@@ -686,7 +686,7 @@ class BGLib(object):
             data = unpack('<BB6sBHHHB', payload[:16])
             address = [ord(b) for b in data[2]]
             response = {
-                'connection': data[0], 'flags': data[1],
+                'connection_handle': data[0], 'flags': data[1],
                 'address': address, 'address_type': data[3],
                 'conn_interval': data[4], 'timeout': data[5],
                 'latency': data[6], 'bonding': data[7]
@@ -696,7 +696,7 @@ class BGLib(object):
                 '<BBHH', payload[:6]
             )
             response = {
-                'connection': connection, 'vers_nr': vers_nr,
+                'connection_handle': connection, 'vers_nr': vers_nr,
                 'comp_id': comp_id, 'sub_vers_nr': sub_vers_nr
             }
         elif packet_type == EventPacketType.connection_feature_ind:
@@ -706,7 +706,7 @@ class BGLib(object):
             features_data =\
                 [ord(b) for b in payload[2:]]
             response = {
-                'connection': connection, 'features': features_data
+                'connection_handle': connection, 'features': features_data
             }
         elif packet_type == EventPacketType.connection_raw_rx:
             connection, data_len = unpack(
@@ -714,28 +714,28 @@ class BGLib(object):
             )
             data_data = [ord(b) for b in payload[2:]]
             response = {
-                'connection': connection, 'data': data_data
+                'connection_handle': connection, 'data': data_data
             }
         elif packet_type == EventPacketType.connection_disconnected:
             connection, reason = unpack(
                 '<BH', payload[:3]
             )
             response = {
-                'connection': connection, 'reason': reason
+                'connection_handle': connection, 'reason': reason
             }
         elif packet_type == EventPacketType.attclient_indicated:
             connection, attrhandle = unpack(
                 '<BH', payload[:3]
             )
             response = {
-                'connection': connection, 'attrhandle': attrhandle
+                'connection_handle': connection, 'attrhandle': attrhandle
             }
         elif packet_type == EventPacketType.attclient_procedure_completed:
             connection, result, chrhandle = unpack(
                 '<BHH', payload[:5]
             )
             response = {
-                'connection': connection, 'result': result,
+                'connection_handle': connection, 'result': result,
                 'chrhandle': chrhandle
             }
         elif packet_type == EventPacketType.attclient_group_found:
@@ -744,14 +744,14 @@ class BGLib(object):
             )
             uuid_data = [ord(b) for b in payload[6:]]
             response = {
-                'connection': connection, 'start': start,
+                'connection_handle': connection, 'start': start,
                 'end': end, 'uuid': uuid_data
             }
         elif packet_type == EventPacketType.attclient_attribute_found:
             data = unpack('<BHHBB', payload[:7])
             uuid_data = [ord(b) for b in payload[7:]]
             response = {
-                'connection': data[0], 'chrdecl': data[1],
+                'connection_handle': data[0], 'chrdecl': data[1],
                 'value': data[2], 'properties': data[3],
                 'uuid': uuid_data
             }
@@ -761,7 +761,7 @@ class BGLib(object):
             )
             uuid_data = [ord(b) for b in payload[4:]]
             response = {
-                'connection': connection, 'chrhandle': chrhandle,
+                'connection_handle': connection, 'chrhandle': chrhandle,
                 'uuid': uuid_data
             }
         elif packet_type == EventPacketType.attclient_attribute_value:
@@ -770,7 +770,7 @@ class BGLib(object):
             )
             value_data = [ord(b) for b in payload[5:]]
             response = {
-                'connection': connection, 'atthandle': atthandle,
+                'connection_handle': connection, 'atthandle': atthandle,
                 'type': type, 'value': value_data
             }
         elif packet_type == EventPacketType.attclient_read_multiple_response:
@@ -780,7 +780,7 @@ class BGLib(object):
             handles_data =\
                 [ord(b) for b in payload[2:]]
             response = {
-                'connection': connection, 'handles': handles_data
+                'connection_handle': connection, 'handles': handles_data
             }
         elif packet_type == EventPacketType.sm_smp_data:
             handle, packet, data_len = unpack(
