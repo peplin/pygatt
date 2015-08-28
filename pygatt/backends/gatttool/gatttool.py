@@ -95,6 +95,8 @@ class GATTToolBackend(BLEBackend):
             log.error(message)
             raise exceptions.NotConnectedError(message)
 
+    # FIXME: use gatttool char-desc and parse the complete output to correctly
+    #        identify the profile structure
     def get_handle(self, uuid, descriptor_uuid=None):
         """
         Look up and return the handle for an attribute by its UUID.
@@ -191,6 +193,9 @@ class GATTToolBackend(BLEBackend):
                     raise exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
 
+    # TODO: this might be better named attribute write since it can write to
+    #       characteristics, descriptors, or any other writable attribute with
+    #       a valid handle
     def char_write(self, handle, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
@@ -201,6 +206,7 @@ class GATTToolBackend(BLEBackend):
         with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
 
+            # FIXME this is not actually how it works
             # The "write" handle as numbered in gatttol is the base handle
             # number + 1 - this may or may not be gatttool/BlueZ specific. IF it
             # is, this logic can be moved up 1 level.
@@ -241,6 +247,9 @@ class GATTToolBackend(BLEBackend):
 
             return bytearray([int(x, 16) for x in rval])
 
+    # TODO: this might be better named attribute read since it can read from
+    #       characteristics, descriptors, or any other readable attribute with
+    #       a valid handle
     def char_read_hnd(self, handle):
         """
         Reads a Characteristic by Handle.
@@ -257,6 +266,10 @@ class GATTToolBackend(BLEBackend):
 
             return bytearray([int(n, 16) for n in rval])
 
+    # TODO: this might be better structured by passing in a characteristic
+    #       object and having the method determine if it can be subscribed to
+    #       and then doing the subscribing. See the "bluetooth-adapter" branch
+    #       for an example of how this looks with the bgapi backend
     def subscribe(self, uuid, callback=None, indication=False):
         """
         Enables subscription to a Characteristic with ability to call callback.
@@ -270,6 +283,8 @@ class GATTToolBackend(BLEBackend):
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
         definition_handle = self.get_handle(uuid)
+
+        # FIXME These assumptions are sometimes wrong
         # Expect notifications on the value handle...
         value_handle = definition_handle + 1
         # but write to the characteristic config to enable notifications
