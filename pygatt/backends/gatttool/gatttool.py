@@ -3,6 +3,7 @@ from __future__ import print_function
 from collections import defaultdict
 import logging
 import platform
+import re
 import string
 import sys
 import time
@@ -20,11 +21,30 @@ from pygatt.backends.backend import BLEBackend
 log = logging.getLogger(__name__)
 
 
+# TODO: you should really take a look at the 'gatt.py' file in the
+#       bluetooth-adapter branch since this is a slimmed down version of that
+class Characteristic(object):
+
+    uuid = None
+    handle = None
+    cccd = None
+
+    def __str__(self):
+        return ("Characteristic: uuid=%s, handle=%04x, cccd=%04x"
+                % (self.uuid, self.handle, self.cccd))
+
+
 class GATTToolBackend(BLEBackend):
     """
     Backend to pygatt that uses gatttool/bluez on the linux command line.
     """
     _GATTTOOL_PROMPT = r".*> "
+
+    # TODO verify that this is correct
+    _CHAR_DESC_LINE_PATTERN = re.complie(
+        r'^handle: 0x([0-9a-fA-F), '
+        r'uuid: ([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$'  # noqa
+    )
 
     def __init__(self, hci_device='hci0', loghandler=None,
                  loglevel=logging.DEBUG, gatttool_logfile=None):
@@ -47,7 +67,6 @@ class GATTToolBackend(BLEBackend):
         log.addHandler(loghandler)
 
         # Internal state
-        self._handles = {}
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
         self._connection_lock = threading.RLock()
@@ -55,6 +74,8 @@ class GATTToolBackend(BLEBackend):
         self._callbacks = defaultdict(set)
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
+
+        self._characteristics = {}
 
         # Start gatttool interactive session for device
         gatttool_cmd = ' '.join([
@@ -95,66 +116,61 @@ class GATTToolBackend(BLEBackend):
             log.error(message)
             raise exceptions.NotConnectedError(message)
 
+    # TODO: the parsing logic could be made into a backend class method or
+    #       located in a GATT related file
+    def _discover_attributes(self):
+        log.debug("discovering attributes")
+        chars = []
+        with self._connection_lock:
+            self._con.sendline('char-desc')
+            add_to_char = False
+            while True:
+                try:
+                    self._con.expect(self._CHAR_DESC_LINE_PATTERN)
+                except pexpect.TIMEOUT:
+                    break
+                except pexpect.EOF:
+                    break
+                else:
+                    handle = int(self._con.match.group(1), 16)
+                    uuid = self._con.match.group(2)
+                    log.debug("handle: {0}, uuid: {1}"
+                              .format(hex(handle), uuid))
+                    if uuid == self._GATT_ATTRIBUTE_TYPE_CHARACTERISIC:
+                        chars.append(Characteristic())
+                        add_to_char = True
+                    elif add_to_char:
+                        if uuid == self._GATT_CCCD_UUID:
+                            chars[-1].cccd = handle
+                        # TODO check for other GATT UUIDs
+
+        log.debug(str(chars))
+        for c in chars:
+            self._characteristics[c.uuid] = c
+
     # FIXME: use gatttool char-desc and parse the complete output to correctly
     #        identify the profile structure
-    def get_handle(self, uuid, descriptor_uuid=None):
+    def get_handle(self, uuid, cccd=False):
         """
         Look up and return the handle for an attribute by its UUID.
         :param uuid: The UUID of the characteristic.
         :type uuid: str
         :return: None if the UUID was not found.
         """
-        if uuid not in self._handles:
-            log.debug("Looking up handle for characteristic %s", uuid)
-            with self._connection_lock:
-                self._con.sendline('characteristics')
-
-                timeout = 2
-                while True:
-                    try:
-                        self._con.expect(
-                            r"handle: 0x([a-fA-F0-9]{4}), "
-                            "char properties: 0x[a-fA-F0-9]{2}, "
-                            "char value handle: 0x[a-fA-F0-9]{4}, "
-                            "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
-                            timeout=timeout)
-                    except pexpect.TIMEOUT:
-                        break
-                    except pexpect.EOF:
-                        break
-                    else:
-                        try:
-                            handle = int(self._con.match.group(1), 16)
-                            char_uuid = self._con.match.group(2).strip()
-                            self._handles[char_uuid] = handle
-                            log.debug(
-                                "Found characteristic %s, handle: %d",
-                                char_uuid,
-                                handle)
-
-                            # The characteristics all print at once, so after
-                            # waiting 1-2 seconds for them to all fetch, you can
-                            # load the rest without much delay at all.
-                            timeout = .01
-                        except AttributeError:
-                            pass
-
-        if len(self._handles) == 0:
-            raise exceptions.BluetoothLEError(
-                "No characteristics found - disconnected unexpectedly?")
-
-        handle = self._handles.get(uuid)
-        if handle is None:
+        if uuid not in self._characteristics:
             message = "No characteristic found matching %s" % uuid
             log.warn(message)
             raise exceptions.BluetoothLEError(message)
-
+        handle = None
+        if cccd:
+            handle = self._characteristics[uuid].cccd
+        else:
+            handle = self._characteristics[uuid].handle
         log.debug(
-            "Characteristic %s, handle: %d", uuid, handle)
+            "Characteristic %s, handle: %d", uuid, format(handle, '04x'))
         return handle
 
-    def _expect(self, expected,
-                timeout=constants.DEFAULT_TIMEOUT_S):
+    def _expect(self, expected, timeout=constants.DEFAULT_TIMEOUT_S):
         """
         We may (and often do) get an indication/notification before a
         write completes, and so it can be lost if we "expect()"'d something
@@ -205,12 +221,6 @@ class GATTToolBackend(BLEBackend):
         """
         with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
-
-            # FIXME this is not actually how it works
-            # The "write" handle as numbered in gatttol is the base handle
-            # number + 1 - this may or may not be gatttool/BlueZ specific. IF it
-            # is, this logic can be moved up 1 level.
-            handle += 1
 
             if wait_for_response:
                 cmd = 'req'
@@ -282,13 +292,7 @@ class GATTToolBackend(BLEBackend):
         log.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
-        definition_handle = self.get_handle(uuid)
-
-        # FIXME These assumptions are sometimes wrong
-        # Expect notifications on the value handle...
-        value_handle = definition_handle + 1
-        # but write to the characteristic config to enable notifications
-        characteristic_config_handle = value_handle + 1
+        handle = self.get_handle(uuid, cccd=True)
 
         if indication:
             properties = bytearray([0x02, 0x00])
@@ -299,16 +303,16 @@ class GATTToolBackend(BLEBackend):
             self._lock.acquire()
 
             if callback is not None:
-                self._callbacks[value_handle].add(callback)
+                self._callbacks[handle].add(callback)
 
-            if self._subscribed_handlers.get(value_handle, None) != properties:
+            if self._subscribed_handlers.get(handle, None) != properties:
                 self.char_write(
-                    characteristic_config_handle,
+                    handle,
                     properties,
                     wait_for_response=False
                 )
                 log.debug("Subscribed to uuid=%s", uuid)
-                self._subscribed_handlers[value_handle] = properties
+                self._subscribed_handlers[handle] = properties
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
         finally:
