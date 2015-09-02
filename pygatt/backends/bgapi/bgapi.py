@@ -7,7 +7,6 @@ import time
 import threading
 from binascii import hexlify, unhexlify
 
-from pygatt.constants import LOG_FORMAT, LOG_LEVEL
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
 
@@ -74,7 +73,7 @@ class BGAPIBackend(BLEBackend):
 
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True, logfile=None):
+    def __init__(self, serial_port, run=True):
         """
         Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
@@ -85,17 +84,7 @@ class BGAPIBackend(BLEBackend):
         run -- begin reveiving packets immediately.
         logfile -- the file to log to.
         """
-        log.setLevel(LOG_LEVEL)
-        handler = (logging.FileHandler(logfile)
-                   if logfile is not None
-                   else logging.NullHandler())
-        formatter = logging.Formatter(fmt=LOG_FORMAT)
-        handler.setLevel(LOG_LEVEL)
-        handler.setFormatter(formatter)
-        log.addHandler(handler)
-
-        self._lib = bglib.BGLib(loghandler=handler,
-                                loglevel=LOG_LEVEL)
+        self._lib = bglib.BGLib()
         self._serial_port = serial_port
         self._ser = None
 

@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import logging
 
-from constants import DEFAULT_CONNECT_TIMEOUT_S, LOG_LEVEL, LOG_FORMAT
+from constants import DEFAULT_CONNECT_TIMEOUT_S
 from pygatt.backends import GATTToolBackend
 
 log = logging.getLogger(__name__)
@@ -12,17 +12,14 @@ class BluetoothLEDevice(object):
     """
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BGAPI (cross platform) or GATTTOOL (Linux only) as the backend.
-
-    TODO pass the instantiated backend in as an argument
     """
-    def __init__(self, mac_address, backend, logfile=None):
+    def __init__(self, mac_address, backend):
         """
         Initialize.
 
         mac_address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
         backend -- an instantiated instance of a BLEBacked.
-        logfile -- the file in which to write the logs.
 
         Example:
 
@@ -32,16 +29,6 @@ class BluetoothLEDevice(object):
         """
         self._backend = backend
         self._mac_address = mac_address
-
-        log.setLevel(LOG_LEVEL)
-        if logfile is not None:
-            handler = logging.FileHandler(logfile)
-        else:  # print to stderr
-            handler = logging.StreamHandler()
-        formatter = logging.Formatter(fmt=LOG_FORMAT)
-        handler.setLevel(LOG_LEVEL)
-        handler.setFormatter(formatter)
-        log.addHandler(handler)
 
     def bond(self):
         """

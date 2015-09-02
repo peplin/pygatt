@@ -314,21 +314,7 @@ class BGLib(object):
     """
     Modified version of jrowberg's BGLib implementation.
     """
-    def __init__(self, loghandler=None, loglevel=logging.debug):
-        """
-        Set up logging for this module.
-
-        loghandler -- the logging.handler object to register with the logger.
-        loglevel -- the log level to use for this module.
-        """
-        log.setLevel(loglevel)
-        if loghandler is None:
-            loghandler = logging.StreamHandler()  # prints to stderr
-            formatter = logging.Formatter(
-                '%(asctime)s %(name)s %(levelname)s - %(message)s')
-            loghandler.setLevel(loglevel)
-            loghandler.setFormatter(formatter)
-        log.addHandler(loghandler)
+    def __init__(self):
         self.buffer = []
         self.expected_length = 0
         # Packet message types

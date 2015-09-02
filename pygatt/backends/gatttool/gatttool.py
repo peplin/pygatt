@@ -26,8 +26,7 @@ class GATTToolBackend(BLEBackend):
     """
     _GATTTOOL_PROMPT = r".*> "
 
-    def __init__(self, hci_device='hci0', loghandler=None,
-                 loglevel=logging.DEBUG, gatttool_logfile=None):
+    def __init__(self, hci_device='hci0', gatttool_logfile=None):
         """
         Initialize.
 
@@ -35,16 +34,7 @@ class GATTToolBackend(BLEBackend):
         loghandler -- logging.handler object to use for the logger.
         loglevel -- log level for this module's logger.
         """
-        # Set up logging
         self._loglock = threading.Lock()
-        log.setLevel(loglevel)
-        if loghandler is None:
-            loghandler = logging.StreamHandler()  # prints to stderr
-            formatter = logging.Formatter(
-                '%(asctime)s %(name)s %(levelname)s - %(message)s')
-            loghandler.setLevel(loglevel)
-            loghandler.setFormatter(formatter)
-        log.addHandler(loghandler)
 
         # Internal state
         self._handles = {}
