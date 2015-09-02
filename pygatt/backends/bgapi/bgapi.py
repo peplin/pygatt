@@ -14,8 +14,12 @@ from . import bglib, constants
 from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message
+from .util import find_usb_serial_devices
 
 log = logging.getLogger(__name__)
+
+BLED112_VENDOR_ID = 0x2458
+BLED112_PRODUCT_ID = 0x0001
 
 
 class BGAPIError(BluetoothLEError):
@@ -73,21 +77,28 @@ class BGAPIBackend(BLEBackend):
 
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port, run=True):
+    def __init__(self, serial_port=None, run=True):
         """
         Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
         the receiver thread, and optionally delete any stored bonds.
 
         serial_port -- The name of the serial port that the dongle is connected
-                       to.
+                       to - if not provided, will attempt to find one matching
+                       the common BLED112's USB device ID.
         run -- begin reveiving packets immediately.
         logfile -- the file to log to.
         """
         self._lib = bglib.BGLib()
+        if serial_port is None:
+            detected_devices = find_usb_serial_devices(
+                vendor_id=BLED112_VENDOR_ID,
+                product_id=BLED112_PRODUCT_ID)
+            if len(detected_devices) > 0:
+                serial_port = detected_devices[0].port_name
         self._serial_port = serial_port
-        self._ser = None
 
+        self._ser = None
         self._recvr_thread = None
         self._recvr_thread_stop = threading.Event()
         self._recvr_thread_is_done = threading.Event()
