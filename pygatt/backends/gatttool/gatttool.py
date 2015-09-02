@@ -103,7 +103,7 @@ class GATTToolBackend(BLEBackend):
                         self._con.expect(
                             r"handle: 0x([a-fA-F0-9]{4}), "
                             "char properties: 0x[a-fA-F0-9]{2}, "
-                            "char value handle: 0x[a-fA-F0-9]{4}, "
+                            "char value handle: 0x([a-fA-F0-9]{4}), "
                             "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
                             timeout=timeout)
                     except pexpect.TIMEOUT:
@@ -112,13 +112,13 @@ class GATTToolBackend(BLEBackend):
                         break
                     else:
                         try:
-                            handle = int(self._con.match.group(1), 16)
-                            char_uuid = self._con.match.group(2).strip()
-                            self._handles[char_uuid] = handle
+                            value_handle = int(self._con.match.group(2), 16)
+                            char_uuid = self._con.match.group(3).strip()
+                            self._handles[char_uuid] = value_handle
                             log.debug(
-                                "Found characteristic %s, handle: %d",
+                                "Found characteristic %s, value handle: 0x%x",
                                 char_uuid,
-                                handle)
+                                value_handle)
 
                             # The characteristics all print at once, so after
                             # waiting 1-2 seconds for them to all fetch, you can
@@ -138,7 +138,7 @@ class GATTToolBackend(BLEBackend):
             raise exceptions.BluetoothLEError(message)
 
         log.debug(
-            "Characteristic %s, handle: %d", uuid, handle)
+            "Characteristic %s, handle: 0x%x", uuid, handle)
         return handle
 
     def _expect(self, expected,
@@ -190,11 +190,6 @@ class GATTToolBackend(BLEBackend):
         """
         with self._connection_lock:
             hexstring = ''.join('%02x' % byte for byte in value)
-
-            # The "write" handle as numbered in gatttol is the base handle
-            # number + 1 - this may or may not be gatttool/BlueZ specific. IF it
-            # is, this logic can be moved up 1 level.
-            handle += 1
 
             if wait_for_response:
                 cmd = 'req'
@@ -259,9 +254,8 @@ class GATTToolBackend(BLEBackend):
         log.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
-        definition_handle = self.get_handle(uuid)
         # Expect notifications on the value handle...
-        value_handle = definition_handle + 1
+        value_handle = self.get_handle(uuid)
         # but write to the characteristic config to enable notifications
         characteristic_config_handle = value_handle + 1
 
