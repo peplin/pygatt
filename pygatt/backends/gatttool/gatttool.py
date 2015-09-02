@@ -49,6 +49,10 @@ class GATTToolBackend(BLEBackend):
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
 
+        # Without restarting, sometimes when trying to bond with the GATTTool
+        # backend, the entire computer will lock up.
+        self.reset()
+
         # Start gatttool interactive session for device
         gatttool_cmd = ' '.join([
             'gatttool',
