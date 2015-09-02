@@ -91,11 +91,14 @@ class BGAPIBackend(BLEBackend):
         """
         self._lib = bglib.BGLib()
         if serial_port is None:
+            loginfo("Auto-discovering serial port for BLED112")
             detected_devices = find_usb_serial_devices(
                 vendor_id=BLED112_VENDOR_ID,
                 product_id=BLED112_PRODUCT_ID)
             if len(detected_devices) > 0:
                 serial_port = detected_devices[0].port_name
+            else:
+                raise BGAPIError("Unable to auto-detect BLED112 serial port")
         self._serial_port = serial_port
 
         self._ser = None
