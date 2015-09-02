@@ -18,7 +18,7 @@ class BGAPIBackendTests(unittest.TestCase):
     def setUp(self):
         self.mock_device = MockBGAPISerialDevice()
         self.backend = BGAPIBackend(
-            serial_port=self.mock_device.serial_port_name, run=False)
+            serial_port=self.mock_device.serial_port_name)
 
         self.address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
         self.address_string = ":".join("%02x" % b for b in self.address)

@@ -77,21 +77,18 @@ class BGAPIBackend(BLEBackend):
 
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port=None, run=True):
+    def __init__(self, serial_port):
         """
         Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
         the receiver thread, and optionally delete any stored bonds.
 
-        serial_port -- The name of the serial port that the dongle is connected
-                       to - if not provided, will attempt to find one matching
-                       the common BLED112's USB device ID.
-        run -- begin reveiving packets immediately.
-        logfile -- the file to log to.
+        serial_port -- The name of the serial port for the BGAPI-compatible
+        USB interface.
         """
         self._lib = bglib.BGLib()
         if serial_port is None:
-            loginfo("Auto-discovering serial port for BLED112")
+            log.info("Auto-discovering serial port for BLED112")
             detected_devices = find_usb_serial_devices(
                 vendor_id=BLED112_VENDOR_ID,
                 product_id=BLED112_PRODUCT_ID)
@@ -152,8 +149,6 @@ class BGAPIBackend(BLEBackend):
         }
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
-        if run:
-            self.run()
 
     def bond(self):
         """
