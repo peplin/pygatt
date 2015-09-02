@@ -27,3 +27,22 @@ class BLEBackend(object):
 
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         raise NotImplementedError()
+
+    def filtered_scan(self, name_filter=None, *args, **kwargs):
+        """
+        Scan for BLE devices and filter the list to include only with a name
+        that includes the given filter.
+
+        Returns a list of BLE devices found.
+        """
+        devices = self.scan(*args, **kwargs)
+        return [device for device in devices
+                if name_filter in (device['name'] or '')]
+
+    def scan(self, *args, **kwargs):
+        """
+        Performs a BLE scan.
+
+        Returns a list of BLE devices found.
+        """
+        raise NotImplementedError()

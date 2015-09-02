@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from nose.tools import eq_, ok_
+from nose.tools import eq_
 import unittest
 import threading
 import time
@@ -138,7 +138,6 @@ class BGAPIBackendTests(unittest.TestCase):
         # Test scan
         scan_responses = []
         addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
-        addr_0_str = ':'.join('%02x' % b for b in addr_0)
         scan_responses.append({
             'rssi': -80,
             'packet_type': 0,
@@ -149,11 +148,9 @@ class BGAPIBackendTests(unittest.TestCase):
                      ord('l'), ord('o'), ord('!')]
         })
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
-        self.backend.scan()
-        devs = self.backend.get_devices_discovered()
-        ok_(addr_0_str in devs)
-        eq_('Hello!', devs[addr_0_str].name)
-        eq_(-80, devs[addr_0_str].rssi)
+        devs = self.backend.scan(timeout=.5)
+        eq_('Hello!', devs[0]['name'])
+        eq_(-80, devs[0]['rssi'])
 
     def stage_subscribe_packets(self, uuid_char, handle_char,
                                 indications=False, connection_handle=0x00):

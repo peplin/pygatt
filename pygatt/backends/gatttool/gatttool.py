@@ -1,12 +1,14 @@
 from __future__ import print_function
 
 from collections import defaultdict
+import re
 import logging
 import platform
 import string
 import sys
 import time
 import threading
+import subprocess
 try:
     import pexpect
 except Exception as e:
@@ -37,6 +39,7 @@ class GATTToolBackend(BLEBackend):
         self._loglock = threading.Lock()
 
         # Internal state
+        self._hci_device = hci_device
         self._handles = {}
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
@@ -337,3 +340,63 @@ class GATTToolBackend(BLEBackend):
             # not received as a part of another request
             time.sleep(.01)
         log.info("Listener thread finished")
+
+    def scan(self, timeout=10, run_as_root=False):
+        """
+        By default, scanning with gatttool requires root privileges.
+        If you don't want to require root, you must add a few
+        'capabilities' to your system. If you have libcap installed, run this to
+        enable normal users to perform LE scanning:
+            setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+
+        If you do use root, the hcitool subprocess becomes more difficult to
+        terminate cleanly, and may leave your Bluetooth adapter in a bad state.
+        """
+
+        cmd = 'hcitool lescan'
+        if run_as_root:
+            cmd = 'sudo %s' % cmd
+
+        log.info("Starting BLE scan")
+        scan = pexpect.spawn(cmd)
+        # "lescan" doesn't exit, so we're forcing a timeout here:
+        try:
+            scan.expect('foooooo', timeout=timeout)
+        except pexpect.EOF:
+            message = "Unexpected error when scanning"
+            if "No such device" in scan.before:
+                message = "No BLE adapter found"
+            log.error(message)
+            raise exceptions.BluetoothLEError(message)
+        except pexpect.TIMEOUT:
+            devices = {}
+            for line in scan.before.split('\r\n'):
+                match = re.match(
+                    r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
+
+                if match is not None:
+                    address = match.group(1)
+                    name = match.group(3)
+                    if name == "(unknown)":
+                        name = None
+
+                    if address in devices:
+                        if (devices[address]['name'] is None) and (name is not
+                                                                   None):
+                            log.info("Discovered name of %s as %s",
+                                     address, name)
+                            devices[address]['name'] = name
+                    else:
+                        log.info("Discovered %s (%s)", address, name)
+                        devices[address] = {
+                            'address': address,
+                            'name': name
+                        }
+            log.info("Found %d BLE devices", len(devices))
+            return [device for device in devices.values()]
+        return []
+
+    def reset(self):
+        subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()
+        subprocess.Popen([
+            "sudo", "hciconfig", self._hci_device, "reset"]).wait()

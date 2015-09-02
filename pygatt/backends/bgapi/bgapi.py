@@ -356,15 +356,6 @@ class BGAPIBackend(BLEBackend):
             log.error(msg)
             raise BGAPIError(msg)
 
-    def get_devices_discovered(self):
-        """
-        Get self._devices_discovered.
-        A scan() should be run prior to accessing this data.
-
-        Returns the self._devices_discovered dictionary.
-        """
-        return self._devices_discovered
-
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
         Get the handle (integer) for a characteristic or descriptor.
@@ -496,8 +487,11 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.sm_set_bondable_mode)
 
-    def scan(self, scan_interval=75, scan_window=50, active=True,
-             scan_time=1000,
+    def reset(self):
+        self.disconnect(fail_quietly=True)
+        self.delete_stored_bonds()
+
+    def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
              discover_mode=constants.gap_discover_mode['generic']):
         """
         Perform a scan to discover BLE devices.
@@ -506,7 +500,7 @@ class BGAPIBackend(BLEBackend):
         scan_window -- the number of miliseconds the scanner will listen on one
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
-        scan_time -- the number of miliseconds this scan should last.
+        timeout -- the number of seconds this scan should last.
         discover_mode -- one of the gap_discover_mode constants.
         """
         # Set scan parameters
@@ -524,22 +518,28 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.gap_set_scan_parameters)
 
-        # Begin scanning
         log.info("Starting an %s scan", "active" if active == 1 else "passive")
         self._lib.send_command(self._ser,
                                CommandBuilder.gap_discover(discover_mode))
 
         self.expect(ResponsePacketType.gap_discover)
 
-        # Wait for scan_time
-        log.debug("Pausing for for %d ms to allow scan to complete", scan_time)
-        time.sleep(scan_time/1000)
+        log.debug("Pausing for for %ds to allow scan to complete", timeout)
+        time.sleep(timeout)
 
-        # Stop scanning
         log.info("Stopping scan")
         self._lib.send_command(self._ser, CommandBuilder.gap_end_procedure())
 
         self.expect(ResponsePacketType.gap_end_procedure)
+
+        devices = []
+        for address, info in self._devices_discovered.iteritems():
+            devices.append({
+                'address': address,
+                'name': info.name,
+                'rssi': info.rssi
+            })
+        return devices
 
     def subscribe(self, uuid, callback=None, indicate=False):
         """
