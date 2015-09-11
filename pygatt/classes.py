@@ -3,7 +3,6 @@ from __future__ import print_function
 import logging
 
 from constants import DEFAULT_CONNECT_TIMEOUT_S
-from pygatt.backends import GATTToolBackend
 
 log = logging.getLogger(__name__)
 
@@ -105,13 +104,10 @@ class BluetoothLEDevice(object):
 
     def run(self):
         """
-        Run a background thread to listen for notifications (GATTTOOL only).
+        Start a background thread to listen for notifications.
         """
         log.info("run")
-        # TODO This is an odd architecture, why does the backend have to bleed
-        # up to this level?
-        if isinstance(self._backend, GATTToolBackend):
-            self._backend.run()
+        self._backend.start()
 
     def stop(self):
         """

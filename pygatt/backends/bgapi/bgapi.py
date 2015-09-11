@@ -99,12 +99,11 @@ class BGAPIBackend(BLEBackend):
         self._serial_port = serial_port
 
         self._ser = None
-        self._recvr_thread = None
-        self._recvr_thread_stop = threading.Event()
-        self._recvr_thread_is_done = threading.Event()
+        self._receiver = None
+        self._running = threading.Event()
 
         # buffer for packets received
-        self._recvr_queue = Queue.Queue()
+        self._receiver_queue = Queue.Queue()
 
         # State that is locked
         self._lock = threading.Lock()
@@ -321,6 +320,9 @@ class BGAPIBackend(BLEBackend):
         """
         log.debug("Disconnecting")
 
+        if self._ser is None:
+            return
+
         self._lib.send_command(
             self._ser,
             CommandBuilder.connection_disconnect(self._connection_handle))
@@ -449,19 +451,18 @@ class BGAPIBackend(BLEBackend):
         _, response = self.expect(ResponsePacketType.connection_get_rssi)
         return response['rssi']
 
-    def run(self):
+    def start(self):
         """
-        Put the interface into a known state to start. And start the recvr
+        Put the interface into a known state to start. And start the receiver
         thread.
         """
         self._ser = serial.Serial(self._serial_port, timeout=0.25)
 
-        self._recvr_thread = threading.Thread(target=self._recv_packets)
-        self._recvr_thread.daemon = True
+        self._receiver = threading.Thread(target=self._receive)
+        self._receiver.daemon = True
 
-        self._recvr_thread_stop.clear()
-        self._recvr_thread_is_done.clear()
-        self._recvr_thread.start()
+        self._running.set()
+        self._receiver.start()
 
         # Disconnect any connections
         self.disconnect(fail_quietly=True)
@@ -585,13 +586,14 @@ class BGAPIBackend(BLEBackend):
 
     def stop(self):
         self.disconnect(fail_quietly=True)
-        self._recvr_thread_stop.set()
-        self._recvr_thread_is_done.wait()
+        self._running.clear()
+        if self._receiver:
+            self._receiver.join()
+        self._receiver = None
 
-        self._ser.close()
-        self._ser = None
-
-        self._recvr_thread = None
+        if self._ser:
+            self._ser.close()
+            self._ser = None
 
     def _assert_connected(self):
         """
@@ -599,7 +601,7 @@ class BGAPIBackend(BLEBackend):
 
         Raises NotConnectedError on failure if check_if_connected == True.
         """
-        if not self._connected:
+        if self._ser is None or not self._connected:
             log.warn("Unexpectedly not connected")
             raise NotConnectedError()
 
@@ -730,7 +732,7 @@ class BGAPIBackend(BLEBackend):
             packet = None
             try:
                 # TODO can we increase the timeout here?
-                packet = self._recvr_queue.get(block=True, timeout=0.1)
+                packet = self._receiver_queue.get(block=True, timeout=0.1)
             except Queue.Empty:
                 if timeout is not None:
                     if time.time() - start_time > timeout:
@@ -760,13 +762,13 @@ class BGAPIBackend(BLEBackend):
                     raise exc
                 return packet_type, response
 
-    def _recv_packets(self):
+    def _receive(self):
         """
         Read bytes from serial and enqueue the packets if the packet is not a.
-        Stops if the self._recvr_thread_stop event is set.
+        Stops if the self._running event is not set.
         """
         att_value = EventPacketType.attclient_attribute_value
-        while not self._recvr_thread_stop.is_set():
+        while self._running.is_set():
             byte = self._ser.read()
             if len(byte) > 0:
                 byte = ord(byte)
@@ -780,7 +782,8 @@ class BGAPIBackend(BLEBackend):
                     handles_subscribed_to = callbacks.keys()
 
                     if packet_type != att_value:
-                        self._recvr_queue.put(packet, block=True, timeout=0.1)
+                        self._receiver_queue.put(packet, block=True,
+                                                 timeout=0.1)
                     elif args['atthandle'] in handles_subscribed_to:
                         # This is a notification/indication. Handle now.
                         callback_exists = (args['atthandle'] in callbacks)
@@ -794,9 +797,8 @@ class BGAPIBackend(BLEBackend):
                             callback_thread.daemon = True
                             callback_thread.start()
                     else:
-                        self._recvr_queue.put(packet, block=True, timeout=0.1)
-
-        self._recvr_thread_is_done.set()
+                        self._receiver_queue.put(packet, block=True,
+                                                 timeout=0.1)
 
     def _ble_evt_attclient_attribute_value(self, args):
         """

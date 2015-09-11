@@ -38,16 +38,16 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_run_backend(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
 
     def test_connect(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
 
     def test_disconnect_when_connected(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         # test disconnect (connected, not fail)
         self.mock_device.stage_disconnect_packets(True, False)
@@ -55,7 +55,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_char_read(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
         handle_char = 0x1234
@@ -74,7 +74,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_char_write(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
         handle_char = 0x1234
@@ -91,7 +91,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_encrypt(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         # Test encrypt
         self.mock_device.stage_encrypt_packets(
@@ -100,7 +100,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_bond(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         self.mock_device.stage_bond_packets(
             self.address, ['connected', 'encrypted', 'parameters_change'])
@@ -108,7 +108,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_get_rssi(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         # Test get_rssi
         self.mock_device.stage_get_rssi_packets()
@@ -116,7 +116,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_get_handle(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         # Test get_handle
         uuid_char = '01234567-0123-0123-0123-0123456789AB'
@@ -134,7 +134,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_scan_and_get_devices_discovered(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         # Test scan
         scan_responses = []
         addr_0 = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
@@ -185,7 +185,7 @@ class BGAPIBackendTests(unittest.TestCase):
                 self.called.set()
 
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         self._connect()
         # Test subscribe with indications
         packet_values = [bytearray([0xF0, 0x0D, 0xBE, 0xEF])]
@@ -208,7 +208,7 @@ class BGAPIBackendTests(unittest.TestCase):
 
     def test_delete_stored_bonds(self):
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         # Test delete stored bonds
         self.mock_device.stage_delete_stored_bonds_packets(
             [0x00, 0x01, 0x02, 0x03, 0x04])
@@ -217,7 +217,7 @@ class BGAPIBackendTests(unittest.TestCase):
     def test_delete_stored_bonds_disconnect(self):
         """delete_stored_bonds shouldn't abort if disconnected."""
         self.mock_device.stage_run_packets()
-        self.backend.run()
+        self.backend.start()
         # Test delete stored bonds
         self.mock_device.stage_delete_stored_bonds_packets(
             [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)

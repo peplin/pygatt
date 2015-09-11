@@ -40,6 +40,7 @@ class GATTToolBackend(BLEBackend):
 
         # Internal state
         self._hci_device = hci_device
+        self._gatttool_logfile = gatttool_logfile
         self._handles = {}
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
@@ -48,29 +49,6 @@ class GATTToolBackend(BLEBackend):
         self._callbacks = defaultdict(set)
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
-
-        # Without restarting, sometimes when trying to bond with the GATTTool
-        # backend, the entire computer will lock up.
-        self.reset()
-
-        # Start gatttool interactive session for device
-        gatttool_cmd = ' '.join([
-            'gatttool',
-            '-i',
-            hci_device,
-            '-I'
-        ])
-        log.debug('gatttool_cmd=%s', gatttool_cmd)
-        self._con = pexpect.spawn(
-            gatttool_cmd,
-            logfile=gatttool_logfile if gatttool_logfile else None)
-        # Wait for response
-        self._con.expect(r'\[LE\]>', timeout=1)
-
-        # Start the notification receiving thread
-        self._thread = threading.Thread(target=self.run)
-        self._thread.daemon = True
-        self._thread.start()
 
     def bond(self):
         """Securely Bonds to the BLE device."""
@@ -310,6 +288,28 @@ class GATTToolBackend(BLEBackend):
         finally:
             self._lock.release()
 
+    def start(self):
+        # Without restarting, sometimes when trying to bond with the GATTTool
+        # backend, the entire computer will lock up.
+        self.reset()
+
+        # Start gatttool interactive session for device
+        gatttool_cmd = ' '.join([
+            'gatttool',
+            '-i',
+            self._hci_device,
+            '-I'
+        ])
+        log.debug('gatttool_cmd=%s', gatttool_cmd)
+        self._con = pexpect.spawn(gatttool_cmd, logfile=self.gatttool_logfile)
+        # Wait for response
+        self._con.expect(r'\[LE\]>', timeout=1)
+
+        # Start the notification receiving thread
+        self._thread = threading.Thread(target=self._receive)
+        self._thread.daemon = True
+        self._thread.start()
+
     def stop(self):
         """
         Stop the backgroud notification handler in preparation for a
@@ -326,7 +326,7 @@ class GATTToolBackend(BLEBackend):
                 time.sleep(0.1)
             self._con.close()
 
-    def run(self):
+    def _receive(self):
         """
         Run a background thread to listen for notifications.
         """
