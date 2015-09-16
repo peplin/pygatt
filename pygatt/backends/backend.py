@@ -31,7 +31,7 @@ class BLEBackend(object):
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         raise NotImplementedError()
 
-    def filtered_scan(self, name_filter=None, *args, **kwargs):
+    def filtered_scan(self, name_filter="", *args, **kwargs):
         """
         Scan for BLE devices and filter the list to include only with a name
         that includes the given filter.
