@@ -301,7 +301,7 @@ class GATTToolBackend(BLEBackend):
             '-I'
         ])
         log.debug('gatttool_cmd=%s', gatttool_cmd)
-        self._con = pexpect.spawn(gatttool_cmd, logfile=self.gatttool_logfile)
+        self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile)
         # Wait for response
         self._con.expect(r'\[LE\]>', timeout=1)
 
