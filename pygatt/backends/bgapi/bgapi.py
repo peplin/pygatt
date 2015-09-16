@@ -364,7 +364,7 @@ class BGAPIBackend(BLEBackend):
         self.expect(EventPacketType.connection_status)
         if not self._encrypted:
             msg = "Expected to be encrypted, but wasn't"
-            log.error(msg)
+            log.warn(msg)
             raise BGAPIError(msg)
 
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
@@ -758,7 +758,7 @@ class BGAPIBackend(BLEBackend):
                     exc = BGAPIError(
                         "Response to packet %s errored: %s" %
                         (packet_type, get_return_message(return_code)))
-                    log.error(exc.message)
+                    log.warn(exc.message)
                     raise exc
                 return packet_type, response
 
