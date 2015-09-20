@@ -29,6 +29,7 @@ class DBusBackend(BLEBackend):
     self._hci_device = hci_device
     self._adapter = None
     self._devices = {}
+    self._callbacks = {}
 
     self._dbus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default = True)
     self._bus = dbus.SystemBus(mainloop = self._dbus_loop)
@@ -116,7 +117,32 @@ class DBusBackend(BLEBackend):
   def get_rssi(self, address):
     device = self._bus.get_object('org.bluez', self._devices[address]['path'])
     props_iface = dbus.Interface(device, 'org.freedesktop.DBus.Properties')
-    rssi = props_iface.Get('org.bluez.Device1', 'RSSI')
+    try:
+      return props_iface.Get('org.bluez.Device1', 'RSSI')
+    except org.freedesktop.DBus.Error.InvalidArgs as e:
+      raise NotImplementedError()
+      
+  def subscribe(self, address, uuid, callback, indication = False):
+    log.info(
+      'Subscribing to uuid=%s with callback=%s and indication=%s',
+      uuid, callback, indication)
+
+    if callback is None:
+      raise Exception("Notifications require a callback function")
+
+    char = self._devices[address]['characteristics'][uuid]
+    char_iface = dbus.Interface(char, 'org.bluez.GattCharacteristic1')
+    props_iface = dbus.Interface(char, 'org.freedesktop.DBus.Properties')
+    signal_match = props_iface.connect_to_signal(\
+      "PropertiesChanged", self._handle_callbacks, \
+      path_keyword='path', sender_keyword='sender')
+    self._callbacks[signal_match.sender] = {
+      'sender': signal_match.sender,
+      'uuid': uuid,
+      'callback': callback
+    }
+
+    char_iface.StartNotify()
 
   def _add_device(self, path):
     device = self._bus.get_object('org.bluez', path)
@@ -145,6 +171,23 @@ class DBusBackend(BLEBackend):
 
     self._add_device(path)
 
+  def _handle_callbacks(self, *args, **kwargs):
+    #Find uuid from parameters
+    uuid = self._callbacks[kwargs['sender']]['uuid']
+    callback = self._callbacks[kwargs['sender']]['callback']
+
+    if 'Notifying' in args[1]:
+      return
+
+    if not 'Value' in args[1]:
+      raise Exception('Unable to find return values for callback')
+
+    #Convert dbus Array into bytearray
+    dbus_values = args[1]['Value']
+    python_values = bytearray(dbus_values)
+    
+    callback(python_values, uuid=uuid)    
+
 class DBusBackendThread(threading.Thread):
   def __init__(self):
     super(DBusBackendThread, self).__init__()
@@ -160,7 +203,7 @@ class DBusBackendThread(threading.Thread):
       context.iteration(True)
 
 class DBusBluetoothLEDevice(BluetoothLEDevice):
-    '''Have to use a subclass because the standard classes assume only one device per backend'''
+    '''Have to use a subclass because the standard class assumes only one device per backend'''
     def __init__(self, mac_address, backend):
         """
         Initialize.
@@ -184,7 +227,7 @@ class DBusBluetoothLEDevice(BluetoothLEDevice):
         """
         log.info("bond")
         #self._backend.bond(self._mac_address)
-        raise NotImplementedException
+        raise NotImplementedError()
 
     def connect(self, timeout=None):
         """
@@ -234,7 +277,7 @@ class DBusBluetoothLEDevice(BluetoothLEDevice):
         """
         log.info("encrypt")
         #self._backend.encrypt(self._mac_address)
-        raise NotImplementedException
+        raise NotImplementedError()
 
     def get_rssi(self):
         """
@@ -260,4 +303,4 @@ class DBusBluetoothLEDevice(BluetoothLEDevice):
         log.info(":s: subscribe to %s with callback %s. indicate = %d",
                  self._mac_address, uuid, callback.__name__, indication)
         self._backend.subscribe(self._mac_address, uuid, \
-            callback=callback, indication=indication)
+            callback=callback)
