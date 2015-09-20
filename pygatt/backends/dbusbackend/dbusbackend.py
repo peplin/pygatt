@@ -6,12 +6,14 @@ import time
 import threading
 import subprocess
 import dbus
-import dbus.mainloop
 import gobject
 
+from pygatt.classes import BluetoothLEDevice
 from pygatt import constants
 from pygatt import exceptions
 from pygatt.backends.backend import BLEBackend
+from dbus.mainloop.glib import DBusGMainLoop
+
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class DBusBackend(BLEBackend):
     self._dbus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default = True)
     self._bus = dbus.SystemBus(mainloop = self._dbus_loop)
 
-    self._mainloop = DbusBackendThread()
+    self._mainloop = DBusBackendThread()
 
   def start(self):
     self._mainloop.start()
@@ -79,11 +81,42 @@ class DBusBackend(BLEBackend):
     device = self._bus.get_object('org.bluez', self._devices[address]['path'])
     device.Connect(dbus_interface='org.bluez.Device1')
     log.debug('Connected to ' + self._devices[address]['path'])
+    
+    #Get all characteristics
+    characteristics = {}
+    device_iface = dbus.Interface(device, 'org.freedesktop.DBus.Properties')
+    gatt_services = device_iface.Get('org.bluez.Device1', 'GattServices')
+    for gatt_service in gatt_services:
+      service = self._bus.get_object('org.bluez', gatt_service)
+      service_iface = dbus.Interface(service, 'org.freedesktop.DBus.Properties')
+      service_chars = service_iface.Get('org.bluez.GattService1', 'Characteristics')
+      for service_char in service_chars:
+        char = self._bus.get_object('org.bluez', service_char)
+        char_iface = dbus.Interface(char, 'org.freedesktop.DBus.Properties')
+        char_uuid = char_iface.Get('org.bluez.GattCharacteristic1', 'UUID')
+        characteristics[char_uuid] = char
+
+    self._devices[address]['characteristics'] = characteristics
 
   def disconnect(self, address):
     device = self._bus.get_object('org.bluez', self._devices[address]['path'])
     device.Disconnect(dbus_interface='org.bluez.Device1')
     log.debug('Disconnected from ' + self._devices[address]['path'])
+
+  def char_read_uuid(self, address, uuid):
+    char = self._devices[address]['characteristics'][uuid]
+    char_iface = dbus.Interface(char, 'org.bluez.GattCharacteristic1')
+    return char_iface.ReadValue()
+    
+  def char_write(self, address, uuid, value):
+    char = self._devices[address]['characteristics'][uuid]
+    char_iface = dbus.Interface(char, 'org.bluez.GattCharacteristic1')
+    char_iface.WriteValue(value)
+
+  def get_rssi(self, address):
+    device = self._bus.get_object('org.bluez', self._devices[address]['path'])
+    props_iface = dbus.Interface(device, 'org.freedesktop.DBus.Properties')
+    rssi = props_iface.Get('org.bluez.Device1', 'RSSI')
 
   def _add_device(self, path):
     device = self._bus.get_object('org.bluez', path)
@@ -112,9 +145,9 @@ class DBusBackend(BLEBackend):
 
     self._add_device(path)
 
-class DbusBackendThread(threading.Thread):
+class DBusBackendThread(threading.Thread):
   def __init__(self):
-    super(DbusBackendThread, self).__init__()
+    super(DBusBackendThread, self).__init__()
     self._mainloop = gobject.MainLoop()
     self._kill = False
 
@@ -125,3 +158,106 @@ class DbusBackendThread(threading.Thread):
     context = self._mainloop.get_context()
     while not self._kill:
       context.iteration(True)
+
+class DBusBluetoothLEDevice(BluetoothLEDevice):
+    '''Have to use a subclass because the standard classes assume only one device per backend'''
+    def __init__(self, mac_address, backend):
+        """
+        Initialize.
+
+        mac_address -- a string containing the mac address of the BLE device in
+                       the following format: "XX:XX:XX:XX:XX:XX"
+        backend -- an instantiated instance of a BLEBacked.
+
+        Example:
+
+            dongle = pygatt.backends.BGAPIBackend('/dev/ttyAMC0')
+            my_ble_device = pygatt.classes.BluetoothLEDevice(
+                '01:23:45:67:89:ab', bgapi=dongle)
+        """
+        super(DBusBluetoothLEDevice, self).__init__(mac_address, backend)
+
+    def bond(self):
+        """
+        Create a new bond or use an existing bond with the device and make the
+        current connection bonded and encrypted.
+        """
+        log.info("bond")
+        #self._backend.bond(self._mac_address)
+        raise NotImplementedException
+
+    def connect(self, timeout=None):
+        """
+        Connect to the BLE device.
+
+        Example:
+
+            my_ble_device.connect('00:11:22:33:44:55')
+
+        """
+        log.info("connect")
+        self._backend.connect(self._mac_address)
+
+    def char_read(self, uuid):
+        """
+        Reads a Characteristic by UUID.
+
+        uuid -- UUID of Characteristic to read as a string.
+
+        Returns a bytearray containing the characteristic value on success.
+        Returns None on failure.
+
+        Example:
+            my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
+        """
+        log.info("char_read %s", uuid)
+        return self._backend.char_read_uuid(self._mac_address, uuid)
+
+    def char_write(self, uuid, value, wait_for_response=False):
+        """
+        Writes a value to a given characteristic handle.
+
+        uuid -- the UUID of the characteristic to write to.
+        value -- the value as a bytearray to write to the characteristic.
+        wait_for_response -- wait for response after writing (GATTTOOL only).
+
+        Example:
+            my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
+                                     bytearray([0x00, 0xFF]))
+        """
+        log.info("char_write %s", uuid)
+        self._backend.char_write(self._mac_address, uuid, value)
+
+    def encrypt(self):
+        """
+        Form an encrypted, but not bonded, connection.
+        """
+        log.info("encrypt")
+        #self._backend.encrypt(self._mac_address)
+        raise NotImplementedException
+
+    def get_rssi(self):
+        """
+        Get the receiver signal strength indicator (RSSI) value from the BLE
+        device.
+
+        Returns the RSSI value in dBm on success.
+        Returns None on failure.
+        """
+        log.info("get_rssi")
+        return self._backend.get_rssi(self._mac_address)
+
+    def subscribe(self, uuid, callback=None, indication=False):
+        """
+        Enables subscription to a Characteristic with ability to call callback.
+
+        uuid -- UUID as a string of the characteristic to subscribe to.
+        callback -- function to be called when a notification/indication is
+                    received on this characteristic.
+        indication -- use indications (requires application ACK) rather than
+                      notifications (does not requrie application ACK).
+        """
+        log.info(":s: subscribe to %s with callback %s. indicate = %d",
+                 self._mac_address, uuid, callback.__name__, indication)
+        self._backend.subscribe(self._mac_address, uuid, \
+            callback=callback, indication=indication)
