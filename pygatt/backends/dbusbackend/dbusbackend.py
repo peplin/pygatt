@@ -1,19 +1,13 @@
-from collections import defaultdict
 import logging
-import string
-import sys
 import time
 import threading
-import subprocess
 import dbus
 import gobject
 
 from pygatt.classes import BluetoothLEDevice
-from pygatt import constants
 from pygatt import exceptions
 from pygatt.backends.backend import BLEBackend
 from dbus.mainloop.glib import DBusGMainLoop
-
 
 log = logging.getLogger(__name__)
 
