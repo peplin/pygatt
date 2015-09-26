@@ -1,5 +1,7 @@
 import logging
 import time
+import pytz
+import datetime
 import threading
 import dbus
 import gobject
@@ -17,13 +19,13 @@ class DBusBackend(BLEBackend):
   Backend to pygatt that uses dbus connections.
   '''
 
-  def __init__(self, hci_device='hci0'):
+  def __init__(self, hci_device='hci0', connect_timeout=5):
     gobject.threads_init()
     dbus.mainloop.glib.threads_init()
 
     self._hci_device = hci_device
+    self._connect_timeout = connect_timeout
     self._lock = threading.Lock()
-    self._adapter = None
     self._devices = {}
     self._callbacks = {}
 
@@ -41,10 +43,14 @@ class DBusBackend(BLEBackend):
 
   def scan(self, timeout=10, run_as_root=False):
     adapter_obj = self._bus.get_object('org.bluez', '/org/bluez/' + self._hci_device)
-    self._adapter = dbus.Interface(adapter_obj, 'org.bluez.Adapter1')
+    adapter = dbus.Interface(adapter_obj, 'org.bluez.Adapter1')
     prop_intf = dbus.Interface(adapter_obj, 'org.freedesktop.DBus.Properties')
     prop_intf.Set('org.bluez.Adapter1', 'Powered', True)
 
+    adapter.SetDiscoveryFilter({'Transport': 'le'})
+    adapter.StartDiscovery()
+
+    start_time = pytz.utc.localize(datetime.datetime.utcnow())
     manager = dbus.Interface(self._bus.get_object('org.bluez', '/'),
 				'org.freedesktop.DBus.ObjectManager')
     objects = manager.GetManagedObjects()
@@ -52,7 +58,7 @@ class DBusBackend(BLEBackend):
       device = ifaces.get('org.bluez.Device1')
       if device is not None:
         self._add_device(path)
-    if self._adapter is None:
+    if adapter is None:
       raise Exception('Bluetooth adapter not found')
 
     self._bus.add_signal_receiver(self._adapters_added,
@@ -68,18 +74,18 @@ class DBusBackend(BLEBackend):
       arg0 = 'org.bluez.Adapter1',
       path_keyword = 'path')
 
-    self._adapter.SetDiscoveryFilter({'Transport': 'le'})
-    self._adapter.StartDiscovery()
-    time.sleep(timeout)
-    self._adapter.StopDiscovery()
+    #Find difference between supposed finish time and now
+    end_time = pytz.utc.localize(datetime.datetime.utcnow())
+    time_taken = (end_time - start_time).total_seconds()
+    if time_taken < timeout:
+      time.sleep(timeout - time_taken)
+    adapter.StopDiscovery()
 
     return [device for device in self._devices.values()]
 
   def connect(self, address):
     device = self._bus.get_object('org.bluez', self._devices[address]['path'])
     device.Connect(dbus_interface='org.bluez.Device1')
-    log.debug('Connected to ' + self._devices[address]['path'])
-    self._devices[address]['connected'] = True
     
   def disconnect(self, address):
     device = self._bus.get_object('org.bluez', self._devices[address]['path'])
@@ -102,9 +108,7 @@ class DBusBackend(BLEBackend):
       log.warn('Attempting to write to ' + address + ' but not connected!')
       return bytearray()
     char = self._devices[address]['characteristics'][uuid]
-    log.debug(str(char))
     char_iface = dbus.Interface(char, 'org.bluez.GattCharacteristic1')
-    log.debug(str(char))
     char_iface.WriteValue(value)
 
   def get_rssi(self, address):
@@ -155,7 +159,7 @@ class DBusBackend(BLEBackend):
     log.debug('Getting GATT services for ' + str(path))
     try:
       device.Connect(dbus_interface='org.bluez.Device1')
-      time.sleep(17)
+      time.sleep(self._connect_timeout)
     except org.bluez.Error.Failed as e:
       log.warn('Could not connect to ' + str(path) + ' - already connected?')
     #Wait for GATT services to be populated
@@ -207,6 +211,17 @@ class DBusBackend(BLEBackend):
       return
 
     log.debug('Changed: ' + str(changed))
+
+    if 'Connected' in changed and interface == 'org.bluez.Device1':
+      device = self._bus.get_object('org.bluez', path)
+      props_iface = dbus.Interface(device, 'org.freedesktop.DBus.Properties')
+      address = props_iface.Get('org.bluez.Device1', 'Address')
+      if changed['Connected'] == True:
+        log.debug('Connected to ' + address)
+        self._devices[address]['connected'] = True
+      else:
+        log.debug('Disconnected from ' + address)
+        self._devices[address]['connected'] = False
 
     if interface != 'org.bluez.Device1':
       return
@@ -307,7 +322,6 @@ class DBusBluetoothLEDevice(BluetoothLEDevice):
         Example:
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
-        log.info("char_read %s", uuid)
         return self._backend.char_read_uuid(self._mac_address, uuid)
 
     def char_write(self, uuid, value, wait_for_response=False):
@@ -322,7 +336,6 @@ class DBusBluetoothLEDevice(BluetoothLEDevice):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        log.info("char_write %s: %s", uuid, str(value))
         self._backend.char_write(self._mac_address, uuid, value)
 
     def encrypt(self):
