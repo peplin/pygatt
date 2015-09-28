@@ -7,7 +7,7 @@ import dbus
 import gobject
 
 from pygatt.classes import BluetoothLEDevice
-from pygatt import exceptions
+from pygatt.exceptions import *
 from pygatt.backends.backend import BLEBackend
 from dbus.mainloop.glib import DBusGMainLoop
 from dbus import DBusException
@@ -96,7 +96,7 @@ class DBusBackend(BLEBackend):
     def char_read_uuid(self, address, uuid):
         if self._devices[address]["connected"] == False:
             log.warn("Attempting to read from " + address + " but not connected!")
-            return bytearray()
+            raise NotConnectedError()
         char = self._devices[address]["characteristics"][uuid]
         char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
         dbus_values = char_iface.ReadValue()
@@ -106,7 +106,7 @@ class DBusBackend(BLEBackend):
     def char_write(self, address, uuid, value):
         if self._devices[address]["connected"] == False:
             log.warn("Attempting to write to " + address + " but not connected!")
-            return bytearray()
+            raise NotConnectedError()
         char = self._devices[address]["characteristics"][uuid]
         char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
         char_iface.WriteValue(value)
@@ -155,26 +155,30 @@ class DBusBackend(BLEBackend):
             self._lock.release()
             return
 
-        #Connect to get all GATT characteristics
-        log.debug("Getting GATT services for " + str(path))
-        try:
-            device.Connect(dbus_interface="org.bluez.Device1")
-            time.sleep(self._connect_timeout)
-        except org.bluez.Error.Failed as e:
-            log.warn("Could not connect to " + str(path) + " - already connected?")
-        #Wait for GATT services to be populated
-        log.debug("Should have all GATT services for " + str(path))
-
-        #Get all characteristics
-        characteristics = {}
-        device_iface = dbus.Interface(device, "org.freedesktop.DBus.Properties")
-
+        #See if we already have GATT services
         gatt_services = None
         try:
+            device.Connect(dbus_interface="org.bluez.Device1")
+        except DBusException as e:
+            log.warn("Could not connect to " + str(path) + " - already connected?")
+
+        characteristics = {}
+        try:
+            device_iface = dbus.Interface(device, "org.freedesktop.DBus.Properties")
             gatt_services = device_iface.Get("org.bluez.Device1", "GattServices")
         except DBusException as e:
-            log.debug("Device " + address + " doesn\"t have any GATT services. " + str(e))
-            return
+            log.debug("Device " + address + " doesn\"t have any GATT services declared yet. " + str(e))
+
+            #Wait for GATT services to be populated
+            time.sleep(self._connect_timeout)
+            log.debug("Should have all GATT services for " + str(path))
+
+            #Get all characteristics
+            try:
+                gatt_services = device_iface.Get("org.bluez.Device1", "GattServices")
+            except DBusException as e:
+                log.debug("Device " + address + " doesn\"t have any GATT services. " + str(e))
+                return
 
         device.Disconnect(dbus_interface="org.bluez.Device1")
 
