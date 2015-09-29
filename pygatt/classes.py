@@ -34,7 +34,6 @@ class BluetoothLEDevice(object):
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.
         """
-        log.info("bond")
         self._backend.bond()
 
     def connect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
@@ -49,7 +48,6 @@ class BluetoothLEDevice(object):
             my_ble_device.connect(timeout=5)
 
         """
-        log.info("connect")
         self._backend.connect(self._mac_address, timeout=timeout)
 
     def char_read(self, uuid):
@@ -64,7 +62,6 @@ class BluetoothLEDevice(object):
         Example:
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
-        log.info("char_read %s", uuid)
         return self._backend.char_read_uuid(uuid)
 
     def char_write(self, uuid, value, wait_for_response=False):
@@ -88,7 +85,6 @@ class BluetoothLEDevice(object):
         """
         Form an encrypted, but not bonded, connection.
         """
-        log.info("encrypt")
         self._backend.encrypt()
 
     def get_rssi(self):
@@ -99,21 +95,18 @@ class BluetoothLEDevice(object):
         Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
-        log.info("get_rssi")
         return self._backend.get_rssi()
 
     def run(self):
         """
         Start a background thread to listen for notifications.
         """
-        log.info("run")
         self._backend.start()
 
     def stop(self):
         """
         Stop the any background threads and disconnect.
         """
-        log.info("stop")
         self._backend.stop()
 
     def subscribe(self, uuid, callback=None, indication=False):
