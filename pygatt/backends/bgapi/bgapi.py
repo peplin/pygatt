@@ -502,7 +502,7 @@ class BGAPIBackend(BLEBackend):
         self.delete_stored_bonds()
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
-             discover_mode=constants.gap_discover_mode['generic']):
+             discover_mode=constants.gap_discover_mode['observation']):
         """
         Perform a scan to discover BLE devices.
 
