@@ -43,9 +43,6 @@ class GATTToolBackend(BLEBackend):
         self._gatttool_logfile = gatttool_logfile
         self._handles = {}
         self._subscribed_handlers = {}
-        self._lock = threading.Lock()
-        self._connection_lock = threading.RLock()
-        self._running = True
         self._callbacks = defaultdict(set)
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
@@ -58,6 +55,10 @@ class GATTToolBackend(BLEBackend):
 
     def connect(self, address, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
+        if self._con and self._running:
+            self.stop()
+        self.start()
+
         log.info('Connecting with timeout=%s', timeout)
         self._address = address
         try:
@@ -289,6 +290,10 @@ class GATTToolBackend(BLEBackend):
             self._lock.release()
 
     def start(self):
+        self._running = True
+        self._lock = threading.Lock()
+        self._connection_lock = threading.RLock()
+
         # Without restarting, sometimes when trying to bond with the GATTTool
         # backend, the entire computer will lock up.
         self.reset()
@@ -315,16 +320,22 @@ class GATTToolBackend(BLEBackend):
         Stop the backgroud notification handler in preparation for a
         disconnect.
         """
-        log.info('Stopping')
+        if self._running:
+            log.info('Stopping')
         self._running = False
 
-        if self._con.isalive():
+        if self._con and self._con.isalive():
             self._con.sendline('exit')
             while True:
                 if not self._con.isalive():
                     break
                 time.sleep(0.1)
             self._con.close()
+            self._con = None
+
+        if self._thread:
+            self._thread.join()
+            self._thread = None
 
     def _receive(self):
         """
