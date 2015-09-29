@@ -77,7 +77,7 @@ class BGAPIBackend(BLEBackend):
 
     This object is NOT threadsafe.
     """
-    def __init__(self, serial_port):
+    def __init__(self, serial_port=None):
         """
         Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
         stop ongoing procedures, disconnect any connections, optionally start
