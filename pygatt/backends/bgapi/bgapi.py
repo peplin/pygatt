@@ -318,11 +318,11 @@ class BGAPIBackend(BLEBackend):
 
         fail_quietly -- do not raise an exception on failure.
         """
-        log.debug("Disconnecting")
 
         if self._ser is None:
             return
 
+        log.debug("Disconnecting")
         self._lib.send_command(
             self._ser,
             CommandBuilder.connection_disconnect(self._connection_handle))
@@ -768,6 +768,7 @@ class BGAPIBackend(BLEBackend):
         Stops if the self._running event is not set.
         """
         att_value = EventPacketType.attclient_attribute_value
+        log.info("Running receiver")
         while self._running.is_set():
             byte = self._ser.read()
             if len(byte) > 0:
@@ -799,6 +800,7 @@ class BGAPIBackend(BLEBackend):
                     else:
                         self._receiver_queue.put(packet, block=True,
                                                  timeout=0.1)
+        log.info("Stopping receiver")
 
     def _ble_evt_attclient_attribute_value(self, args):
         """
