@@ -269,7 +269,7 @@ class BGAPICommandPacketBuilder(object):
     def gap_connect_direct(address, addr_type, conn_interval_min,
                            conn_interval_max, timeout, latency):
         return pack('<4B6sBHHHH', 0, 15, 6, 3,
-                    b''.join(chr(i) for i in address), addr_type,
+                    b''.join(reversed([chr(i) for i in address])), addr_type,
                     conn_interval_min, conn_interval_max, timeout, latency)
 
     @staticmethod

@@ -260,20 +260,17 @@ class BGAPIBackend(BLEBackend):
         if self._connected:
             raise BGAPIError("Already connected")
 
-        address_bytearray = bytearray(
-            [int(b, 16) for b in address.split(":")])
-
-        bd_addr = [b for b in address_bytearray]
-        interval_min = 6  # 6/1.25 ms
-        interval_max = 30  # 30/1.25 ms
-        supervision_timeout = 20  # 20/10 ms
+        address_bytes = [int(b, 16) for b in address.split(":")]
+        interval_min = 60
+        interval_max = 76
+        supervision_timeout = 100
         latency = 0  # intervals that can be skipped
         log.info("Connecting to device at address %s (timeout %dms)",
                  address, timeout / 10)
         self._lib.send_command(
             self._ser,
             CommandBuilder.gap_connect_direct(
-                bd_addr, addr_type, interval_min, interval_max,
+                address_bytes, addr_type, interval_min, interval_max,
                 supervision_timeout, latency))
 
         self.expect(ResponsePacketType.gap_connect_direct)
