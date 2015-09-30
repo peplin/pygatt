@@ -455,6 +455,8 @@ class BGAPIBackend(BLEBackend):
         thread.
         """
         super(BGAPIBackend, self).start()
+        if self._running.is_set():
+            self.stop()
         self._ser = serial.Serial(self._serial_port, baudrate=256000,
                                   timeout=0.25)
 
