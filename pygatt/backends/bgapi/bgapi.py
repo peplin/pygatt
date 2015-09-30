@@ -449,7 +449,8 @@ class BGAPIBackend(BLEBackend):
         thread.
         """
         super(BGAPIBackend, self).start()
-        self._ser = serial.Serial(self._serial_port, timeout=0.25)
+        self._ser = serial.Serial(self._serial_port, baudrate=256000,
+                                  timeout=0.25)
 
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
