@@ -173,7 +173,7 @@ class DBusBackend(BLEBackend):
             device_iface = dbus.Interface(device, "org.freedesktop.DBus.Properties")
             gatt_services = device_iface.Get("org.bluez.Device1", "GattServices")
         except DBusException as e:
-            log.debug("Device " + address + " doesn\"t have any GATT services declared yet. " + str(e))
+            log.debug("Device " + address + " doesn't have any GATT services declared yet. " + str(e))
 
             #Wait for GATT services to be populated
             time.sleep(self._connect_timeout)
@@ -183,7 +183,7 @@ class DBusBackend(BLEBackend):
             try:
                 gatt_services = device_iface.Get("org.bluez.Device1", "GattServices")
             except DBusException as e:
-                log.debug("Device " + address + " doesn\"t have any GATT services. " + str(e))
+                log.debug("Device " + address + " doesn't have any GATT services. " + str(e))
                 return
 
         device.Disconnect(dbus_interface="org.bluez.Device1")
