@@ -15,7 +15,7 @@ from . import bglib, constants
 from .util import uuid_to_bytearray
 from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
-from .error_codes import get_return_message
+from .error_codes import get_return_message, ErrorCode
 from .util import find_usb_serial_devices
 
 log = logging.getLogger(__name__)
@@ -222,17 +222,23 @@ class BGAPIBackend(BLEBackend):
         if wait_for_response:
             raise NotImplementedError("bgapi subscribe wait for response")
 
-        self._assert_connected()
+        while True:
+            self._assert_connected()
 
-        value_list = [b for b in value]
-        log.info("attribute_write")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.attclient_attribute_write(
-                self._connection_handle, handle, value_list))
+            value_list = [b for b in value]
+            log.info("attribute_write")
+            self._lib.send_command(
+                self._ser,
+                CommandBuilder.attclient_attribute_write(
+                    self._connection_handle, handle, value_list))
 
-        self.expect(ResponsePacketType.attclient_attribute_write)
-        self.expect(EventPacketType.attclient_procedure_completed)
+            self.expect(ResponsePacketType.attclient_attribute_write)
+            packet_type, response = self.expect(
+                EventPacketType.attclient_procedure_completed)
+            if (response['result'] !=
+                    ErrorCode.insufficient_authentication.value):
+                # Continue to retry until we are bonded
+                break
 
     def char_read_uuid(self, uuid):
         handle = self.get_handle(uuid)
