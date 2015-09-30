@@ -738,8 +738,7 @@ class BGAPIBackend(BLEBackend):
                     if packet_type == EventPacketType.attclient_attribute_value:
                         self._handle_notification(args['atthandle'],
                                                   bytearray(args['value']))
-                    else:
-                        self._receiver_queue.put(packet)
+                    self._receiver_queue.put(packet)
         log.info("Stopping receiver")
 
     def _ble_evt_attclient_attribute_value(self, args):
