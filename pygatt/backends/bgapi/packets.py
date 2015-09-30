@@ -176,6 +176,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def attclient_read_by_type(connection, start, end, uuid=[0x03, 0x28]):
+        # Using the default UUID type to find custom UUIDs, which seems to make
+        # querying for characteristics faster.
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
