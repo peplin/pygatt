@@ -175,7 +175,7 @@ class BGAPICommandPacketBuilder(object):
                     b''.join(chr(i) for i in uuid))
 
     @staticmethod
-    def attclient_read_by_type(connection, start, end, uuid):
+    def attclient_read_by_type(connection, start, end, uuid=[0x03, 0x28]):
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
