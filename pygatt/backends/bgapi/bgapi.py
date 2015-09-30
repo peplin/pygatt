@@ -5,12 +5,14 @@ import Queue
 import serial
 import time
 import threading
-from binascii import hexlify, unhexlify
+from binascii import hexlify
+from enum import Enum
 
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
 
 from . import bglib, constants
+from .util import uuid_to_bytearray
 from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message
@@ -22,6 +24,10 @@ BLED112_VENDOR_ID = 0x2458
 BLED112_PRODUCT_ID = 0x0001
 
 
+UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
+                             'descriptor', 'characteristic'])
+
+
 class BGAPIError(BluetoothLEError):
     pass
 
@@ -29,7 +35,7 @@ class BGAPIError(BluetoothLEError):
 class ExpectedResponseTimeout(BGAPIError):
     def __init__(self, expected_packets, timeout):
         super(ExpectedResponseTimeout, self).__init__(
-            "Timed out after %ds waiting for %s" % (
+            "Timed out after %fs waiting for %s" % (
                 timeout or 0, expected_packets))
 
 
@@ -86,6 +92,8 @@ class BGAPIBackend(BLEBackend):
         serial_port -- The name of the serial port for the BGAPI-compatible
         USB interface.
         """
+        super(BGAPIBackend, self).__init__()
+
         self._lib = bglib.BGLib()
         if serial_port is None:
             log.info("Auto-discovering serial port for BLED112")
@@ -105,12 +113,6 @@ class BGAPIBackend(BLEBackend):
         # buffer for packets received
         self._receiver_queue = Queue.Queue()
 
-        # State that is locked
-        self._lock = threading.Lock()
-        self._callbacks = {
-            # atttribute handle: callback function
-        }
-
         # State
         self._expected_attribute_handle = None  # expected handle after a read
         self._num_bonds = 0  # number of bonds stored on the dongle
@@ -120,10 +122,7 @@ class BGAPIBackend(BLEBackend):
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
-        self._characteristics = {  # the device characteristics discovered
-            # uuid_string: Characteristic()
-        }
-        self._characteristics_cached = False  # characteristics already found
+        self._characteristics = {}
         self._current_characteristic = None  # used in char/descriptor discovery
 
         # Flags
@@ -138,8 +137,6 @@ class BGAPIBackend(BLEBackend):
                 self._ble_evt_attclient_attribute_value),
             EventPacketType.attclient_find_information_found: (
                 self._ble_evt_attclient_find_information_found),
-            EventPacketType.attclient_procedure_completed: (
-                self._ble_evt_attclient_procedure_completed),
             EventPacketType.connection_status: self._ble_evt_connection_status,
             EventPacketType.connection_disconnected: (
                 self._ble_evt_connection_disconnected),
@@ -265,8 +262,8 @@ class BGAPIBackend(BLEBackend):
         interval_max = 76
         supervision_timeout = 100
         latency = 0  # intervals that can be skipped
-        log.info("Connecting to device at address %s (timeout %dms)",
-                 address, timeout / 10)
+        log.info("Connecting to device at address %s (timeout %ds)",
+                 address, timeout)
         self._lib.send_command(
             self._ser,
             CommandBuilder.gap_connect_direct(
@@ -364,6 +361,28 @@ class BGAPIBackend(BLEBackend):
             log.warn(msg)
             raise BGAPIError(msg)
 
+    def _cache_characteristics(self):
+        if len(self._characteristics) == 0:
+            att_handle_start = 0x0001  # first valid handle
+            att_handle_end = 0xFFFF  # last valid handle
+            log.info("Fetching characteristics")
+            self._lib.send_command(
+                self._ser,
+                CommandBuilder.attclient_find_information(
+                    self._connection_handle, att_handle_start, att_handle_end))
+
+            self.expect(ResponsePacketType.attclient_find_information)
+            self.expect(EventPacketType.attclient_procedure_completed,
+                        timeout=10)
+
+            for char_uuid_str, char_obj in self._characteristics.iteritems():
+                log.debug("Characteristic 0x%s is handle 0x%x",
+                          char_uuid_str, char_obj.handle)
+                for desc_uuid_str, desc_handle in (
+                        char_obj.descriptors.iteritems()):
+                    log.debug("Characteristic descriptor 0x%s is handle %x",
+                              desc_uuid_str, desc_handle)
+
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
         Get the handle (integer) for a characteristic or descriptor.
@@ -379,39 +398,21 @@ class BGAPIBackend(BLEBackend):
         Raises BGAPIError on failure.
         """
         self._assert_connected()
-
-        # Discover characteristics if not cached
-        if not self._characteristics_cached:
-            att_handle_start = 0x0001  # first valid handle
-            att_handle_end = 0xFFFF  # last valid handle
-            log.info("Fetching characteristics")
-            self._lib.send_command(
-                self._ser,
-                CommandBuilder.attclient_find_information(
-                    self._connection_handle, att_handle_start, att_handle_end))
-
-            self.expect(ResponsePacketType.attclient_find_information)
-            self.expect(EventPacketType.attclient_procedure_completed)
-            self._characteristics_cached = True
-
-            for char_uuid_str, char_obj in self._characteristics.iteritems():
-                log.debug("Characteristic 0x%s is handle 0x%x",
-                          char_uuid_str, char_obj.handle)
-                for desc_uuid_str, desc_handle in (
-                        char_obj.descriptors.iteritems()):
-                    log.debug("Characteristic descriptor 0x%s is handle %x",
-                              desc_uuid_str, desc_handle)
-
+        self._cache_characteristics()
         # Return the handle if it exists
         char = None
-        char_uuid_str = hexlify(characteristic_uuid)
-        if not (char_uuid_str in self._characteristics):
-            warning = "No characteristic found matching %s" % char_uuid_str
+
+        uuid_bytes = uuid_to_bytearray(characteristic_uuid)
+        char = self._characteristics.get(hexlify(uuid_bytes))
+        if char is None:
+            warning = (
+                "No characteristic found matching %s" % characteristic_uuid)
             log.warn(warning)
             raise BGAPIError(warning)
-        char = self._characteristics[char_uuid_str]
+
         if descriptor_uuid is None:
             return char.handle
+
         desc_uuid_str = hexlify(descriptor_uuid)
         if not (desc_uuid_str in char.descriptors):
             warning = "No descriptor found matching %s" % desc_uuid_str
@@ -453,7 +454,11 @@ class BGAPIBackend(BLEBackend):
         Put the interface into a known state to start. And start the receiver
         thread.
         """
-        self._ser = serial.Serial(self._serial_port, timeout=0.25)
+        super(BGAPIBackend, self).start()
+        if self._running.is_set():
+            self.stop()
+        self._ser = serial.Serial(self._serial_port, baudrate=256000,
+                                  timeout=0.25)
 
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
@@ -548,39 +553,6 @@ class BGAPIBackend(BLEBackend):
             })
         return devices
 
-    def subscribe(self, uuid, callback=None, indicate=False):
-        """
-        Ask GATT server to receive notifications from the characteristic.
-
-        This requires that a connection is already established with the device.
-
-        uuid -- the uuid of the characteristic to subscribe to.
-        callback -- funtion to call when notified/indicated.
-        indicate -- receive indications (requires application ACK) rather than
-                    notifications (does not require application ACK).
-
-        Raises BGAPIError on failure.
-        """
-
-        uuid_bytes = self._uuid_bytearray(uuid)
-        characteristic_handle = self.get_handle(uuid_bytes)
-        characteristic_config_handle = self.get_handle(
-            uuid_bytes,
-            constants.gatt_characteristic_descriptor_uuid[
-                'client_characteristic_configuration'
-            ])
-
-        # Subscribe to characteristic
-        config_val = [0x01, 0x00]  # Enable notifications 0x0001
-        if indicate:
-            config_val = [0x02, 0x00]  # Enable indications 0x0002
-        self.char_write(characteristic_config_handle, config_val)
-
-        if callback is not None:
-            self._lock.acquire()
-            self._callbacks[characteristic_handle] = callback
-            self._lock.release()
-
     def stop(self):
         self.disconnect(fail_quietly=True)
         self._running.clear()
@@ -620,36 +592,20 @@ class BGAPIBackend(BLEBackend):
 
         uuid -- the UUID as a bytearray.
 
-        Returns -1 if the UUID is unrecognized.
-        Returns 0 if the UUID is a 128-bit UUID.
-        Returns 1 if the UUID is a GATT service UUID.
-        Returns 2 if the UUID is a GATT attribute type UUID
-        Returns 3 if the UUID is a GATT characteristic descriptor UUID.
-        Returns 4 if the UUID is a GATT characteristic type UUID.
+        Return a UUIDType.
         """
-        log.debug("Determined type of UUID %s" % hexlify(uuid))
         if len(uuid) == 16:  # 128-bit --> 16 byte
-            log.debug("%s is a custom UUID", hexlify(uuid))
-            return 0
-        for name, u in constants.gatt_service_uuid.iteritems():
-            if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
-                return 1
-        for name, u in constants.gatt_attribute_type_uuid.iteritems():
-            if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
-                return 2
-        for name, u in (
-                constants.gatt_characteristic_descriptor_uuid.iteritems()):
-            if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
-                return 3
-        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
-            if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
-                return 4
-        log.debug("Type of UUID %s is unknown", hexlify(uuid))
-        return -1
+            return UUIDType.custom
+        if uuid in constants.gatt_service_uuid.values():
+            return UUIDType.service
+        if uuid in constants.gatt_attribute_type_uuid.values():
+            return UUIDType.attribute
+        if uuid in constants.gatt_characteristic_descriptor_uuid.values():
+            return UUIDType.descriptor
+        if uuid in constants.gatt_characteristic_type_uuid.values():
+            return UUIDType.characteristic
+        log.warn("UUID %s is of unknown type", hexlify(uuid))
+        return None
 
     def _scan_rsp_data(self, data):
         """
@@ -718,7 +674,8 @@ class BGAPIBackend(BLEBackend):
         Raises an ExpectedResponseTimeout if one of the expected responses is
             not receiving withint the time limit.
         """
-        log.info("Expecting a response of one of %s within %ds",
+        timeout = timeout or 1
+        log.info("Expecting a response of one of %s within %fs",
                  expected_packet_choices, timeout or 0)
 
         start_time = None
@@ -729,7 +686,7 @@ class BGAPIBackend(BLEBackend):
             packet = None
             try:
                 # TODO can we increase the timeout here?
-                packet = self._receiver_queue.get(block=True, timeout=0.1)
+                packet = self._receiver_queue.get(timeout=0.1)
             except Queue.Empty:
                 if timeout is not None:
                     if time.time() - start_time > timeout:
@@ -756,7 +713,6 @@ class BGAPIBackend(BLEBackend):
                         "Response to packet %s errored: %s" %
                         (packet_type, get_return_message(return_code)))
                     log.warn(exc.message)
-                    raise exc
                 return packet_type, response
 
     def _receive(self):
@@ -764,7 +720,6 @@ class BGAPIBackend(BLEBackend):
         Read bytes from serial and enqueue the packets if the packet is not a.
         Stops if the self._running event is not set.
         """
-        att_value = EventPacketType.attclient_attribute_value
         log.info("Running receiver")
         while self._running.is_set():
             byte = self._ser.read()
@@ -773,30 +728,10 @@ class BGAPIBackend(BLEBackend):
                 packet = self._lib.parse_byte(byte)
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
-
-                    self._lock.acquire()
-                    callbacks = dict(self._callbacks)
-                    self._lock.release()
-                    handles_subscribed_to = callbacks.keys()
-
-                    if packet_type != att_value:
-                        self._receiver_queue.put(packet, block=True,
-                                                 timeout=0.1)
-                    elif args['atthandle'] in handles_subscribed_to:
-                        # This is a notification/indication. Handle now.
-                        callback_exists = (args['atthandle'] in callbacks)
-                        if callback_exists:
-                            log.debug(
-                                "Calling subscription callback " +
-                                callbacks[args['atthandle']].__name__)
-                            callback_thread = threading.Thread(
-                                target=callbacks[args['atthandle']],
-                                args=(bytearray(args['value']),))
-                            callback_thread.daemon = True
-                            callback_thread.start()
-                    else:
-                        self._receiver_queue.put(packet, block=True,
-                                                 timeout=0.1)
+                    if packet_type == EventPacketType.attclient_attribute_value:
+                        self._handle_notification(args['atthandle'],
+                                                  bytearray(args['value']))
+                    self._receiver_queue.put(packet)
         log.info("Stopping receiver")
 
     def _ble_evt_attclient_attribute_value(self, args):
@@ -828,34 +763,18 @@ class BGAPIBackend(BLEBackend):
         and characteristic UUID ('uuid')
         """
         uuid = bytearray(list(reversed(args['uuid'])))
-        uuid_str = "0x"+hexlify(uuid)
-
-        log.debug("characteristic handle = %s", hex(args['chrhandle']))
-        log.debug("characteristic UUID = %s", uuid_str)
-
         # Add uuid to characteristics as characteristic or descriptor
         uuid_type = self._get_uuid_type(uuid)
-        # 3 == descriptor
-        if (uuid_type == 3) and (self._current_characteristic is not None):
-            log.debug("GATT characteristic descriptor")
-            self._current_characteristic.add_descriptor(hexlify(uuid),
-                                                        args['chrhandle'])
-        elif uuid_type == 0:  # 0 == custom 128-bit UUID
-            log.debug("found custom characteristic")
+        uuid_str = hexlify(uuid)
+        if (uuid_type == UUIDType.descriptor and
+                self._current_characteristic is not None):
+            self._current_characteristic.add_descriptor(
+                uuid_str, args['chrhandle'])
+        elif uuid_type == UUIDType.custom:
+            log.debug("Found custom characteristic %s" % uuid_str)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
-            self._characteristics[hexlify(uuid)] = new_char
-
-    def _ble_evt_attclient_procedure_completed(self, args):
-        """
-        Handles the event for completion of writes to remote device.
-
-        args -- dictionary containing the return code ('result'), characteristic
-        handle ('chrhandle')
-        """
-        log.debug("characteristic handle = %s", hex(args['chrhandle']))
-        log.info("return code = %s",
-                 get_return_message(args['result']))
+            self._characteristics[uuid_str] = new_char
 
     def _ble_evt_connection_disconnected(self, args):
         """
@@ -894,24 +813,24 @@ class BGAPIBackend(BLEBackend):
                 constants.connection_status_flag['parameters_change']):
             flags += 'parameters_change, '
 
-        log.debug("connection = %s", hex(args['connection_handle']))
-        log.info("flags = %s", flags)
-        addr_str = "0x"+hexlify(bytearray(args['address']))
-        log.debug("address = %s", addr_str)
+        address_type = "unknown"
         if (args['address_type'] ==
                 constants.ble_address_type['gap_address_type_public']):
             address_type = "public"
         elif (args['address_type'] ==
                 constants.ble_address_type['gap_address_type_random']):
             address_type = "random"
-        else:
-            address_type = "Bad type"
-        log.debug("address type = %s", address_type)
-        log.debug("connection interval = %f ms",
-                  args['conn_interval'] * 1.25)
-        log.debug("timeout = %d", args['timeout'] * 10)
-        log.debug("latency = %d intervals", args['latency'])
-        log.debug("bonding = %s", hex(args['bonding']))
+        log.info("Connection status: handle=%s, flags=%s, address=0x%s, "
+                 "address_type=%s, connection interval=%fms, timeout=%d, "
+                 "latency=%d intervals, bonding=0x%x",
+                 hex(args['connection_handle']),
+                 flags,
+                 hexlify(bytearray(args['address'])),
+                 address_type,
+                 args['conn_interval'] * 1.25,
+                 args['timeout'] * 10,
+                 args['latency'],
+                 args['bonding'])
 
     def _ble_evt_gap_scan_response(self, args):
         """
@@ -989,15 +908,3 @@ class BGAPIBackend(BLEBackend):
         """
         self._num_bonds = args['bonds']
         log.info("num bonds = %d", args['bonds'])
-
-    def _uuid_bytearray(self, uuid):
-        """
-        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-        to a bytearray.
-
-        uuid -- the UUID to convert.
-
-        Returns a bytearray containing the UUID.
-        """
-        log.info("_uuid_bytearray %s", uuid)
-        return unhexlify(uuid.replace("-", ""))

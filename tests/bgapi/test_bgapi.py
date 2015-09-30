@@ -8,7 +8,7 @@ import time
 from pygatt.backends import BGAPIBackend
 
 from .mocker import MockBGAPISerialDevice
-from .util import uuid_to_bytearray
+from pygatt.backends.bgapi.util import uuid_to_bytearray
 
 
 class BGAPIBackendTests(unittest.TestCase):
@@ -64,7 +64,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_get_handle_packets([
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char))
+        handle = self.backend.get_handle(uuid_char)
         # Test char_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self.mock_device.stage_char_read_packets(
@@ -83,7 +83,7 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_get_handle_packets([
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char))
+        handle = self.backend.get_handle(uuid_char)
         # Test char_write
         value = [0xF0, 0x0F, 0x00]
         self.mock_device.stage_char_write_packets(handle, value)
@@ -126,10 +126,10 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_get_handle_packets([
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char))
+        handle = self.backend.get_handle(uuid_char)
         assert(handle == handle_char)
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char),
-                                         uuid_to_bytearray(uuid_desc))
+        handle = self.backend.get_handle(
+            uuid_char, uuid_to_bytearray(uuid_desc))
         assert(handle == handle_desc)
 
     def test_scan_and_get_devices_discovered(self):
@@ -163,8 +163,8 @@ class BGAPIBackendTests(unittest.TestCase):
         handle_desc = 0x5678
         self.mock_device.stage_get_handle_packets([
             uuid_char, handle_char, uuid_desc, handle_desc])
-        handle = self.backend.get_handle(uuid_to_bytearray(uuid_char),
-                                         uuid_to_bytearray(uuid_desc))
+        handle = self.backend.get_handle(
+            uuid_char, uuid_to_bytearray(uuid_desc))
         # Stage char_write packets
         if indications:
             value = [0x02, 0x00]
@@ -180,7 +180,7 @@ class BGAPIBackendTests(unittest.TestCase):
                 self.received_value_bytearray = None
                 self.called = threading.Event()
 
-            def handle(self, received_value_bytearray):
+            def handle(self, handle, received_value_bytearray):
                 self.received_value_bytearray = received_value_bytearray
                 self.called.set()
 
@@ -193,7 +193,8 @@ class BGAPIBackendTests(unittest.TestCase):
         handle = 0x1234
         uuid = '01234567-0123-0123-0123-0123456789AB'
         self.stage_subscribe_packets(uuid, handle)
-        self.backend.subscribe(uuid, callback=my_handler.handle, indicate=True)
+        self.backend.subscribe(uuid, callback=my_handler.handle,
+                               indication=True)
         start_time = time.time()
         self.mock_device.stage_indication_packets(handle, packet_values)
         while not my_handler.called.is_set():
