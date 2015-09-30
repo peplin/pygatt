@@ -262,8 +262,8 @@ class BGAPIBackend(BLEBackend):
         interval_max = 76
         supervision_timeout = 100
         latency = 0  # intervals that can be skipped
-        log.info("Connecting to device at address %s (timeout %dms)",
-                 address, timeout / 10)
+        log.info("Connecting to device at address %s (timeout %ds)",
+                 address, timeout)
         self._lib.send_command(
             self._ser,
             CommandBuilder.gap_connect_direct(
