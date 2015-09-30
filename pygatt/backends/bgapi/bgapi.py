@@ -6,6 +6,7 @@ import serial
 import time
 import threading
 from binascii import hexlify
+from enum import Enum
 
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
@@ -21,6 +22,10 @@ log = logging.getLogger(__name__)
 
 BLED112_VENDOR_ID = 0x2458
 BLED112_PRODUCT_ID = 0x0001
+
+
+UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
+                             'descriptor', 'characteristic'])
 
 
 class BGAPIError(BluetoothLEError):
@@ -584,30 +589,20 @@ class BGAPIBackend(BLEBackend):
 
         uuid -- the UUID as a bytearray.
 
-        Returns -1 if the UUID is unrecognized.
-        Returns 0 if the UUID is a 128-bit UUID.
-        Returns 1 if the UUID is a GATT service UUID.
-        Returns 2 if the UUID is a GATT attribute type UUID
-        Returns 3 if the UUID is a GATT characteristic descriptor UUID.
-        Returns 4 if the UUID is a GATT characteristic type UUID.
+        Return a UUIDType.
         """
         if len(uuid) == 16:  # 128-bit --> 16 byte
-            return 0
-        for name, u in constants.gatt_service_uuid.iteritems():
-            if u == uuid:
-                return 1
-        for name, u in constants.gatt_attribute_type_uuid.iteritems():
-            if u == uuid:
-                return 2
-        for name, u in (
-                constants.gatt_characteristic_descriptor_uuid.iteritems()):
-            if u == uuid:
-                return 3
-        for name, u in constants.gatt_characteristic_type_uuid.iteritems():
-            if u == uuid:
-                return 4
+            return UUIDType.custom
+        if uuid in constants.gatt_service_uuid.values():
+            return UUIDType.service
+        if uuid in constants.gatt_attribute_type_uuid.values():
+            return UUIDType.attribute
+        if uuid in constants.gatt_characteristic_descriptor_uuid.values():
+            return UUIDType.descriptor
+        if uuid in constants.gatt_characteristic_type_uuid.values():
+            return UUIDType.characteristic
         log.warn("UUID %s is of unknown type", hexlify(uuid))
-        return -1
+        return None
 
     def _scan_rsp_data(self, data):
         """
@@ -764,21 +759,19 @@ class BGAPIBackend(BLEBackend):
         args -- dictionary containing the characteristic handle ('chrhandle'),
         and characteristic UUID ('uuid')
         """
-        # TODO I think this is backwards, we log things like 0x2803 in our logs
-        # but in BLE GUI it has 0x0328
         uuid = bytearray(list(reversed(args['uuid'])))
         # Add uuid to characteristics as characteristic or descriptor
         uuid_type = self._get_uuid_type(uuid)
-        # 3 == descriptor
-        if (uuid_type == 3) and (self._current_characteristic is not None):
-            log.debug("GATT characteristic descriptor")
-            self._current_characteristic.add_descriptor(hexlify(uuid),
-                                                        args['chrhandle'])
-        elif uuid_type == 0:  # 0 == custom 128-bit UUID
-            log.debug("found custom characteristic")
+        uuid_str = hexlify(uuid)
+        if (uuid_type == UUIDType.descriptor and
+                self._current_characteristic is not None):
+            self._current_characteristic.add_descriptor(
+                uuid_str, args['chrhandle'])
+        elif uuid_type == UUIDType.custom:
+            log.debug("Found custom characteristic %s" % uuid_str)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
-            self._characteristics[hexlify(uuid)] = new_char
+            self._characteristics[uuid_str] = new_char
 
     def _ble_evt_connection_disconnected(self, args):
         """
