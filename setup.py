@@ -44,10 +44,10 @@ setup(
     license=open('LICENSE').read(),
     long_description=open('README.rst').read(),
     url='https://github.com/ampledata/pygatt',
-    install_requires=['pexpect'],
+    install_requires=['pexpect >= 3.3'],
     setup_requires=[
-      'coverage==3.7.1',
-      'nose==1.3.1'
+      'coverage >= 3.7.1',
+      'nose >= 1.3.1'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,
