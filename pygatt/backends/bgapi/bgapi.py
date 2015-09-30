@@ -570,6 +570,8 @@ class BGAPIBackend(BLEBackend):
         config_val = [0x01, 0x00]  # Enable notifications 0x0001
         if indication:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
+        # TODO keep track of which handles we've already subscribed to and don't
+        # re-subscribe
         self.char_write(characteristic_config_handle, config_val)
 
         if callback is not None:
@@ -767,24 +769,18 @@ class BGAPIBackend(BLEBackend):
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
                     if packet_type == EventPacketType.attclient_attribute_value:
-                        # This is a notification/indication. Handle now.
-                        callback = self._callbacks.get(args['atthandle'])
-                        if callback is not None:
-                            log.debug("Calling subscription callback %s",
-                                      callback.__name__)
-                            # TODO does this need to be threaded? I think
-                            # typically you make callbacks fast and quick, and
-                            # if they have more work to do, they are responsible
-                            # for their own background processing.
-                            callback_thread = threading.Thread(
-                                target=callback,
-                                args=(bytearray(args['value']),))
-                            callback_thread.daemon = True
-                            callback_thread.start()
-                            return
-
-                    self._receiver_queue.put(packet)
+                        self._handle_notification(args)
+                    else:
+                        self._receiver_queue.put(packet)
         log.info("Stopping receiver")
+
+    def _handle_notification(self, args):
+        # This is a notification/indication. Handle now.
+        handle = args['atthandle']
+        callback = self._callbacks.get(handle)
+        if callback is not None:
+            callback(handle, bytearray(args['value']))
+            return
 
     def _ble_evt_attclient_attribute_value(self, args):
         """
