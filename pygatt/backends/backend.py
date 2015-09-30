@@ -43,6 +43,9 @@ class BLEBackend(object):
     def stop(self):
         raise NotImplementedError()
 
+    def disconnect(self):
+        raise NotImplementedError()
+
     def subscribe(self, uuid, callback=None, indication=False):
         """
         Enables subscription to a Characteristic with ability to call callback.
