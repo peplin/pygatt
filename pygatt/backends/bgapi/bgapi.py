@@ -29,7 +29,7 @@ class BGAPIError(BluetoothLEError):
 class ExpectedResponseTimeout(BGAPIError):
     def __init__(self, expected_packets, timeout):
         super(ExpectedResponseTimeout, self).__init__(
-            "Timed out after %ds waiting for %s" % (
+            "Timed out after %fs waiting for %s" % (
                 timeout or 0, expected_packets))
 
 
@@ -718,7 +718,8 @@ class BGAPIBackend(BLEBackend):
         Raises an ExpectedResponseTimeout if one of the expected responses is
             not receiving withint the time limit.
         """
-        log.info("Expecting a response of one of %s within %ds",
+        timeout = timeout or 1
+        log.info("Expecting a response of one of %s within %fs",
                  expected_packet_choices, timeout or 0)
 
         start_time = None
