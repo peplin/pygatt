@@ -811,24 +811,24 @@ class BGAPIBackend(BLEBackend):
                 constants.connection_status_flag['parameters_change']):
             flags += 'parameters_change, '
 
-        log.debug("connection = %s", hex(args['connection_handle']))
-        log.info("flags = %s", flags)
-        addr_str = "0x"+hexlify(bytearray(args['address']))
-        log.debug("address = %s", addr_str)
+        address_type = "unknown"
         if (args['address_type'] ==
                 constants.ble_address_type['gap_address_type_public']):
             address_type = "public"
         elif (args['address_type'] ==
                 constants.ble_address_type['gap_address_type_random']):
             address_type = "random"
-        else:
-            address_type = "Bad type"
-        log.debug("address type = %s", address_type)
-        log.debug("connection interval = %f ms",
-                  args['conn_interval'] * 1.25)
-        log.debug("timeout = %d", args['timeout'] * 10)
-        log.debug("latency = %d intervals", args['latency'])
-        log.debug("bonding = %s", hex(args['bonding']))
+        log.info("Connection status: handle=%s, flags=%s, address=0x%s, "
+                 "address_type=%s, connection interval=%fms, timeout=%d, "
+                 "latency=%d intervals, bonding=0x%x",
+                 hex(args['connection_handle']),
+                 flags,
+                 hexlify(bytearray(args['address'])),
+                 address_type,
+                 args['conn_interval'] * 1.25,
+                 args['timeout'] * 10,
+                 args['latency'],
+                 args['bonding'])
 
     def _ble_evt_gap_scan_response(self, args):
         """
