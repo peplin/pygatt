@@ -371,6 +371,7 @@ class BGAPIBackend(BLEBackend):
                 CommandBuilder.attclient_find_information(
                     self._connection_handle, att_handle_start, att_handle_end))
 
+            self.expect(ResponsePacketType.attclient_find_information)
             self.expect(EventPacketType.attclient_procedure_completed,
                         timeout=10)
 
