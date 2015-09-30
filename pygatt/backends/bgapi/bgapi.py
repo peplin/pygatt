@@ -705,20 +705,13 @@ class BGAPIBackend(BLEBackend):
 
             packet_type, response = self._lib.decode_packet(packet)
             return_code = response.get('result', 0)
-            log.debug("Received a %s packet "
-                      "(status: %s, connection handle: %x)",
-                      packet_type, get_return_message(return_code),
-                      response.get('connection_handle', 0))
+            log.debug("Received a %s packet: %s",
+                      packet_type, get_return_message(return_code))
 
             if packet_type in self._packet_handlers:
                 self._packet_handlers[packet_type](response)
 
             if packet_type in expected_packet_choices:
-                if assert_return_success and return_code != 0:
-                    exc = BGAPIError(
-                        "Response to packet %s errored: %s" %
-                        (packet_type, get_return_message(return_code)))
-                    log.warn(exc.message)
                 return packet_type, response
 
     def _receive(self):
