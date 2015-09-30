@@ -86,6 +86,8 @@ class BGAPIBackend(BLEBackend):
         serial_port -- The name of the serial port for the BGAPI-compatible
         USB interface.
         """
+        super(BGAPIBackend, self).__init__()
+
         self._lib = bglib.BGLib()
         if serial_port is None:
             log.info("Auto-discovering serial port for BLED112")
@@ -104,10 +106,6 @@ class BGAPIBackend(BLEBackend):
 
         # buffer for packets received
         self._receiver_queue = Queue.Queue()
-
-        self._callbacks = {
-            # atttribute handle: callback function
-        }
 
         # State
         self._expected_attribute_handle = None  # expected handle after a read
@@ -450,6 +448,7 @@ class BGAPIBackend(BLEBackend):
         Put the interface into a known state to start. And start the receiver
         thread.
         """
+        super(BGAPIBackend, self).start()
         self._ser = serial.Serial(self._serial_port, timeout=0.25)
 
         self._receiver = threading.Thread(target=self._receive)
@@ -544,38 +543,6 @@ class BGAPIBackend(BLEBackend):
                 'rssi': info.rssi
             })
         return devices
-
-    def subscribe(self, uuid, callback=None, indication=False):
-        """
-        Ask GATT server to receive notifications from the characteristic.
-
-        This requires that a connection is already established with the device.
-
-        uuid -- the uuid of the characteristic to subscribe to.
-        callback -- funtion to call when notified/indicated.
-        indication -- receive indications (requires application ACK) rather than
-                    notifications (does not require application ACK).
-
-        Raises BGAPIError on failure.
-        """
-
-        characteristic_handle = self.get_handle(uuid)
-        characteristic_config_handle = self.get_handle(
-            uuid,
-            constants.gatt_characteristic_descriptor_uuid[
-                'client_characteristic_configuration'
-            ])
-
-        # Subscribe to characteristic
-        config_val = [0x01, 0x00]  # Enable notifications 0x0001
-        if indication:
-            config_val = [0x02, 0x00]  # Enable indications 0x0002
-        # TODO keep track of which handles we've already subscribed to and don't
-        # re-subscribe
-        self.char_write(characteristic_config_handle, config_val)
-
-        if callback is not None:
-            self._callbacks[characteristic_handle] = callback
 
     def stop(self):
         self.disconnect(fail_quietly=True)
@@ -769,18 +736,11 @@ class BGAPIBackend(BLEBackend):
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
                     if packet_type == EventPacketType.attclient_attribute_value:
-                        self._handle_notification(args)
+                        self._handle_notification(args['atthandle'],
+                                                  bytearray(args['value']))
                     else:
                         self._receiver_queue.put(packet)
         log.info("Stopping receiver")
-
-    def _handle_notification(self, args):
-        # This is a notification/indication. Handle now.
-        handle = args['atthandle']
-        callback = self._callbacks.get(handle)
-        if callback is not None:
-            callback(handle, bytearray(args['value']))
-            return
 
     def _ble_evt_attclient_attribute_value(self, args):
         """

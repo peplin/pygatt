@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from collections import defaultdict
 import re
 import logging
 import platform
@@ -36,14 +35,12 @@ class GATTToolBackend(BLEBackend):
         loghandler -- logging.handler object to use for the logger.
         loglevel -- log level for this module's logger.
         """
-        self._loglock = threading.Lock()
+        super(GATTToolBackend, self).__init__()
 
         # Internal state
         self._hci_device = hci_device
         self._gatttool_logfile = gatttool_logfile
         self._handles = {}
-        self._subscribed_handlers = {}
-        self._callbacks = defaultdict(set)
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
 
@@ -154,7 +151,7 @@ class GATTToolBackend(BLEBackend):
                     if matched_pattern_index == 0:
                         break
                     elif matched_pattern_index in [1, 2]:
-                        self._handle_notification(self._con.after)
+                        self._handle_notification_string(self._con.after)
                     elif matched_pattern_index in [3, 4]:
                         message = ""
                         if self._running:
@@ -166,6 +163,12 @@ class GATTToolBackend(BLEBackend):
                 except pexpect.TIMEOUT:
                     raise exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
+
+    def _handle_notification_string(self, msg):
+        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
+        handle = int(hex_handle, 16)
+        value = bytearray.fromhex(hex_value)
+        self._handle_notification(handle, value)
 
     def char_write(self, handle, value, wait_for_response=False):
         """
@@ -228,70 +231,9 @@ class GATTToolBackend(BLEBackend):
 
             return bytearray([int(n, 16) for n in rval])
 
-    def subscribe(self, uuid, callback=None, indication=False):
-        """
-        Enables subscription to a Characteristic with ability to call callback.
-        :param uuid:
-        :param callback:
-        :param indication:
-        :return:
-        :rtype:
-        """
-        log.info(
-            'Subscribing to uuid=%s with callback=%s and indication=%s',
-            uuid, callback, indication)
-        # Expect notifications on the value handle...
-        value_handle = self.get_handle(uuid)
-        # but write to the characteristic config to enable notifications
-        characteristic_config_handle = value_handle + 1
-
-        if indication:
-            properties = bytearray([0x02, 0x00])
-        else:
-            properties = bytearray([0x01, 0x00])
-
-        try:
-            self._lock.acquire()
-
-            if callback is not None:
-                self._callbacks[value_handle].add(callback)
-
-            if self._subscribed_handlers.get(value_handle, None) != properties:
-                self.char_write(
-                    characteristic_config_handle,
-                    properties,
-                    wait_for_response=False
-                )
-                log.debug("Subscribed to uuid=%s", uuid)
-                self._subscribed_handlers[value_handle] = properties
-            else:
-                log.debug("Already subscribed to uuid=%s", uuid)
-        finally:
-            self._lock.release()
-
-    def _handle_notification(self, msg):
-        """
-        Receive a notification from the connected device and propagate the value
-        to all registered callbacks.
-        """
-        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
-        handle = int(hex_handle, 16)
-        value = bytearray.fromhex(hex_value)
-
-        log.info('Received notification on handle=%s, value=%s',
-                 hex_handle, hex_value)
-        try:
-            self._lock.acquire()
-
-            if handle in self._callbacks:
-                for callback in self._callbacks[handle]:
-                    callback(handle, value)
-        finally:
-            self._lock.release()
-
     def start(self):
+        super(GATTToolBackend, self).start()
         self._running = True
-        self._lock = threading.Lock()
         self._connection_lock = threading.RLock()
 
         # Without restarting, sometimes when trying to bond with the GATTTool

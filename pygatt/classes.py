@@ -64,7 +64,7 @@ class BluetoothLEDevice(object):
         """
         return self._backend.char_read_uuid(uuid)
 
-    def char_write(self, uuid, value, wait_for_response=False):
+    def char_write(self, *args, **kwargs):
         """
         Writes a value to a given characteristic handle.
 
@@ -76,10 +76,7 @@ class BluetoothLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        log.info("char_write %s", uuid)
-        handle = self._backend.get_handle(uuid)
-        self._backend.char_write(handle, value,
-                                 wait_for_response=wait_for_response)
+        self._backend.char_write_uuid(*args, **kwargs)
 
     def encrypt(self):
         """
@@ -109,16 +106,5 @@ class BluetoothLEDevice(object):
         """
         self._backend.stop()
 
-    def subscribe(self, uuid, callback=None, indication=False):
-        """
-        Enables subscription to a Characteristic with ability to call callback.
-
-        uuid -- UUID as a string of the characteristic to subscribe.
-        callback -- function to be called when a notification/indication is
-                    received on this characteristic.
-        indication -- use indications (requires application ACK) rather than
-                      notifications (does not requrie application ACK).
-        """
-        log.info("Subscibing to %s with callback %s. indicate = %d",
-                 uuid, callback.__name__, indication)
-        self._backend.subscribe(uuid, callback=callback, indication=indication)
+    def subscribe(self, *args, **kwargs):
+        self._backend.subscribe(*args, **kwargs)
