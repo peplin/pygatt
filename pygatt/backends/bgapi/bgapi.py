@@ -548,7 +548,7 @@ class BGAPIBackend(BLEBackend):
             })
         return devices
 
-    def subscribe(self, uuid, callback=None, indicate=False):
+    def subscribe(self, uuid, callback=None, indication=False):
         """
         Ask GATT server to receive notifications from the characteristic.
 
@@ -556,7 +556,7 @@ class BGAPIBackend(BLEBackend):
 
         uuid -- the uuid of the characteristic to subscribe to.
         callback -- funtion to call when notified/indicated.
-        indicate -- receive indications (requires application ACK) rather than
+        indication -- receive indications (requires application ACK) rather than
                     notifications (does not require application ACK).
 
         Raises BGAPIError on failure.
@@ -572,7 +572,7 @@ class BGAPIBackend(BLEBackend):
 
         # Subscribe to characteristic
         config_val = [0x01, 0x00]  # Enable notifications 0x0001
-        if indicate:
+        if indication:
             config_val = [0x02, 0x00]  # Enable indications 0x0002
         self.char_write(characteristic_config_handle, config_val)
 
