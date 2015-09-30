@@ -8,7 +8,7 @@ Source:: https://github.com/ampledata/pygatt
 
 
 __title__ = 'pygatt'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __author__ = 'Greg Albrecht <gba@orionlabs.co>'
 __license__ = 'Apache License, Version 2.0'
 __copyright__ = 'Copyright 2015 Orion Labs, Inc.'
@@ -44,10 +44,10 @@ setup(
     license=open('LICENSE').read(),
     long_description=open('README.rst').read(),
     url='https://github.com/ampledata/pygatt',
-    install_requires=['pexpect'],
+    install_requires=['pexpect >= 3.3'],
     setup_requires=[
-      'coverage==3.7.1',
-      'nose==1.3.1'
+      'coverage >= 3.7.1',
+      'nose >= 1.3.1'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,
