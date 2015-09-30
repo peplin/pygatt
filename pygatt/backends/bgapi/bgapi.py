@@ -133,8 +133,6 @@ class BGAPIBackend(BLEBackend):
                 self._ble_evt_attclient_attribute_value),
             EventPacketType.attclient_find_information_found: (
                 self._ble_evt_attclient_find_information_found),
-            EventPacketType.attclient_procedure_completed: (
-                self._ble_evt_attclient_procedure_completed),
             EventPacketType.connection_status: self._ble_evt_connection_status,
             EventPacketType.connection_disconnected: (
                 self._ble_evt_connection_disconnected),
@@ -832,17 +830,6 @@ class BGAPIBackend(BLEBackend):
             self._current_characteristic = new_char
             self._characteristics[hexlify(uuid)] = new_char
 
-    def _ble_evt_attclient_procedure_completed(self, args):
-        """
-        Handles the event for completion of writes to remote device.
-
-        args -- dictionary containing the return code ('result'), characteristic
-        handle ('chrhandle')
-        """
-        log.debug("characteristic handle = %s", hex(args['chrhandle']))
-        log.info("return code = %s",
-                 get_return_message(args['result']))
-
     def _ble_evt_connection_disconnected(self, args):
         """
         Handles the event for the termination of a connection.
@@ -985,5 +972,4 @@ class BGAPIBackend(BLEBackend):
 
         Returns a bytearray containing the UUID.
         """
-        log.info("_uuid_bytearray %s", uuid)
         return unhexlify(uuid.replace("-", ""))

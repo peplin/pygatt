@@ -113,12 +113,12 @@ class BluetoothLEDevice(object):
         """
         Enables subscription to a Characteristic with ability to call callback.
 
-        uuid -- UUID as a string of the characteristic to subscribe to.
+        uuid -- UUID as a string of the characteristic to subscribe.
         callback -- function to be called when a notification/indication is
                     received on this characteristic.
         indication -- use indications (requires application ACK) rather than
                       notifications (does not requrie application ACK).
         """
-        log.info("subscribe to %s with callback %s. indicate = %d",
+        log.info("Subscibing to %s with callback %s. indicate = %d",
                  uuid, callback.__name__, indication)
         self._backend.subscribe(uuid, callback=callback, indication=indication)
