@@ -98,9 +98,12 @@ class DBusBackend(BLEBackend):
             log.warn("Attempting to read from " + address + " but not connected!")
             raise NotConnectedError()
         char = self._devices[address]["characteristics"][uuid]
-        char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
-        dbus_values = char_iface.ReadValue()
-        python_values = bytearray(dbus_values)
+        try:
+            char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
+            dbus_values = char_iface.ReadValue()
+            python_values = bytearray(dbus_values)
+        except DBusException as e:
+            raise NotConnectedError(e)
         return python_values
 
     def char_write(self, address, uuid, value):
@@ -108,8 +111,11 @@ class DBusBackend(BLEBackend):
             log.warn("Attempting to write to " + address + " but not connected!")
             raise NotConnectedError()
         char = self._devices[address]["characteristics"][uuid]
-        char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
-        char_iface.WriteValue(value)
+        try:
+            char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
+            char_iface.WriteValue(value)
+        except DBusException as e:
+            raise NotConnectedError(e)
 
     def get_rssi(self, address):
         device = self._bus.get_object("org.bluez", self._devices[address]["path"])
