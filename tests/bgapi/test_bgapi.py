@@ -8,7 +8,7 @@ import time
 from pygatt.backends import BGAPIBackend
 
 from .mocker import MockBGAPISerialDevice
-from .util import uuid_to_bytearray
+from pygatt.backends.bgapi.util import uuid_to_bytearray
 
 
 class BGAPIBackendTests(unittest.TestCase):

@@ -5,12 +5,13 @@ import Queue
 import serial
 import time
 import threading
-from binascii import hexlify, unhexlify
+from binascii import hexlify
 
 from pygatt.exceptions import BluetoothLEError, NotConnectedError
 from pygatt.backends.backend import BLEBackend
 
 from . import bglib, constants
+from .util import uuid_to_bytearray
 from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message
@@ -395,8 +396,7 @@ class BGAPIBackend(BLEBackend):
         # Return the handle if it exists
         char = None
 
-        # UUIDs are returned from the BGLIB without any dashs
-        uuid_bytes = self._uuid_bytearray(characteristic_uuid.replace('-', ''))
+        uuid_bytes = uuid_to_bytearray(characteristic_uuid)
         char = self._characteristics.get(hexlify(uuid_bytes))
         if char is None:
             warning = (
@@ -918,14 +918,3 @@ class BGAPIBackend(BLEBackend):
         """
         self._num_bonds = args['bonds']
         log.info("num bonds = %d", args['bonds'])
-
-    def _uuid_bytearray(self, uuid):
-        """
-        Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-        to a bytearray.
-
-        uuid -- the UUID to convert.
-
-        Returns a bytearray containing the UUID.
-        """
-        return unhexlify(uuid.replace("-", ""))

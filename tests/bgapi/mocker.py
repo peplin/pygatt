@@ -3,7 +3,7 @@ from mock import patch
 from tests.serial_mock import SerialMock
 
 from .packets import BGAPIPacketBuilder
-from .util import uuid_to_bytearray
+from pygatt.backends.bgapi.util import uuid_to_bytearray
 
 
 class MockBGAPISerialDevice(object):

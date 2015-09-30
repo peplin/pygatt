@@ -1,6 +1,7 @@
 import re
 import logging
 import serial.tools.list_ports
+from binascii import unhexlify
 
 log = logging.getLogger(__name__)
 
@@ -89,3 +90,15 @@ def find_usb_serial_devices(vendor_id=None, product_id=None):
                 devices.append(dev)
             log.info("USB device: %s", dev)
     return devices
+
+
+def uuid_to_bytearray(uuid_str):
+    """
+    Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    to a bytearray.
+
+    uuid -- the UUID to convert.
+
+    Returns a bytearray containing the UUID.
+    """
+    return unhexlify(uuid_str.replace('-', ''))
