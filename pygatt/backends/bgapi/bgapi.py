@@ -178,6 +178,36 @@ class BGAPIBackend(BLEBackend):
             # TODO how many times shoulud we try to bond? when does this loop
             # exit?
 
+    def clear_bond(self, address=None):
+        """
+        Delete the bonds stored on the dongle.
+
+        Note: this does not delete the corresponding bond stored on the remote
+              device.
+        """
+        # Find bonds
+        log.debug("Fetching existing bonds for devices")
+        self._stored_bonds = []
+        self._lib.send_command(self._ser, CommandBuilder.sm_get_bonds())
+
+        try:
+            self.expect(ResponsePacketType.sm_get_bonds)
+        except NotConnectedError:
+            pass
+
+        if self._num_bonds == 0:
+            return
+
+        while len(self._stored_bonds) < self._num_bonds:
+            self.expect(EventPacketType.sm_bond_status)
+
+        for b in reversed(self._stored_bonds):
+            log.info("Deleting bond %s", b)
+
+            self._lib.send_command(self._ser,
+                                   CommandBuilder.sm_delete_bonding(b))
+            self.expect(ResponsePacketType.sm_delete_bonding)
+
     def char_write(self, handle, value, wait_for_response=False):
         """
         Write a value to a characteristic on the device.
@@ -275,36 +305,6 @@ class BGAPIBackend(BLEBackend):
             self.expect(EventPacketType.connection_status, timeout=timeout)
         except ExpectedResponseTimeout:
             raise NotConnectedError()
-
-    def delete_stored_bonds(self):
-        """
-        Delete the bonds stored on the dongle.
-
-        Note: this does not delete the corresponding bond stored on the remote
-              device.
-        """
-        # Find bonds
-        log.debug("Fetching existing bonds for devicess")
-        self._stored_bonds = []
-        self._lib.send_command(self._ser, CommandBuilder.sm_get_bonds())
-
-        try:
-            self.expect(ResponsePacketType.sm_get_bonds)
-        except NotConnectedError:
-            pass
-
-        if self._num_bonds == 0:
-            return
-
-        while len(self._stored_bonds) < self._num_bonds:
-            self.expect(EventPacketType.sm_bond_status)
-
-        for b in reversed(self._stored_bonds):
-            log.info("Deleting bond %s", b)
-
-            self._lib.send_command(self._ser,
-                                   CommandBuilder.sm_delete_bonding(b))
-            self.expect(ResponsePacketType.sm_delete_bonding)
 
     def disconnect(self, fail_quietly=False):
         """
@@ -501,7 +501,7 @@ class BGAPIBackend(BLEBackend):
 
     def reset(self):
         self.disconnect(fail_quietly=True)
-        self.delete_stored_bonds()
+        self.clear_bond()
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
              discover_mode=constants.gap_discover_mode['observation']):
