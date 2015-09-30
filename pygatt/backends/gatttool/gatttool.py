@@ -68,6 +68,10 @@ class GATTToolBackend(BLEBackend):
             log.error(message)
             raise exceptions.NotConnectedError(message)
 
+    def disconnect(self):
+        with self._connection_lock:
+            self._con.sendline('disconnect')
+
     def get_handle(self, uuid, descriptor_uuid=None):
         """
         Look up and return the handle for an attribute by its UUID.

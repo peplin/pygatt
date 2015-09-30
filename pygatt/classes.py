@@ -106,5 +106,8 @@ class BluetoothLEDevice(object):
         """
         self._backend.stop()
 
+    def disconnect(self):
+        self._backend.disconnect()
+
     def subscribe(self, *args, **kwargs):
         self._backend.subscribe(*args, **kwargs)

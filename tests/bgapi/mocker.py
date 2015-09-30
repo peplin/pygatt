@@ -114,7 +114,7 @@ class MockBGAPISerialDevice(object):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    def stage_delete_stored_bonds_packets(
+    def stage_clear_bonds_packets(
             self, bonds, disconnects=False):
         """bonds -- list of 8-bit integer bond handles"""
         if disconnects:

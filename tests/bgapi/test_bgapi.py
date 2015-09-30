@@ -207,19 +207,19 @@ class BGAPIBackendTests(unittest.TestCase):
         assert(my_handler.expected_value_bytearray ==
                my_handler.received_value_bytearray)
 
-    def test_delete_stored_bonds(self):
+    def test_clear_bonds(self):
         self.mock_device.stage_run_packets()
         self.backend.start()
         # Test delete stored bonds
-        self.mock_device.stage_delete_stored_bonds_packets(
+        self.mock_device.stage_clear_bonds_packets(
             [0x00, 0x01, 0x02, 0x03, 0x04])
-        self.backend.delete_stored_bonds()
+        self.backend.clear_bond()
 
-    def test_delete_stored_bonds_disconnect(self):
-        """delete_stored_bonds shouldn't abort if disconnected."""
+    def test_clear_bonds_disconnect(self):
+        """clear_bonds shouldn't abort if disconnected."""
         self.mock_device.stage_run_packets()
         self.backend.start()
         # Test delete stored bonds
-        self.mock_device.stage_delete_stored_bonds_packets(
+        self.mock_device.stage_clear_bonds_packets(
             [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
-        self.backend.delete_stored_bonds()
+        self.backend.clear_bond()

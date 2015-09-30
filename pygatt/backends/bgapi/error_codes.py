@@ -1,5 +1,11 @@
 from __future__ import print_function
 
+from enum import Enum
+
+
+class ErrorCode(Enum):
+    insufficient_authentication = 0x0405
+
 
 error_codes = {
     # BGAPI errors
@@ -48,7 +54,7 @@ error_codes = {
     0x0402: "Read not permitted",
     0x0403: "Write not permitted",
     0x0404: "Invalid PDU",
-    0x0405: "Insufficient authentication",
+    ErrorCode.insufficient_authentication.value: "Insufficient authentication",
     0x0406: "Request not supported",
     0x0407: "Invalid offset",
     0x0408: "Insufficient authorization",
