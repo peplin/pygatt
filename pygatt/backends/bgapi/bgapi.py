@@ -591,28 +591,22 @@ class BGAPIBackend(BLEBackend):
         Returns 3 if the UUID is a GATT characteristic descriptor UUID.
         Returns 4 if the UUID is a GATT characteristic type UUID.
         """
-        log.debug("Determined type of UUID %s" % hexlify(uuid))
         if len(uuid) == 16:  # 128-bit --> 16 byte
-            log.debug("%s is a custom UUID", hexlify(uuid))
             return 0
         for name, u in constants.gatt_service_uuid.iteritems():
             if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
                 return 1
         for name, u in constants.gatt_attribute_type_uuid.iteritems():
             if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
                 return 2
         for name, u in (
                 constants.gatt_characteristic_descriptor_uuid.iteritems()):
             if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
                 return 3
         for name, u in constants.gatt_characteristic_type_uuid.iteritems():
             if u == uuid:
-                log.debug("match %s", name + ": 0x" + hexlify(u))
                 return 4
-        log.debug("Type of UUID %s is unknown", hexlify(uuid))
+        log.warn("UUID %s is of unknown type", hexlify(uuid))
         return -1
 
     def _scan_rsp_data(self, data):
