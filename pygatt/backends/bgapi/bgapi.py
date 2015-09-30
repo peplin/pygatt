@@ -105,8 +105,6 @@ class BGAPIBackend(BLEBackend):
         # buffer for packets received
         self._receiver_queue = Queue.Queue()
 
-        # State that is locked
-        self._lock = threading.Lock()
         self._callbacks = {
             # atttribute handle: callback function
         }
@@ -120,10 +118,7 @@ class BGAPIBackend(BLEBackend):
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
-        self._characteristics = {  # the device characteristics discovered
-            # uuid_string: Characteristic()
-        }
-        self._characteristics_cached = False  # characteristics already found
+        self._characteristics = {}
         self._current_characteristic = None  # used in char/descriptor discovery
 
         # Flags
@@ -364,6 +359,27 @@ class BGAPIBackend(BLEBackend):
             log.warn(msg)
             raise BGAPIError(msg)
 
+    def _cache_characteristics(self):
+        if len(self._characteristics) == 0:
+            att_handle_start = 0x0001  # first valid handle
+            att_handle_end = 0xFFFF  # last valid handle
+            log.info("Fetching characteristics")
+            self._lib.send_command(
+                self._ser,
+                CommandBuilder.attclient_find_information(
+                    self._connection_handle, att_handle_start, att_handle_end))
+
+            self.expect(EventPacketType.attclient_procedure_completed,
+                        timeout=10)
+
+            for char_uuid_str, char_obj in self._characteristics.iteritems():
+                log.debug("Characteristic 0x%s is handle 0x%x",
+                          char_uuid_str, char_obj.handle)
+                for desc_uuid_str, desc_handle in (
+                        char_obj.descriptors.iteritems()):
+                    log.debug("Characteristic descriptor 0x%s is handle %x",
+                              desc_uuid_str, desc_handle)
+
     def get_handle(self, characteristic_uuid, descriptor_uuid=None):
         """
         Get the handle (integer) for a characteristic or descriptor.
@@ -379,39 +395,22 @@ class BGAPIBackend(BLEBackend):
         Raises BGAPIError on failure.
         """
         self._assert_connected()
-
-        # Discover characteristics if not cached
-        if not self._characteristics_cached:
-            att_handle_start = 0x0001  # first valid handle
-            att_handle_end = 0xFFFF  # last valid handle
-            log.info("Fetching characteristics")
-            self._lib.send_command(
-                self._ser,
-                CommandBuilder.attclient_find_information(
-                    self._connection_handle, att_handle_start, att_handle_end))
-
-            self.expect(EventPacketType.attclient_procedure_completed,
-                        timeout=10)
-            self._characteristics_cached = True
-
-            for char_uuid_str, char_obj in self._characteristics.iteritems():
-                log.debug("Characteristic 0x%s is handle 0x%x",
-                          char_uuid_str, char_obj.handle)
-                for desc_uuid_str, desc_handle in (
-                        char_obj.descriptors.iteritems()):
-                    log.debug("Characteristic descriptor 0x%s is handle %x",
-                              desc_uuid_str, desc_handle)
-
+        self._cache_characteristics()
         # Return the handle if it exists
         char = None
-        if characteristic_uuid not in self._characteristics:
+
+        # UUIDs are returned from the BGLIB without any dashs
+        uuid_bytes = self._uuid_bytearray(characteristic_uuid.replace('-', ''))
+        char = self._characteristics.get(hexlify(uuid_bytes))
+        if char is None:
             warning = (
                 "No characteristic found matching %s" % characteristic_uuid)
             log.warn(warning)
             raise BGAPIError(warning)
-        char = self._characteristics[characteristic_uuid]
+
         if descriptor_uuid is None:
             return char.handle
+
         desc_uuid_str = hexlify(descriptor_uuid)
         if not (desc_uuid_str in char.descriptors):
             warning = "No descriptor found matching %s" % desc_uuid_str
@@ -562,10 +561,9 @@ class BGAPIBackend(BLEBackend):
         Raises BGAPIError on failure.
         """
 
-        uuid_bytes = self._uuid_bytearray(uuid)
-        characteristic_handle = self.get_handle(uuid_bytes)
+        characteristic_handle = self.get_handle(uuid)
         characteristic_config_handle = self.get_handle(
-            uuid_bytes,
+            uuid,
             constants.gatt_characteristic_descriptor_uuid[
                 'client_characteristic_configuration'
             ])
@@ -577,9 +575,7 @@ class BGAPIBackend(BLEBackend):
         self.char_write(characteristic_config_handle, config_val)
 
         if callback is not None:
-            self._lock.acquire()
             self._callbacks[characteristic_handle] = callback
-            self._lock.release()
 
     def stop(self):
         self.disconnect(fail_quietly=True)
@@ -730,7 +726,7 @@ class BGAPIBackend(BLEBackend):
             packet = None
             try:
                 # TODO can we increase the timeout here?
-                packet = self._receiver_queue.get(block=True, timeout=0.1)
+                packet = self._receiver_queue.get(timeout=0.1)
             except Queue.Empty:
                 if timeout is not None:
                     if time.time() - start_time > timeout:
@@ -757,7 +753,6 @@ class BGAPIBackend(BLEBackend):
                         "Response to packet %s errored: %s" %
                         (packet_type, get_return_message(return_code)))
                     log.warn(exc.message)
-                    raise exc
                 return packet_type, response
 
     def _receive(self):
@@ -765,7 +760,6 @@ class BGAPIBackend(BLEBackend):
         Read bytes from serial and enqueue the packets if the packet is not a.
         Stops if the self._running event is not set.
         """
-        att_value = EventPacketType.attclient_attribute_value
         log.info("Running receiver")
         while self._running.is_set():
             byte = self._ser.read()
@@ -774,30 +768,24 @@ class BGAPIBackend(BLEBackend):
                 packet = self._lib.parse_byte(byte)
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
-
-                    self._lock.acquire()
-                    callbacks = dict(self._callbacks)
-                    self._lock.release()
-                    handles_subscribed_to = callbacks.keys()
-
-                    if packet_type != att_value:
-                        self._receiver_queue.put(packet, block=True,
-                                                 timeout=0.1)
-                    elif args['atthandle'] in handles_subscribed_to:
+                    if packet_type == EventPacketType.attclient_attribute_value:
                         # This is a notification/indication. Handle now.
-                        callback_exists = (args['atthandle'] in callbacks)
-                        if callback_exists:
-                            log.debug(
-                                "Calling subscription callback " +
-                                callbacks[args['atthandle']].__name__)
+                        callback = self._callbacks.get(args['atthandle'])
+                        if callback is not None:
+                            log.debug("Calling subscription callback %s",
+                                      callback.__name__)
+                            # TODO does this need to be threaded? I think
+                            # typically you make callbacks fast and quick, and
+                            # if they have more work to do, they are responsible
+                            # for their own background processing.
                             callback_thread = threading.Thread(
-                                target=callbacks[args['atthandle']],
+                                target=callback,
                                 args=(bytearray(args['value']),))
                             callback_thread.daemon = True
                             callback_thread.start()
-                    else:
-                        self._receiver_queue.put(packet, block=True,
-                                                 timeout=0.1)
+                            return
+
+                    self._receiver_queue.put(packet)
         log.info("Stopping receiver")
 
     def _ble_evt_attclient_attribute_value(self, args):
@@ -828,12 +816,9 @@ class BGAPIBackend(BLEBackend):
         args -- dictionary containing the characteristic handle ('chrhandle'),
         and characteristic UUID ('uuid')
         """
+        # TODO I think this is backwards, we log things like 0x2803 in our logs
+        # but in BLE GUI it has 0x0328
         uuid = bytearray(list(reversed(args['uuid'])))
-        uuid_str = "0x"+hexlify(uuid)
-
-        log.debug("characteristic handle = %s", hex(args['chrhandle']))
-        log.debug("characteristic UUID = %s", uuid_str)
-
         # Add uuid to characteristics as characteristic or descriptor
         uuid_type = self._get_uuid_type(uuid)
         # 3 == descriptor
