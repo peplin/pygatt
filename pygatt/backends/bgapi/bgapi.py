@@ -404,12 +404,12 @@ class BGAPIBackend(BLEBackend):
 
         # Return the handle if it exists
         char = None
-        char_uuid_str = hexlify(characteristic_uuid)
-        if not (char_uuid_str in self._characteristics):
-            warning = "No characteristic found matching %s" % char_uuid_str
+        if characteristic_uuid not in self._characteristics:
+            warning = (
+                "No characteristic found matching %s" % characteristic_uuid)
             log.warn(warning)
             raise BGAPIError(warning)
-        char = self._characteristics[char_uuid_str]
+        char = self._characteristics[characteristic_uuid]
         if descriptor_uuid is None:
             return char.handle
         desc_uuid_str = hexlify(descriptor_uuid)
