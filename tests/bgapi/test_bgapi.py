@@ -6,6 +6,7 @@ import threading
 import time
 
 from pygatt.backends import BGAPIBackend
+from pygatt.backends.bgapi.util import extract_vid_pid
 
 from .mocker import MockBGAPISerialDevice
 from pygatt.backends.bgapi.util import uuid_to_bytearray
@@ -223,3 +224,19 @@ class BGAPIBackendTests(unittest.TestCase):
         self.mock_device.stage_clear_bonds_packets(
             [0x00, 0x01, 0x02, 0x03, 0x04], disconnects=True)
         self.backend.clear_bond()
+
+
+class UsbInfoStringParsingTests(unittest.TestCase):
+
+    def test_weird_platform(self):
+        vid, pid = extract_vid_pid("USB VID_2458 PID_0001")
+        eq_(0x2458, vid)
+        eq_(1, pid)
+
+    def test_linux(self):
+        vid, pid = extract_vid_pid("USB VID:PID=2458:0001 SNR=1")
+        eq_(0x2458, vid)
+        eq_(1, pid)
+
+    def test_invalid(self):
+        eq_(None, extract_vid_pid("2458:1"))

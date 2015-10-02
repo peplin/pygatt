@@ -28,7 +28,7 @@ class USBSerialDeviceInfo(object):
                 ' on ' + self.port_name)
 
 
-def _extract_vid_pid(info_string):
+def extract_vid_pid(info_string):
     """
     Try different methods of extracting vendor and product IDs from a string.
 
@@ -77,7 +77,7 @@ def find_usb_serial_devices(vendor_id=None, product_id=None):
         dev = USBSerialDeviceInfo()
         dev.port_name = device[0]
         dev.device_name = device[1]
-        found_device = _extract_vid_pid(device[2])
+        found_device = extract_vid_pid(device[2])
         if found_device is not None:
             dev.vendor_id, dev.product_id = found_device
             if vendor_id is None and product_id is None:
