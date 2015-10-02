@@ -14,6 +14,13 @@ class BLEBackend(object):
         self._callbacks = defaultdict(set)
         self._subscribed_handlers = {}
 
+    def supports_unbonded(self):
+        """Return True if the backend supports unbonded communication - this is
+        to make detecting the GATTTool backend easier, which at the moment is
+        auto-upgrading to a bonded connection even if not requested.
+        """
+        return True
+
     def bond(self):
         raise NotImplementedError()
 

@@ -44,6 +44,9 @@ class GATTToolBackend(BLEBackend):
         self._thread = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
 
+    def supports_unbonded(self):
+        return False
+
     def bond(self):
         """Securely Bonds to the BLE device."""
         log.info('Bonding')
