@@ -45,10 +45,10 @@ def extract_vid_pid(info_string):
 
     DEVICE_STRING_PATTERNS = [
         # '...VID:PID=XXXX:XXXX...'
-        re.compile('.*VID:PID=([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4}).*'),
+        re.compile('.*VID:PID=([0-9A-Fa-f]{0,4}):([0-9A-Fa-f]{0,4}).*'),
 
         # '...VID_XXXX...PID_XXXX...'
-        re.compile('.*VID_([0-9A-Fa-f]{4}).*PID_([0-9A-Fa-f]{4}).*')
+        re.compile('.*VID_([0-9A-Fa-f]{0,4}).*PID_([0-9A-Fa-f]{0,4}).*')
     ]
 
     for p in DEVICE_STRING_PATTERNS:

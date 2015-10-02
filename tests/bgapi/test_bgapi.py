@@ -238,5 +238,10 @@ class UsbInfoStringParsingTests(unittest.TestCase):
         eq_(0x2458, vid)
         eq_(1, pid)
 
+    def test_mac(self):
+        vid, pid = extract_vid_pid("USB VID:PID=2458:1 SNR=1")
+        eq_(0x2458, vid)
+        eq_(1, pid)
+
     def test_invalid(self):
         eq_(None, extract_vid_pid("2458:1"))
