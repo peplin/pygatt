@@ -153,7 +153,7 @@ class MockBGAPISerialDevice(object):
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.gap_end_procedure(0x0000))
 
-    def stage_get_handle_packets(
+    def stage_discover_characteristics_packets(
             self, uuid_handle_list, connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
         self.mocked_serial.stage_output(

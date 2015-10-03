@@ -1,54 +1,58 @@
 from __future__ import print_function
 
+import threading
 import logging
+from collections import defaultdict
+from binascii import hexlify
 
 from constants import DEFAULT_CONNECT_TIMEOUT_S
 
 log = logging.getLogger(__name__)
 
 
-class BluetoothLEDevice(object):
+class BLEDevice(object):
     """
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BGAPI (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, mac_address, backend):
+    def __init__(self, address, handle, backend):
         """
         Initialize.
 
-        mac_address -- a string containing the mac address of the BLE device in
+        address -- a string containing the mac address of the BLE device in
                        the following format: "XX:XX:XX:XX:XX:XX"
         backend -- an instantiated instance of a BLEBacked.
 
         Example:
 
             dongle = pygatt.backends.BGAPIBackend('/dev/ttyAMC0')
-            my_ble_device = pygatt.classes.BluetoothLEDevice(
+            my_ble_device = pygatt.classes.BLEDevice(
                 '01:23:45:67:89:ab', bgapi=dongle)
         """
         self._backend = backend
-        self._mac_address = mac_address
+        self._connection_handle = handle
+        self._handles = defaultdict({})
+        self._address = address
+        self._callbacks = defaultdict(set)
+        self._subscribed_handlers = {}
+        self._lock = threading.Lock()
 
     def bond(self):
         """
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.
         """
-        self._backend.bond()
+        self._backend.bond(self._connection_handle)
 
-    def connect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
+    def get_rssi(self):
         """
-        Connect to the BLE device.
+        Get the receiver signal strength indicator (RSSI) value from the BLE
+        device.
 
-        timeout -- the length of time to try to establish a connection before
-                   returning.
-
-        Example:
-
-            my_ble_device.connect(timeout=5)
-
+        Returns the RSSI value in dBm on success.
+        Returns None on failure.
         """
-        self._backend.connect(self._mac_address, timeout=timeout)
+        return self._backend.get_rssi(self._connection_handle)
 
     def char_read(self, uuid):
         """
@@ -62,9 +66,10 @@ class BluetoothLEDevice(object):
         Example:
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
-        return self._backend.char_read_uuid(uuid)
+        handle = self.get_handle(uuid)
+        return self._backend.char_read(self._connection_handle, handle)
 
-    def char_write(self, *args, **kwargs):
+    def char_write(self, uuid, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
 
@@ -76,38 +81,98 @@ class BluetoothLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        self._backend.char_write_uuid(*args, **kwargs)
+        log.info("char_write %s", uuid)
+        char_handle = self.get_handle(self._connection_handle, uuid)
+        self._backend.char_write(self._connection_handle, char_handle, value,
+                                 wait_for_response=wait_for_response)
 
-    def encrypt(self):
+    def subscribe(self, uuid, callback=None, indication=False):
         """
-        Form an encrypted, but not bonded, connection.
-        """
-        self._backend.encrypt()
+        Enables subscription to a Characteristic with ability to call callback.
 
-    def get_rssi(self):
+        uuid -- UUID as a string of the characteristic to subscribe.
+        callback -- function to be called when a notification/indication is
+                    received on this characteristic.
+        indication -- use indications (requires application ACK) rather than
+                      notifications (does not requrie application ACK).
         """
-        Get the receiver signal strength indicator (RSSI) value from the BLE
-        device.
+        log.info(
+            'Subscribing to uuid=%s with callback=%s and indication=%s',
+            uuid, callback, indication)
+        # Expect notifications on the value handle...
+        value_handle = self.get_handle(uuid)
 
-        Returns the RSSI value in dBm on success.
-        Returns None on failure.
-        """
-        return self._backend.get_rssi()
+        # but write to the characteristic config to enable notifications
+        # TODO with the BGAPI backend we can be smarter and fetch the actual
+        # characteristic config handle - we can also do that with gattool if we
+        # use the 'desc' command, so we'll need to change the "get_handle" API
+        # to be able to get the value or characteristic config handle.
+        characteristic_config_handle = value_handle + 1
 
-    def run(self):
-        """
-        Start a background thread to listen for notifications.
-        """
-        self._backend.start()
+        properties = bytearray([
+            0x2 if indication else 0x1,
+            0x0
+        ])
 
-    def stop(self):
-        """
-        Stop the any background threads and disconnect.
-        """
-        self._backend.stop()
+        try:
+            self._lock.acquire()
+
+            if callback is not None:
+                self._callbacks[value_handle].add(callback)
+
+            if self._subscribed_handlers.get(value_handle, None) != properties:
+                self.char_write(
+                    characteristic_config_handle,
+                    properties,
+                    wait_for_response=False
+                )
+                log.debug("Subscribed to uuid=%s", uuid)
+                self._subscribed_handlers[value_handle] = properties
+            else:
+                log.debug("Already subscribed to uuid=%s", uuid)
+        finally:
+            self._lock.release()
 
     def disconnect(self):
-        self._backend.disconnect()
+        self._backend.disconnect(self._connection_handle)
+        self._connection_handle = None
 
-    def subscribe(self, *args, **kwargs):
-        self._backend.subscribe(*args, **kwargs)
+    def get_handle(self, uuid, descriptor_uuid=None):
+        """
+        Look up and return the handle for an attribute by its UUID.
+        :param uuid: The UUID of the characteristic.
+        :type uuid: str
+        :return: None if the UUID was not found.
+        """
+        log.debug("Looking up handle for characteristic %s", uuid)
+        if uuid not in self._handles:
+            self._handles[uuid] = self._backend.discover_characteristics(
+                self._connection_handle)
+
+        if len(self._handles) == 0:
+            raise exceptions.BLEError(
+                "No characteristics found - disconnected unexpectedly?")
+
+        handle = self._handles.get(uuid)
+        if handle is None:
+            message = "No characteristic found matching %s" % uuid
+            log.warn(message)
+            raise exceptions.BLEError(message)
+
+        # TODO support filtering by descriptor UUID
+
+        log.debug("Characteristic %s, handle: 0x%x", uuid, handle)
+        return handle
+
+    def _handle_notification(self, handle, value):
+        """
+        Receive a notification from the connected device and propagate the value
+        to all registered callbacks.
+        """
+
+        log.info('Received notification on handle=0x%x, value=0x%s',
+                 handle, hexlify(value))
+        with self._lock:
+            if handle in self._callbacks:
+                for callback in self._callbacks[handle]:
+                    callback(handle, value)

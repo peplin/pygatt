@@ -3,19 +3,19 @@ Exceptions for pygatt Module.
 """
 
 
-class BluetoothLEError(Exception):
+class BLEError(Exception):
     """Exception class for pygatt."""
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.message)
 
 
-class NotConnectedError(BluetoothLEError):
+class NotConnectedError(BLEError):
     pass
 
 
-class NotificationTimeout(BluetoothLEError):
+class NotificationTimeout(BLEError):
     pass
 
 
-class NoResponseError(BluetoothLEError):
+class NoResponseError(BLEError):
     pass

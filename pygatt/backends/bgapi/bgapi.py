@@ -6,13 +6,15 @@ import serial
 import time
 import threading
 from binascii import hexlify
+from uuid import UUID
 from enum import Enum
+from collections import defaultdict
 
-from pygatt.exceptions import BluetoothLEError, NotConnectedError
-from pygatt.backends.backend import BLEBackend
+from pygatt.exceptions import BLEError, NotConnectedError
+from pygatt.backends.backend import BLEBackend, Characteristic
+from pygatt.util import uuid16_to_uuid
 
 from . import bglib, constants
-from .util import uuid_to_bytearray
 from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message, ErrorCode
@@ -28,7 +30,7 @@ UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
                              'descriptor', 'characteristic'])
 
 
-class BGAPIError(BluetoothLEError):
+class BGAPIError(BLEError):
     pass
 
 
@@ -39,26 +41,12 @@ class ExpectedResponseTimeout(BGAPIError):
                 timeout or 0, expected_packets))
 
 
-class Characteristic(object):
-    """
-    GATT characteristic. For internal use within BGAPIBackend.
-    """
-    def __init__(self, name, handle):
-        """
-        Sets the characteritic name and handle.
-
-        handle - a bytearray
-        """
-        self.handle = handle
-        self.descriptors = {
-            # uuid_string: handle
-        }
-
-    def add_descriptor(self, uuid, handle):
-        """
-        Add a characteristic descriptor to the dictionary of descriptors.
-        """
-        self.descriptors[uuid] = handle
+def valid_connection_handle_required(func):
+    def wrapper(self, connection_handle, *args, **kwargs):
+        if connection_handle not in self._connections:
+            raise NotConnectedError()
+        return func(self, connection_handle, *args, **kwargs)
+    return wrapper
 
 
 class AdvertisingAndScanInfo(object):
@@ -92,8 +80,6 @@ class BGAPIBackend(BLEBackend):
         serial_port -- The name of the serial port for the BGAPI-compatible
         USB interface.
         """
-        super(BGAPIBackend, self).__init__()
-
         self._lib = bglib.BGLib()
         if serial_port is None:
             log.info("Auto-discovering serial port for BLED112")
@@ -108,29 +94,22 @@ class BGAPIBackend(BLEBackend):
 
         self._ser = None
         self._receiver = None
-        self._running = threading.Event()
+        self._running = None
 
         # buffer for packets received
         self._receiver_queue = Queue.Queue()
 
         # State
-        self._expected_attribute_handle = None  # expected handle after a read
         self._num_bonds = 0  # number of bonds stored on the dongle
         self._stored_bonds = []  # bond handles stored on the dongle
-        self._connection_handle = 0x00  # handle for the device connection
         self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
         }
-        self._characteristics = {}
+        self._characteristics = defaultdict(dict)
+        self._connections = {}
+
         self._current_characteristic = None  # used in char/descriptor discovery
-
-        # Flags
-        self._bonded = False  # device is bonded
-        self._connected = False  # device is connected
-        self._encrypted = False  # connection is encrypted
-        self._bond_expected = False  # tell bond_status handler to set _bonded
-
         self._packet_handlers = {
             ResponsePacketType.sm_get_bonds: self._ble_rsp_sm_get_bonds,
             EventPacketType.attclient_attribute_value: (
@@ -146,37 +125,67 @@ class BGAPIBackend(BLEBackend):
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
 
-    def bond(self):
+    def start(self):
         """
-        Create a bond and encrypted connection with the device.
-
-        This requires that a connection is already extablished with the device.
+        Put the interface into a known state to start. And start the receiver
+        thread.
         """
-        self._assert_connected()
+        if self._running and self._running.is_set():
+            self.stop()
 
-        # Set to bondable mode
-        self._bond_expected = True
-        log.info("Bonding to device")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.sm_set_bondable_mode(constants.bondable['yes']))
+        self._ser = serial.Serial(self._serial_port, baudrate=256000,
+                                  timeout=0.25)
+        self._receiver = threading.Thread(target=self._receive)
+        self._receiver.daemon = True
 
-        self.expect(ResponsePacketType.sm_set_bondable_mode)
-        log.debug("Enabling encryption")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.sm_encrypt_start(
-                self._connection_handle, constants.bonding['create_bonding']))
+        self._running = threading.Event()
+        self._running.set()
+        self._receiver.start()
 
-        self.expect(ResponsePacketType.sm_encrypt_start)
-        while self._connected and not self._bonded and not self._encrypted:
-            matched_packet_type, response = self.expect_any(
-                [EventPacketType.connection_status,
-                 EventPacketType.sm_bonding_fail])
-            if matched_packet_type == EventPacketType.sm_bonding_fail:
-                raise BGAPIError("Bonding failed")
-            # TODO how many times shoulud we try to bond? when does this loop
-            # exit?
+        self.disable_advertising()
+
+        # Stop any ongoing procedure
+        log.info("Stopping any outstanding GAP procedure")
+        self._send_command(CommandBuilder.gap_end_procedure())
+        try:
+            self.expect(ResponsePacketType.gap_end_procedure)
+        except BGAPIError:
+            # Ignore any errors if there was no GAP produce running
+            pass
+
+    def stop(self):
+        for connection_handle in self._connections.keys():
+            self.disconnect(connection_handle, fail_quietly=True)
+        if self._running.is_set():
+            log.info('Stopping')
+        self._running.clear()
+
+        if self._receiver:
+            self._receiver.join()
+        self._receiver = None
+
+        if self._ser:
+            self._ser.close()
+            self._ser = None
+
+    def disable_advertising(self):
+        log.info("Disabling advertising")
+        self._send_command(
+            CommandBuilder.gap_set_mode(
+                constants.gap_discoverable_mode['non_discoverable'],
+                constants.gap_connectable_mode['non_connectable']))
+
+        try:
+            self.expect(ResponsePacketType.gap_set_mode)
+        except BGAPIError:
+            # TODO should we do something about this error? is it fatal?
+            pass
+
+    def _send_command(self, *args, **kwargs):
+        if self._ser is None:
+            log.warn("Unexpectedly not connected to USB device")
+            raise NotConnectedError()
+        return self._lib.send_command(self._ser, *args, **kwargs)
 
     def clear_bond(self, address=None):
         """
@@ -188,7 +197,7 @@ class BGAPIBackend(BLEBackend):
         # Find bonds
         log.debug("Fetching existing bonds for devices")
         self._stored_bonds = []
-        self._lib.send_command(self._ser, CommandBuilder.sm_get_bonds())
+        self._send_command(CommandBuilder.sm_get_bonds())
 
         try:
             self.expect(ResponsePacketType.sm_get_bonds)
@@ -204,310 +213,8 @@ class BGAPIBackend(BLEBackend):
         for b in reversed(self._stored_bonds):
             log.info("Deleting bond %s", b)
 
-            self._lib.send_command(self._ser,
-                                   CommandBuilder.sm_delete_bonding(b))
+            self._send_command(CommandBuilder.sm_delete_bonding(b))
             self.expect(ResponsePacketType.sm_delete_bonding)
-
-    def char_write(self, handle, value, wait_for_response=False):
-        """
-        Write a value to a characteristic on the device.
-
-        This requires that a connection is already extablished with the device.
-
-        handle -- the characteristic/descriptor handle (integer) to write to.
-        value -- a bytearray holding the value to write.
-
-        Raises BGAPIError on failure.
-        """
-        if wait_for_response:
-            raise NotImplementedError("bgapi subscribe wait for response")
-
-        while True:
-            self._assert_connected()
-
-            value_list = [b for b in value]
-            log.info("attribute_write")
-            self._lib.send_command(
-                self._ser,
-                CommandBuilder.attclient_attribute_write(
-                    self._connection_handle, handle, value_list))
-
-            self.expect(ResponsePacketType.attclient_attribute_write)
-            packet_type, response = self.expect(
-                EventPacketType.attclient_procedure_completed)
-            if (response['result'] !=
-                    ErrorCode.insufficient_authentication.value):
-                # Continue to retry until we are bonded
-                break
-
-    def char_read_uuid(self, uuid):
-        handle = self.get_handle(uuid)
-        return self._char_read(handle)
-
-    def _char_read(self, handle):
-        """
-        Read a value from a characteristic on the device.
-
-        This requires that a connection is already established with the device.
-
-        handle -- the characteristic handle (integer) to read from.
-
-        Returns a bytearray containing the value read, on success.
-        Raised BGAPIError on failure.
-        """
-        self._assert_connected()
-
-        log.info("Reading characteristic at handle %d", handle)
-        self._expected_attribute_handle = handle
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.attclient_read_by_handle(
-                self._connection_handle, handle))
-
-        self.expect(ResponsePacketType.attclient_read_by_handle)
-        matched_packet_type, response = self.expect_any(
-            [EventPacketType.attclient_attribute_value,
-             EventPacketType.attclient_procedure_completed])
-        # TODO why not just expect *only* the attribute value response, then it
-        # would time out and raise an exception if allwe got was the 'procedure
-        # completed' response?
-        if matched_packet_type != EventPacketType.attclient_attribute_value:
-            raise BGAPIError("Unable to read characteristic")
-        return bytearray(response['value'])
-
-    def connect(self, address, timeout=5,
-                addr_type=constants.ble_address_type[
-                    'gap_address_type_public']):
-        """
-        Connnect directly to a device given the ble address then discovers and
-        stores the characteristic and characteristic descriptor handles.
-
-        Requires that the dongle is not connected to a device already.
-
-        address -- a bytearray containing the device mac address.
-        timeout -- number of seconds to wait before returning if not connected.
-        addr_type -- one of the ble_address_type constants.
-
-        Raises BGAPIError or NotConnectedError on failure.
-        """
-        if self._connected:
-            raise BGAPIError("Already connected")
-
-        address_bytes = [int(b, 16) for b in address.split(":")]
-        interval_min = 60
-        interval_max = 76
-        supervision_timeout = 100
-        latency = 0  # intervals that can be skipped
-        log.info("Connecting to device at address %s (timeout %ds)",
-                 address, timeout)
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.gap_connect_direct(
-                address_bytes, addr_type, interval_min, interval_max,
-                supervision_timeout, latency))
-
-        self.expect(ResponsePacketType.gap_connect_direct)
-        try:
-            self.expect(EventPacketType.connection_status, timeout=timeout)
-        except ExpectedResponseTimeout:
-            raise NotConnectedError()
-
-    def disconnect(self, fail_quietly=False):
-        """
-        Disconnect from the device if connected.
-
-        fail_quietly -- do not raise an exception on failure.
-        """
-
-        if self._ser is None:
-            return
-
-        log.debug("Disconnecting")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.connection_disconnect(self._connection_handle))
-
-        try:
-            self.expect(ResponsePacketType.connection_disconnect)
-        except (BGAPIError, NotConnectedError):
-            if not fail_quietly:
-                raise
-        log.info("Disconnected")
-
-    def encrypt(self):
-        """
-        Begin encryption on the connection with the device.
-
-        This requires that a connection is already established with the device.
-
-        Raises BGAPIError on failure.
-        """
-        self._assert_connected()
-
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.sm_set_bondable_mode(constants.bondable['no']))
-
-        # TODO expecting the matching response for a command is a repeated
-        # pattern - the send_command function should have an option to wait for
-        # the response for the command and return it.
-        self.expect(ResponsePacketType.sm_set_bondable_mode)
-
-        log.info("Starting encryption")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.sm_encrypt_start(
-                self._connection_handle,
-                constants.bonding['do_not_create_bonding']))
-
-        self.expect(ResponsePacketType.sm_encrypt_start)
-        self.expect(EventPacketType.connection_status)
-        if not self._encrypted:
-            msg = "Expected to be encrypted, but wasn't"
-            log.warn(msg)
-            raise BGAPIError(msg)
-
-    def _cache_characteristics(self):
-        if len(self._characteristics) == 0:
-            att_handle_start = 0x0001  # first valid handle
-            att_handle_end = 0xFFFF  # last valid handle
-            log.info("Fetching characteristics")
-            self._lib.send_command(
-                self._ser,
-                CommandBuilder.attclient_find_information(
-                    self._connection_handle, att_handle_start, att_handle_end))
-
-            self.expect(ResponsePacketType.attclient_find_information)
-            self.expect(EventPacketType.attclient_procedure_completed,
-                        timeout=10)
-
-            for char_uuid_str, char_obj in self._characteristics.iteritems():
-                log.debug("Characteristic 0x%s is handle 0x%x",
-                          char_uuid_str, char_obj.handle)
-                for desc_uuid_str, desc_handle in (
-                        char_obj.descriptors.iteritems()):
-                    log.debug("Characteristic descriptor 0x%s is handle %x",
-                              desc_uuid_str, desc_handle)
-
-    def get_handle(self, characteristic_uuid, descriptor_uuid=None):
-        """
-        Get the handle (integer) for a characteristic or descriptor.
-
-        This requires that a connection is already established with the device.
-
-        characteristic_uuid -- bytearray containing the characteristic UUID.
-        descriptor_uuid -- optional bytearray containg the GATT descriptor UUID
-                           for the given characteristic. Note: use the
-                           gatt_characteristic_descriptor_uuid constant.
-
-        Returns an integer containing the handle on success.
-        Raises BGAPIError on failure.
-        """
-        self._assert_connected()
-        self._cache_characteristics()
-        # Return the handle if it exists
-        char = None
-
-        uuid_bytes = uuid_to_bytearray(characteristic_uuid)
-        char = self._characteristics.get(hexlify(uuid_bytes))
-        if char is None:
-            warning = (
-                "No characteristic found matching %s" % characteristic_uuid)
-            log.warn(warning)
-            raise BGAPIError(warning)
-
-        if descriptor_uuid is None:
-            return char.handle
-
-        desc_uuid_str = hexlify(descriptor_uuid)
-        if not (desc_uuid_str in char.descriptors):
-            warning = "No descriptor found matching %s" % desc_uuid_str
-            log.warn(warning)
-            raise BGAPIError(warning)
-        desc_handle = char.descriptors[desc_uuid_str]
-        return desc_handle
-
-    def get_rssi(self):
-        # The BGAPI has some strange behavior where it will return 25 for
-        # the RSSI value sometimes... Try a maximum of 3 times.
-        for i in range(0, 3):
-            rssi = self._get_rssi_once()
-            if rssi != 25:
-                return rssi
-            time.sleep(0.1)
-        raise BGAPIError("get rssi failed")
-
-    def _get_rssi_once(self):
-        """
-        Get the receiver signal strength indicator (RSSI) value from the device.
-
-        This requires that a connection is already established with the device.
-
-        Returns the RSSI as in integer in dBm.
-        """
-        self._assert_connected()
-
-        log.info("Fetching RSSI one time")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.connection_get_rssi(self._connection_handle))
-
-        _, response = self.expect(ResponsePacketType.connection_get_rssi)
-        return response['rssi']
-
-    def start(self):
-        """
-        Put the interface into a known state to start. And start the receiver
-        thread.
-        """
-        super(BGAPIBackend, self).start()
-        if self._running.is_set():
-            self.stop()
-        self._ser = serial.Serial(self._serial_port, baudrate=256000,
-                                  timeout=0.25)
-
-        self._receiver = threading.Thread(target=self._receive)
-        self._receiver.daemon = True
-
-        self._running.set()
-        self._receiver.start()
-
-        # Disconnect any connections
-        self.disconnect(fail_quietly=True)
-
-        # Stop advertising
-        log.info("Disabling advertising")
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.gap_set_mode(
-                constants.gap_discoverable_mode['non_discoverable'],
-                constants.gap_connectable_mode['non_connectable']))
-
-        try:
-            self.expect(ResponsePacketType.gap_set_mode)
-        except BGAPIError:
-            # TODO should we do something about this error? is it fatal?
-            pass
-
-        # Stop any ongoing procedure
-        log.info("Stopping any outstanding GAP procedure")
-        self._lib.send_command(self._ser, CommandBuilder.gap_end_procedure())
-
-        try:
-            self.expect(ResponsePacketType.gap_end_procedure)
-        except BGAPIError:
-            # TODO should we do something about this error? is it fatal?
-            pass
-
-        self._lib.send_command(
-            self._ser,
-            CommandBuilder.sm_set_bondable_mode(constants.bondable['no']))
-
-        self.expect(ResponsePacketType.sm_set_bondable_mode)
-
-    def reset(self):
-        self.disconnect(fail_quietly=True)
-        self.clear_bond()
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
              discover_mode=constants.gap_discover_mode['observation']):
@@ -528,8 +235,7 @@ class BGAPIBackend(BLEBackend):
             active = 0x00
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
-        self._lib.send_command(
-            self._ser,
+        self._send_command(
             CommandBuilder.gap_set_scan_parameters(
                 scan_interval, scan_window, active
             ))
@@ -537,8 +243,7 @@ class BGAPIBackend(BLEBackend):
         self.expect(ResponsePacketType.gap_set_scan_parameters)
 
         log.info("Starting an %s scan", "active" if active == 1 else "passive")
-        self._lib.send_command(self._ser,
-                               CommandBuilder.gap_discover(discover_mode))
+        self._send_command(CommandBuilder.gap_discover(discover_mode))
 
         self.expect(ResponsePacketType.gap_discover)
 
@@ -546,8 +251,7 @@ class BGAPIBackend(BLEBackend):
         time.sleep(timeout)
 
         log.info("Stopping scan")
-        self._lib.send_command(self._ser, CommandBuilder.gap_end_procedure())
-
+        self._send_command(CommandBuilder.gap_end_procedure())
         self.expect(ResponsePacketType.gap_end_procedure)
 
         devices = []
@@ -559,28 +263,207 @@ class BGAPIBackend(BLEBackend):
             })
         return devices
 
-    def stop(self):
-        self.disconnect(fail_quietly=True)
-        self._running.clear()
-        if self._receiver:
-            self._receiver.join()
-        self._receiver = None
-
-        if self._ser:
-            self._ser.close()
-            self._ser = None
-
-    def _assert_connected(self):
+    def connect(self, address, timeout=5,
+                addr_type=constants.ble_address_type[
+                    'gap_address_type_public']):
         """
-        Checks if there is/isn't a connection already established with a device.
+        Connnect directly to a device given the ble address then discovers and
+        stores the characteristic and characteristic descriptor handles.
 
-        Raises NotConnectedError on failure if check_if_connected == True.
+        Requires that the dongle is not connected to a device already.
+
+        address -- a bytearray containing the device mac address.
+        timeout -- number of seconds to wait before returning if not connected.
+        addr_type -- one of the ble_address_type constants.
+
+        Raises BGAPIError or NotConnectedError on failure.
         """
-        if self._ser is None or not self._connected:
-            log.warn("Unexpectedly not connected")
+        connection_handle = None
+        for handle, address in self._connections.iteritems():
+            if address == address:
+                return connection_handle
+
+        address_bytes = [int(b, 16) for b in address.split(":")]
+        interval_min = 60
+        interval_max = 76
+        supervision_timeout = 100
+        latency = 0  # intervals that can be skipped
+        log.debug("Connecting to device at address %s (timeout %ds)",
+                  address, timeout)
+        self._send_command(
+            CommandBuilder.gap_connect_direct(
+                address_bytes, addr_type, interval_min, interval_max,
+                supervision_timeout, latency))
+
+        self.expect(ResponsePacketType.gap_connect_direct)
+        try:
+            _, packet = self.expect(EventPacketType.connection_status,
+                                    timeout=timeout)
+            # TODO should really check that it's a connected status, and for the
+            # right address.
+            handle = packet['connection_handle']
+            self._connections[handle] = {
+                'address': address
+            }
+            log.debug("Connected to %s", address)
+            return handle
+        except ExpectedResponseTimeout:
             raise NotConnectedError()
 
-    def _connection_status_flag(self, flags, flag_to_find):
+    @valid_connection_handle_required
+    def disconnect(self, connection_handle, fail_quietly=False):
+        """
+        Disconnect from the device if connected.
+
+        fail_quietly -- do not raise an exception on failure.
+        """
+        address = self._connections[connection_handle]
+        log.debug("Disconnecting from %s", address)
+        self._send_command(
+            CommandBuilder.connection_disconnect(connection_handle))
+
+        try:
+            self.expect(ResponsePacketType.connection_disconnect)
+        except (BGAPIError, NotConnectedError):
+            if not fail_quietly:
+                raise
+        self._connections.pop(connection_handle, None)
+        log.info("Disconnected from %s", address)
+
+    @valid_connection_handle_required
+    def bond(self, connection_handle):
+        """
+        Create a bond and encrypted connection with the device.
+
+        This requires that a connection is already extablished with the device.
+        """
+
+        # Set to bondable mode so bonds are store permanently
+        self._send_command(
+            CommandBuilder.sm_set_bondable_mode(constants.bondable['yes']))
+        self.expect(ResponsePacketType.sm_set_bondable_mode)
+
+        address = self._connections[connection_handle]['address']
+        log.info("Bonding to %s", address)
+        self._send_command(
+            CommandBuilder.sm_encrypt_start(
+                connection_handle, constants.bonding['create_bonding']))
+        self.expect(ResponsePacketType.sm_encrypt_start)
+
+        while (connection_handle in self._connections and
+               not self._connections[connection_handle].get('encrypted', None)):
+            packet_type, response = self.expect_any(
+                [EventPacketType.connection_status,
+                 EventPacketType.sm_bonding_fail])
+            if packet_type == EventPacketType.sm_bonding_fail:
+                raise BGAPIError("Bonding failed")
+
+    @valid_connection_handle_required
+    def discover_characteristics(self, connection_handle):
+        att_handle_start = 0x0001  # first valid handle
+        att_handle_end = 0xFFFF  # last valid handle
+        log.info("Fetching characteristics for connection %d",
+                 connection_handle)
+        self._send_command(
+            CommandBuilder.attclient_find_information(
+                connection_handle, att_handle_start, att_handle_end))
+
+        self.expect(ResponsePacketType.attclient_find_information)
+        self.expect(EventPacketType.attclient_procedure_completed,
+                    timeout=10)
+
+        for char_uuid_str, char_obj in (
+                self._characteristics[connection_handle].iteritems()):
+            log.debug("Characteristic 0x%s is handle 0x%x",
+                      char_uuid_str, char_obj.handle)
+            for desc_uuid_str, desc_handle in (
+                    char_obj.descriptors.iteritems()):
+                log.debug("Characteristic descriptor 0x%s is handle %x",
+                          desc_uuid_str, desc_handle)
+        return self._characteristics[connection_handle]
+
+    @valid_connection_handle_required
+    def char_write(self, connection_handle, handle, value,
+                   wait_for_response=False):
+        """
+        Write a value to a characteristic on the device.
+
+        This requires that a connection is already extablished with the device.
+
+        handle -- the characteristic/descriptor handle (integer) to write to.
+        value -- a bytearray holding the value to write.
+
+        Raises BGAPIError on failure.
+        """
+        if wait_for_response:
+            raise NotImplementedError("bgapi subscribe wait for response")
+
+        while True:
+            value_list = [b for b in value]
+            log.info("attribute_write")
+            self._send_command(
+                CommandBuilder.attclient_attribute_write(
+                    connection_handle, handle, value_list))
+
+            self.expect(ResponsePacketType.attclient_attribute_write)
+            packet_type, response = self.expect(
+                EventPacketType.attclient_procedure_completed)
+            if (response['result'] !=
+                    ErrorCode.insufficient_authentication.value):
+                # Continue to retry until we are bonded
+                break
+
+    @valid_connection_handle_required
+    def _char_read(self, connection_handle, handle):
+        """
+        Read a value from a characteristic on the device.
+
+        This requires that a connection is already established with the device.
+
+        handle -- the characteristic handle (integer) to read from.
+
+        Returns a bytearray containing the value read, on success.
+        Raised BGAPIError on failure.
+        """
+        log.info("Reading characteristic at handle %d", handle)
+        self._send_command(
+            CommandBuilder.attclient_read_by_handle(
+                connection_handle, handle))
+
+        self.expect(ResponsePacketType.attclient_read_by_handle)
+        matched_packet_type, response = self.expect_any(
+            [EventPacketType.attclient_attribute_value,
+             EventPacketType.attclient_procedure_completed])
+        # TODO why not just expect *only* the attribute value response, then it
+        # would time out and raise an exception if allwe got was the 'procedure
+        # completed' response?
+        if matched_packet_type != EventPacketType.attclient_attribute_value:
+            raise BGAPIError("Unable to read characteristic")
+        return bytearray(response['value'])
+
+    @valid_connection_handle_required
+    def get_rssi(self, connection_handle):
+        """
+        Get the receiver signal strength indicator (RSSI) value from the device.
+
+        This requires that a connection is already established with the device.
+
+        Returns the RSSI as in integer in dBm.
+        """
+        # The BGAPI has some strange behavior where it will return 25 for
+        # the RSSI value sometimes... Try a maximum of 3 times.
+        for i in range(0, 3):
+            self._send_command(
+                CommandBuilder.connection_get_rssi(connection_handle))
+            _, response = self.expect(ResponsePacketType.connection_get_rssi)
+            rssi = response['rssi']
+            if rssi != 25:
+                return rssi
+            time.sleep(0.1)
+        raise BGAPIError("get rssi failed")
+
+    @staticmethod
+    def _connection_status_flag(flags, flag_to_find):
         """
         Is the given flag in the connection status flags?
 
@@ -591,7 +474,8 @@ class BGAPIBackend(BLEBackend):
         """
         return (flags & flag_to_find) == flag_to_find
 
-    def _get_uuid_type(self, uuid):
+    @staticmethod
+    def _get_uuid_type(uuid):
         """
         Checks if the UUID is a custom 128-bit UUID or a GATT characteristic
         descriptor UUID.
@@ -728,8 +612,12 @@ class BGAPIBackend(BLEBackend):
                 if packet is not None:
                     packet_type, args = self._lib.decode_packet(packet)
                     if packet_type == EventPacketType.attclient_attribute_value:
-                        self._handle_notification(args['atthandle'],
-                                                  bytearray(args['value']))
+                        # TODO need to check connection handle, then call a
+                        # calback on each connection handle get to the
+                        # BLEdevice's handle_notification function
+                        # self._handle_notification(args['atthandle'],
+                                                  # bytearray(args['value']))
+                        pass
                     self._receiver_queue.put(packet)
         log.info("Stopping receiver")
 
@@ -761,32 +649,38 @@ class BGAPIBackend(BLEBackend):
         args -- dictionary containing the characteristic handle ('chrhandle'),
         and characteristic UUID ('uuid')
         """
-        uuid = bytearray(list(reversed(args['uuid'])))
-        # Add uuid to characteristics as characteristic or descriptor
-        uuid_type = self._get_uuid_type(uuid)
-        uuid_str = hexlify(uuid)
+        raw_uuid = bytearray(reversed(args['uuid']))
+        uuid_type = self._get_uuid_type(raw_uuid)
+        if uuid_type != UUIDType.custom:
+            uuid = uuid16_to_uuid(
+                int(hexlify(bytearray(reversed(args['uuid']))), 16))
+        else:
+            uuid = UUID(hexlify(raw_uuid))
+
+        # TODO is there a way to get the characteristic from the packet instead
+        # of having to track the "current" characteristic?
         if (uuid_type == UUIDType.descriptor and
                 self._current_characteristic is not None):
-            self._current_characteristic.add_descriptor(
-                uuid_str, args['chrhandle'])
+            self._current_characteristic.add_descriptor(uuid, args['chrhandle'])
         elif uuid_type == UUIDType.custom:
-            log.debug("Found custom characteristic %s" % uuid_str)
+            log.debug("Found custom characteristic %s" % uuid)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
-            self._characteristics[uuid_str] = new_char
+            self._characteristics[
+                args['connection_handle']][uuid] = new_char
 
     def _ble_evt_connection_disconnected(self, args):
         """
         Handles the event for the termination of a connection.
         """
-        self._connected = False
-        self._encrypted = False
-        self._bonded = False
+        self._connections.pop(args['connection_handle'], None)
+        # TODO do we need to raise this? what if it's expected to be
+        # disconnected now?
         raise NotConnectedError()
 
     def _ble_evt_connection_status(self, args):
         """
-        Handles the event for reporting connection parameters.
+        Handles the event for reporting connection status.
 
         args -- dictionary containing the connection status flags ('flags'),
             device address ('address'), device address type ('address_type'),
@@ -794,23 +688,7 @@ class BGAPIBackend(BLEBackend):
             (timeout'), device latency ('latency'), device bond handle
             ('bonding')
         """
-        self._connection_handle = args['connection_handle']
-        flags = ""
-        if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['connected']):
-            self._connected = True
-            flags += 'connected, '
-        if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['encrypted']):
-            self._encrypted = True
-            flags += 'encrypted, '
-        if self._connection_status_flag(
-                args['flags'], constants.connection_status_flag['completed']):
-            flags += 'completed, '
-        if self._connection_status_flag(
-                args['flags'],
-                constants.connection_status_flag['parameters_change']):
-            flags += 'parameters_change, '
+        connection_handle = args['connection_handle']
 
         address_type = "unknown"
         if (args['address_type'] ==
@@ -819,11 +697,28 @@ class BGAPIBackend(BLEBackend):
         elif (args['address_type'] ==
                 constants.ble_address_type['gap_address_type_random']):
             address_type = "random"
-        log.info("Connection status: handle=%s, flags=%s, address=0x%s, "
+
+        if self._connection_status_flag(
+                args['flags'],
+                constants.connection_status_flag['connected']):
+            self._connections[connection_handle] = {
+                'address': args['address'],
+                'encrypted': False,
+                'address_type': address_type
+            }
+
+            if self._connection_status_flag(
+                    args['flags'],
+                    constants.connection_status_flag['encrypted']):
+                self._connections[connection_handle]['encrypted'] = True
+        else:
+            self._connections.pop(connection_handle, None)
+
+        log.info("Connection status: handle=0x%x, flags=%s, address=0x%s, "
                  "address_type=%s, connection interval=%fms, timeout=%d, "
                  "latency=%d intervals, bonding=0x%x",
-                 hex(args['connection_handle']),
-                 flags,
+                 connection_handle,
+                 self._connections[connection_handle]['address'],
                  hexlify(bytearray(args['address'])),
                  address_type,
                  args['conn_interval'] * 1.25,
@@ -868,24 +763,14 @@ class BGAPIBackend(BLEBackend):
         """
         Handles the event for reporting a stored bond.
 
-        Adds the stored bond to the list of bond handles if no _bond_expected.
-        Sets _bonded True if _bond_expected.
+        Adds the stored bond to the list of bond handles.
 
         args -- dictionary containing the bond handle ('bond'), encryption key
                 size used in the long-term key ('keysize'), was man in the
                 middle used ('mitm'), keys stored for bonding ('keys')
         """
         # Add to list of stored bonds found or set flag
-        if self._bond_expected:
-            self._bond_expected = False
-            self._bonded = True
-        else:
-            self._stored_bonds.append(args['bond'])
-
-        log.debug("bond handle = %s", hex(args['bond']))
-        log.debug("keysize = %d", args['keysize'])
-        log.debug("man in the middle = %d", args['mitm'])
-        log.debug("keys = %s", hex(args['keys']))
+        self._stored_bonds.append(args['bond'])
 
     def _ble_rsp_sm_delete_bonding(self, args):
         """
@@ -903,7 +788,7 @@ class BGAPIBackend(BLEBackend):
         Handles the response for the start of stored bond enumeration. Sets
         self._num_bonds to the number of stored bonds.
 
-        args -- dictionary containing the number of stored bonds ('bonds),
+        args -- dictionary containing the number of stored bonds ('bonds'),
         """
         self._num_bonds = args['bonds']
         log.info("num bonds = %d", args['bonds'])

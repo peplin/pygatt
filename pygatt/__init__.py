@@ -1,2 +1,2 @@
-from .exceptions import BluetoothLEError  # noqa
-from .classes import BluetoothLEDevice  # noqa
+from .exceptions import BLEError  # noqa
+from .classes import BLEDevice  # noqa

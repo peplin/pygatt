@@ -27,7 +27,7 @@ gatttool/BlueZ is Linux only whereas the BGAPI is cross platform.
 
 ### Front end
 
-The front end class pygatt.pygatt.BluetoothLEDevice represents a remote BLE
+The front end class pygatt.pygatt.BLEDevice represents a remote BLE
 device. The API provides the methods -- connect, char_read, char_write,
 subscribe -- that you need to interact with the device. When a BluetoothLEDevice
 object is created, there is an optional argument "backend" that allows for
