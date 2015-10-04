@@ -174,12 +174,7 @@ class BGAPIBackend(BLEBackend):
             CommandBuilder.gap_set_mode(
                 constants.gap_discoverable_mode['non_discoverable'],
                 constants.gap_connectable_mode['non_connectable']))
-
-        try:
-            self.expect(ResponsePacketType.gap_set_mode)
-        except BGAPIError:
-            # TODO should we do something about this error? is it fatal?
-            pass
+        self.expect(ResponsePacketType.gap_set_mode)
 
     def _send_command(self, *args, **kwargs):
         if self._ser is None:
