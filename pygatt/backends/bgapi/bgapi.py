@@ -11,7 +11,7 @@ from enum import Enum
 from collections import defaultdict
 
 from pygatt.exceptions import BLEError, NotConnectedError
-from pygatt.backends.backend import BLEBackend, Characteristic
+from pygatt.backends import BLEBackend, Characteristic
 from pygatt.util import uuid16_to_uuid
 
 from . import bglib, constants

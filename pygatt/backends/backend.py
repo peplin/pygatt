@@ -54,12 +54,13 @@ class Characteristic(object):
     """
     GATT characteristic. For internal use within BGAPIBackend.
     """
-    def __init__(self, name, handle):
+    def __init__(self, uuid, handle):
         """
-        Sets the characteritic name and handle.
+        Sets the characteritic uuid and handle.
 
         handle - a bytearray
         """
+        self.uuid = uuid
         self.handle = handle
         self.descriptors = {
             # uuid_string: handle

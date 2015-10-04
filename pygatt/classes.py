@@ -5,9 +5,17 @@ import logging
 from collections import defaultdict
 from binascii import hexlify
 
-from constants import DEFAULT_CONNECT_TIMEOUT_S
+from . import exceptions
 
 log = logging.getLogger(__name__)
+
+
+def connection_required(func):
+    def wrapper(self, *args, **kwargs):
+        if self._connection_handle is None:
+            raise exceptions.NotConnectedError()
+        return func(self, *args, **kwargs)
+    return wrapper
 
 
 class BLEDevice(object):
@@ -31,12 +39,13 @@ class BLEDevice(object):
         """
         self._backend = backend
         self._connection_handle = handle
-        self._handles = defaultdict({})
+        self._characteristics = {}
         self._address = address
         self._callbacks = defaultdict(set)
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
 
+    @connection_required
     def bond(self):
         """
         Create a new bond or use an existing bond with the device and make the
@@ -44,6 +53,7 @@ class BLEDevice(object):
         """
         self._backend.bond(self._connection_handle)
 
+    @connection_required
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
@@ -54,6 +64,7 @@ class BLEDevice(object):
         """
         return self._backend.get_rssi(self._connection_handle)
 
+    @connection_required
     def char_read(self, uuid):
         """
         Reads a Characteristic by UUID.
@@ -69,6 +80,7 @@ class BLEDevice(object):
         handle = self.get_handle(uuid)
         return self._backend.char_read(self._connection_handle, handle)
 
+    @connection_required
     def char_write(self, uuid, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
@@ -82,7 +94,7 @@ class BLEDevice(object):
                                      bytearray([0x00, 0xFF]))
         """
         log.info("char_write %s", uuid)
-        char_handle = self.get_handle(self._connection_handle, uuid)
+        char_handle = self.get_handle(uuid)
         self._backend.char_write(self._connection_handle, char_handle, value,
                                  wait_for_response=wait_for_response)
 
@@ -114,9 +126,7 @@ class BLEDevice(object):
             0x0
         ])
 
-        try:
-            self._lock.acquire()
-
+        with self._lock:
             if callback is not None:
                 self._callbacks[value_handle].add(callback)
 
@@ -130,14 +140,14 @@ class BLEDevice(object):
                 self._subscribed_handlers[value_handle] = properties
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
-        finally:
-            self._lock.release()
 
+    @connection_required
     def disconnect(self):
         self._backend.disconnect(self._connection_handle)
         self._connection_handle = None
 
-    def get_handle(self, uuid, descriptor_uuid=None):
+    @connection_required
+    def get_handle(self, uuid):
         """
         Look up and return the handle for an attribute by its UUID.
         :param uuid: The UUID of the characteristic.
@@ -145,26 +155,22 @@ class BLEDevice(object):
         :return: None if the UUID was not found.
         """
         log.debug("Looking up handle for characteristic %s", uuid)
-        if uuid not in self._handles:
-            self._handles[uuid] = self._backend.discover_characteristics(
+        if uuid not in self._characteristics:
+            self._characteristics = self._backend.discover_characteristics(
                 self._connection_handle)
 
-        if len(self._handles) == 0:
-            raise exceptions.BLEError(
-                "No characteristics found - disconnected unexpectedly?")
-
-        handle = self._handles.get(uuid)
-        if handle is None:
+        characteristic = self._characteristics.get(uuid)
+        if characteristic is None:
             message = "No characteristic found matching %s" % uuid
             log.warn(message)
             raise exceptions.BLEError(message)
 
-        # TODO support filtering by descriptor UUID
+        # TODO support filtering by descriptor UUID, or maybe return the whole
+        # Characteristic object
+        log.debug("Found %s" % characteristic)
+        return characteristic.handle
 
-        log.debug("Characteristic %s, handle: 0x%x", uuid, handle)
-        return handle
-
-    def _handle_notification(self, handle, value):
+    def receive_notification(self, handle, value):
         """
         Receive a notification from the connected device and propagate the value
         to all registered callbacks.
