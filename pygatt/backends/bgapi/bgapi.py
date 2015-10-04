@@ -228,21 +228,17 @@ class BGAPIBackend(BLEBackend):
         timeout -- the number of seconds this scan should last.
         discover_mode -- one of the gap_discover_mode constants.
         """
-        # Set scan parameters
-        if active:
-            active = 0x01
-        else:
-            active = 0x00
+        parameters = 1 if active else 0
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
         self._send_command(
             CommandBuilder.gap_set_scan_parameters(
-                scan_interval, scan_window, active
+                scan_interval, scan_window, parameters
             ))
 
         self.expect(ResponsePacketType.gap_set_scan_parameters)
 
-        log.info("Starting an %s scan", "active" if active == 1 else "passive")
+        log.info("Starting an %s scan", "active" if active else "passive")
         self._send_command(CommandBuilder.gap_discover(discover_mode))
 
         self.expect(ResponsePacketType.gap_discover)
