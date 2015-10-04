@@ -274,10 +274,9 @@ class BGAPIBackend(BLEBackend):
 
         Raises BGAPIError or NotConnectedError on failure.
         """
-        connection_handle = None
         for handle, address in self._connections.iteritems():
             if address == address:
-                return connection_handle
+                return handle
 
         address_bytes = [int(b, 16) for b in address.split(":")]
         interval_min = 60
