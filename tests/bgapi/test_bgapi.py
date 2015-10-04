@@ -1,11 +1,12 @@
 from __future__ import print_function
 
-from nose.tools import eq_
+from nose.tools import eq_, ok_
 import unittest
 from uuid import UUID
 
 from pygatt.backends import BGAPIBackend
 from pygatt.backends.bgapi.util import extract_vid_pid
+from pygatt.backends.bgapi.error_codes import get_return_message
 from pygatt.util import uuid16_to_uuid
 
 from .mocker import MockBGAPISerialDevice
@@ -178,3 +179,9 @@ class UsbInfoStringParsingTests(unittest.TestCase):
 
     def test_invalid(self):
         eq_(None, extract_vid_pid("2458:1"))
+
+
+class ReturnCodeTests(unittest.TestCase):
+
+    def test_unrecognized_return_code(self):
+        ok_(get_return_message(123123123123123) is not None)

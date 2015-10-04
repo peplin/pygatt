@@ -36,7 +36,7 @@ class BLEBackend(object):
     def bond(self, connection_handle):
         raise NotImplementedError()
 
-    def char_read_uuid(self, connection_handle, uuid):
+    def char_read(self, connection_handle, handle):
         raise NotImplementedError()
 
     def char_write(self, connection_handle, handle, value,
