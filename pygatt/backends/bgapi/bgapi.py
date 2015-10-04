@@ -150,7 +150,7 @@ class BGAPIBackend(BLEBackend):
         try:
             self.expect(ResponsePacketType.gap_end_procedure)
         except BGAPIError:
-            # Ignore any errors if there was no GAP produce running
+            # Ignore any errors if there was no GAP procedure running
             pass
 
     def stop(self):
