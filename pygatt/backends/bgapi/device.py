@@ -104,7 +104,7 @@ class BGAPIBLEDevice(BLEDevice):
         return bytearray(response['value'])
 
     @connection_required
-    def char_write(self, uuid, value, wait_for_response=False):
+    def char_write_handle(self, char_handle, value, wait_for_response=False):
         """
         Write a value to a characteristic on the device.
 
@@ -118,7 +118,6 @@ class BGAPIBLEDevice(BLEDevice):
         if wait_for_response:
             raise NotImplementedError("bgapi subscribe wait for response")
 
-        char_handle = self.get_handle(uuid)
         while True:
             value_list = [b for b in value]
             log.info("attribute_write")
