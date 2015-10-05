@@ -257,6 +257,7 @@ class BGAPIBackend(BLEBackend):
                 'name': info.name,
                 'rssi': info.rssi
             })
+        self._devices_discovered = {}
         return devices
 
     def connect(self, address, timeout=5,
