@@ -15,7 +15,9 @@ except Exception as e:
     if platform.system() != 'Windows':
         print("WARNING:", e, file=sys.stderr)
 
-from pygatt import constants, exceptions
+from pygatt import constants
+from pygatt.exceptions import (NotConnectedError, NotificationTimeout, BLEError,
+                               NoResponseError)
 from pygatt.backends import BLEBackend, Characteristic
 from .device import GATTToolBLEDevice
 
@@ -25,7 +27,7 @@ log = logging.getLogger(__name__)
 def at_most_one_device(func):
     def wrapper(self, connected_device, *args, **kwargs):
         if connected_device != self._connected_device:
-            raise exceptions.NotConnectedError()
+            raise NotConnectedError()
         return func(self, *args, **kwargs)
     return wrapper
 
@@ -131,7 +133,7 @@ class GATTToolBackend(BLEBackend):
             if "No such device" in scan.before:
                 message = "No BLE adapter found"
             log.error(message)
-            raise exceptions.BLEError(message)
+            raise BLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
             for line in scan.before.split('\r\n'):
@@ -171,7 +173,7 @@ class GATTToolBackend(BLEBackend):
             message = ("Timed out connecting to %s after %s seconds."
                        % (self._address, timeout))
             log.error(message)
-            raise exceptions.NotConnectedError(message)
+            raise NotConnectedError(message)
 
         self._connected_device = GATTToolBLEDevice(address, self)
         return self._connected_device
@@ -259,7 +261,7 @@ class GATTToolBackend(BLEBackend):
                         if self._running.is_set():
                             log.info("Disconnected")
                 except pexpect.TIMEOUT:
-                    raise exceptions.NotificationTimeout(
+                    raise NotificationTimeout(
                         "Timed out waiting for a notification")
 
     def _handle_notification_string(self, msg):
@@ -292,7 +294,7 @@ class GATTToolBackend(BLEBackend):
             if wait_for_response:
                 try:
                     self._expect('Characteristic value written successfully')
-                except exceptions.NoResponseError:
+                except NoResponseError:
                     log.error("No response received", exc_info=True)
                     raise
 
@@ -323,9 +325,9 @@ class GATTToolBackend(BLEBackend):
         while self._running.is_set():
             try:
                 self._expect("fooooooo", timeout=.1)
-            except exceptions.NotificationTimeout:
+            except NotificationTimeout:
                 pass
-            except (exceptions.NotConnectedError, pexpect.EOF):
+            except (NotConnectedError, pexpect.EOF):
                 break
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
