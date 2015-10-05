@@ -28,9 +28,8 @@ class GATTToolBLEDevice(BLEDevice):
         return self._backend.char_read(self, uuid, *args, **kwargs)
 
     @connection_required
-    def char_write(self, uuid, *args, **kwargs):
-        handle = self._backend.get_handle(uuid)
-        self._backend.char_write(self, handle, *args, **kwargs)
+    def char_write_handle(self, handle, *args, **kwargs):
+        self._backend.char_write_handle(self, handle, *args, **kwargs)
 
     @connection_required
     def disconnect(self):

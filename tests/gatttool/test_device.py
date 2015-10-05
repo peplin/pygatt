@@ -40,17 +40,17 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
             eq_(expected_value, value)
 
     def test_char_write(self):
-        with patch.object(self.backend, 'get_handle', return_value=24
+        with patch.object(self.device, 'get_handle', return_value=24
                           ) as get_handle:
             char_uuid = uuid.uuid4()
             value = bytearray(range(4))
             self.device.char_write(char_uuid, value)
             ok_(get_handle.called)
             eq_(char_uuid, get_handle.call_args[0][0])
-            ok_(self.backend.char_write.called)
-            eq_(self.device, self.backend.char_write.call_args[0][0])
-            eq_(24, self.backend.char_write.call_args[0][1])
-            eq_(value, self.backend.char_write.call_args[0][2])
+            ok_(self.backend.char_write_handle.called)
+            eq_(self.device, self.backend.char_write_handle.call_args[0][0])
+            eq_(24, self.backend.char_write_handle.call_args[0][1])
+            eq_(value, self.backend.char_write_handle.call_args[0][2])
 
     def test_disconnect(self):
         self.device.disconnect()

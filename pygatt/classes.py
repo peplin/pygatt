@@ -78,6 +78,10 @@ class BLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
+        return self.char_write_handle(self.get_handle(uuid), value,
+                                      wait_for_response=wait_for_response)
+
+    def char_write_handle(self, handle, value, wait_for_response=False):
         raise NotImplementedError()
 
     def disconnect(self):
@@ -116,7 +120,7 @@ class BLEDevice(object):
                 self._callbacks[value_handle].add(callback)
 
             if self._subscribed_handlers.get(value_handle, None) != properties:
-                self.char_write(
+                self.char_write_handle(
                     characteristic_config_handle,
                     properties,
                     wait_for_response=False

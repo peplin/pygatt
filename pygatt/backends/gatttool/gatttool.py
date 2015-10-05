@@ -272,7 +272,7 @@ class GATTToolBackend(BLEBackend):
         self._connected_device.receive_notification(handle, value)
 
     @at_most_one_device
-    def char_write(self, handle, value, wait_for_response=False):
+    def char_write_handle(self, handle, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
         :param handle:
@@ -302,38 +302,21 @@ class GATTToolBackend(BLEBackend):
             log.info('Sent cmd=%s', cmd)
 
     @at_most_one_device
-    def char_read(self, handle):
+    def char_read(self, uuid):
         """
-        Reads a Characteristic by handle.
+        Reads a Characteristic by uuid.
         :param uuid: UUID of Characteristic to read.
         :type uuid: str
         :return: bytearray of result.
         :rtype: bytearray
         """
         with self._connection_lock:
-            self._con.sendline('char-read-hnd %d' % handle)
+            self._con.sendline('char-read-uuid %s' % uuid)
             self._expect('value: .*? \r')
 
             rval = self._con.after.split()[1:]
 
             return bytearray([int(x, 16) for x in rval])
-
-    @at_most_one_device
-    def char_read_hnd(self, handle):
-        """
-        Reads a Characteristic by Handle.
-        :param handle: Handle of Characteristic to read.
-        :type handle: str
-        :return: bytearray of result
-        :rtype: bytearray
-        """
-        with self._connection_lock:
-            self._con.sendline('char-read-hnd 0x%02x' % handle)
-            self._expect('descriptor: .*?\r')
-
-            rval = self._con.after.split()[1:]
-
-            return bytearray([int(n, 16) for n in rval])
 
     def _receive(self):
         """

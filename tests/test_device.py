@@ -26,7 +26,7 @@ class BLEDeviceTest(unittest.TestCase):
 
     def _subscribe(self):
         callback = MagicMock()
-        with patch.object(self.device, 'char_write') as char_write:
+        with patch.object(self.device, 'char_write_handle') as char_write:
             self.device.subscribe(self.device.CHAR_UUID, callback=callback)
             ok_(char_write.called)
             eq_(self.device.EXPECTED_HANDLE + 1, char_write.call_args[0][0])
@@ -39,7 +39,7 @@ class BLEDeviceTest(unittest.TestCase):
     def test_subscribe_another_callback(self):
         self._subscribe()
         another_callback = MagicMock()
-        with patch.object(self.device, 'char_write') as char_write:
+        with patch.object(self.device, 'char_write_handle') as char_write:
             self.device.subscribe(self.device.CHAR_UUID,
                                   callback=another_callback)
             ok_(not char_write.called)
