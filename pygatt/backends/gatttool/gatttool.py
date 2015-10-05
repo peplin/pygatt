@@ -8,6 +8,7 @@ import sys
 import time
 import threading
 import subprocess
+from uuid import UUID
 try:
     import pexpect
 except Exception as e:
@@ -212,7 +213,7 @@ class GATTToolBackend(BLEBackend):
                     try:
                         value_handle = int(self._con.match.group(2), 16)
                         char_uuid = self._con.match.group(3).strip()
-                        characteristics[char_uuid] = Characteristic(
+                        characteristics[UUID(char_uuid)] = Characteristic(
                             char_uuid, value_handle)
                         log.debug(
                             "Found characteristic %s, value handle: 0x%x",
