@@ -530,9 +530,6 @@ class BGAPIBackend(BLEBackend):
         Handles the event for the termination of a connection.
         """
         self._connections.pop(args['connection_handle'], None)
-        # TODO do we need to raise this? what if it's expected to be
-        # disconnected now?
-        raise NotConnectedError()
 
     def _ble_evt_connection_status(self, args):
         """
