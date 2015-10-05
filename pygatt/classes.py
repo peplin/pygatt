@@ -4,6 +4,7 @@ import threading
 import logging
 from collections import defaultdict
 from binascii import hexlify
+from uuid import UUID
 
 from . import exceptions
 
@@ -130,20 +131,22 @@ class BLEDevice(object):
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
 
-    def get_handle(self, uuid):
+    def get_handle(self, char_uuid):
         """
         Look up and return the handle for an attribute by its UUID.
-        :param uuid: The UUID of the characteristic.
+        :param char_uuid: The UUID of the characteristic.
         :type uuid: str
         :return: None if the UUID was not found.
         """
-        log.debug("Looking up handle for characteristic %s", uuid)
-        if uuid not in self._characteristics:
+        if isinstance(char_uuid, str):
+            char_uuid = UUID(char_uuid)
+        log.debug("Looking up handle for characteristic %s", char_uuid)
+        if char_uuid not in self._characteristics:
             self._characteristics = self.discover_characteristics()
 
-        characteristic = self._characteristics.get(uuid)
+        characteristic = self._characteristics.get(char_uuid)
         if characteristic is None:
-            message = "No characteristic found matching %s" % uuid
+            message = "No characteristic found matching %s" % char_uuid
             log.warn(message)
             raise exceptions.BLEError(message)
 
