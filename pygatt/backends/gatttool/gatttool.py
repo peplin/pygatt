@@ -255,14 +255,9 @@ class GATTToolBackend(BLEBackend):
                         break
                     elif matched_pattern_index in [1, 2]:
                         self._handle_notification_string(self._con.after)
-                    elif matched_pattern_index in [3, 4]:
-                        message = ""
+                    elif matched_pattern_index == 3:
                         if self._running.is_set():
-                            message = ("Unexpectedly disconnected - do you "
-                                       "need to clear bonds?")
-                            log.error(message)
-                            self._running.clear()
-                        raise exceptions.NotConnectedError(message)
+                            log.info("Disconnected")
                 except pexpect.TIMEOUT:
                     raise exceptions.NotificationTimeout(
                         "Timed out waiting for a notification")
