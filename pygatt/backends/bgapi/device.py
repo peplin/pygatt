@@ -36,10 +36,7 @@ class BGAPIBLEDevice(BLEDevice):
         """
 
         # Set to bondable mode so bonds are store permanently
-        self._backend.send_command(
-            CommandBuilder.sm_set_bondable_mode(constants.bondable['yes']))
-        self._backend.expect(ResponsePacketType.sm_set_bondable_mode)
-
+        # self._backend.set_bondable(True)
         log.info("Bonding to %s", self._address)
         self._backend.send_command(
             CommandBuilder.sm_encrypt_start(

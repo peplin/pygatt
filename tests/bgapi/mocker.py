@@ -68,6 +68,8 @@ class MockBGAPISerialDevice(object):
             BGAPIPacketBuilder.sm_set_bondable_mode())
 
     def stage_connect_packets(self, addr, flags, connection_handle=0x00):
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.sm_set_bondable_mode())
         # Stage ble_rsp_gap_connect_direct (success)
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.gap_connect_direct(connection_handle, 0x0000))
@@ -82,20 +84,6 @@ class MockBGAPISerialDevice(object):
         # Stage ble_rsp_connection_get_rssi
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.connection_get_rssi(connection_handle, rssi))
-
-    def stage_encrypt_packets(self, addr, flags,
-                              connection_handle=0x00):
-        # Stage ble_rsp_sm_set_bondable_mode (always success)
-        self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_set_bondable_mode())
-        # Stage ble_rsp_sm_encrypt_start (success)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_encrypt_start(
-            connection_handle, 0x0000))
-        # Stage ble_evt_connection_status
-        flags_byte = self._get_connection_status_flags_byte(flags)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.connection_status(
-            addr, flags_byte, connection_handle, 0,
-            0x0014, 0x0006, 0x0000, 0xFF))
 
     def stage_bond_packets(self, addr, flags,
                            connection_handle=0x00, bond_handle=0x01):

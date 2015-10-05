@@ -132,6 +132,8 @@ class BGAPIBackend(BLEBackend):
 
         self.disable_advertising()
 
+        self.set_bondable(False)
+
         # TODO should disconnect from anything so we are in a clean slate
 
         # Stop any ongoing procedure
@@ -160,6 +162,14 @@ class BGAPIBackend(BLEBackend):
         if self._ser:
             self._ser.close()
             self._ser = None
+
+    def set_bondable(self, bondable):
+        # If we are in bondable mode, every time we connect it upgrades to
+        # bonded. Is there a way to stop this?
+        self.send_command(
+            CommandBuilder.sm_set_bondable_mode(
+                constants.bondable['yes' if bondable else 'no']))
+        self.expect(ResponsePacketType.sm_set_bondable_mode)
 
     def disable_advertising(self):
         log.info("Disabling advertising")
@@ -266,6 +276,7 @@ class BGAPIBackend(BLEBackend):
 
         Raises BGAPIError or NotConnectedError on failure.
         """
+
         address_bytes = [int(b, 16) for b in address.split(":")]
         for device in self._connections.values():
             if device._address == address_bytes:
@@ -273,6 +284,7 @@ class BGAPIBackend(BLEBackend):
 
         log.debug("Connecting to device at address %s (timeout %ds)",
                   address, timeout)
+        self.set_bondable(False)
         self.send_command(
             CommandBuilder.gap_connect_direct(
                 address_bytes, addr_type, interval_min, interval_max,
