@@ -325,12 +325,12 @@ class BGAPIBackend(BLEBackend):
 
         for char_uuid_str, char_obj in (
                 self._characteristics[connection_handle].iteritems()):
-            log.debug("Characteristic 0x%s is handle 0x%x",
-                      char_uuid_str, char_obj.handle)
+            log.info("Characteristic 0x%s is handle 0x%x",
+                     char_uuid_str, char_obj.handle)
             for desc_uuid_str, desc_handle in (
                     char_obj.descriptors.iteritems()):
-                log.debug("Characteristic descriptor 0x%s is handle %x",
-                          desc_uuid_str, desc_handle)
+                log.info("Characteristic descriptor 0x%s is handle %x",
+                         desc_uuid_str, desc_handle)
         return self._characteristics[connection_handle]
 
     @staticmethod
@@ -531,7 +531,7 @@ class BGAPIBackend(BLEBackend):
                 self._current_characteristic is not None):
             self._current_characteristic.add_descriptor(uuid, args['chrhandle'])
         elif uuid_type == UUIDType.custom:
-            log.debug("Found custom characteristic %s" % uuid)
+            log.info("Found custom characteristic %s" % uuid)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[
