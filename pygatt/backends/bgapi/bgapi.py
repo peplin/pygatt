@@ -32,19 +32,6 @@ UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
                              'descriptor', 'characteristic'])
 
 
-def connected_device_required(func):
-    def wrapper(self, device, *args, **kwargs):
-        connection_handle = None
-        for handle, connected_device in self._connections.iteritems():
-            if device == connected_device:
-                connection_handle = handle
-                break
-        if connection_handle is None:
-            raise NotConnectedError()
-        return func(self, device, *args, **kwargs)
-    return wrapper
-
-
 class AdvertisingAndScanInfo(object):
     """
     Holds the advertising and scan response packet data from a device at a given
