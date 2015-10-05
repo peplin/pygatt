@@ -132,6 +132,8 @@ class BGAPIBackend(BLEBackend):
 
         self.disable_advertising()
 
+        # TODO should disconnect from anything so we are in a clean slate
+
         # Stop any ongoing procedure
         log.info("Stopping any outstanding GAP procedure")
         self.send_command(CommandBuilder.gap_end_procedure())
@@ -282,6 +284,9 @@ class BGAPIBackend(BLEBackend):
                                     timeout=timeout)
             # TODO what do we do if the status isn't 'connected'? Retry? Raise
             # an exception? Should also check the address matches the expected
+            # TODO i'm finding that when reconnecting to the same MAC, we geta
+            # conneciotn status of "disconnected" but that is picked up here as
+            # "connected", then we don't get anything else.
             if self._connection_status_flag(
                     packet['flags'],
                     constants.connection_status_flag['connected']):
