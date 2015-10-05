@@ -1,7 +1,7 @@
 from .constants import DEFAULT_CONNECT_TIMEOUT_S
-from .classes import BLEDevice
 
 
+# TODO is this really neccessary?
 class BLEAdapter(object):
 
     def __init__(self, backend):
@@ -12,8 +12,7 @@ class BLEAdapter(object):
         self.backend.stop()
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S):
-        handle = self.backend.connect(address, timeout=timeout)
-        return BLEDevice(address, handle, self.backend)
+        return self.backend.connect(address, timeout=timeout)
 
     def scan(self, name_filter="", *args, **kwargs):
         """

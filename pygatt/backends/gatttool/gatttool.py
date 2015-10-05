@@ -14,18 +14,18 @@ except Exception as e:
     if platform.system() != 'Windows':
         print("WARNING:", e, file=sys.stderr)
 
-from pygatt import constants
-from pygatt import exceptions
+from pygatt import constants, exceptions
 from pygatt.backends.backend import BLEBackend
+from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
 
 
 def at_most_one_device(func):
-    def wrapper(self, connection_handle, *args, **kwargs):
-        if connection_handle != self._connection_handle:
-            raise NotConnectedError()
-        return func(*args, **kwargs)
+    def wrapper(self, connected_device, *args, **kwargs):
+        if connected_device != self._connected_device:
+            raise exceptions.NotConnectedError()
+        return func(self, *args, **kwargs)
     return wrapper
 
 
@@ -44,7 +44,7 @@ class GATTToolBackend(BLEBackend):
         loglevel -- log level for this module's logger.
         """
         self._hci_device = hci_device
-        self._connection_handle = None
+        self._connected_device = None
         self._gatttool_logfile = gatttool_logfile
         self._receiver = None  # background notification receiving thread
         self._con = None  # gatttool interactive session
@@ -86,7 +86,7 @@ class GATTToolBackend(BLEBackend):
         Stop the backgroud notification handler in preparation for a
         disconnect.
         """
-        self.disconnect()
+        self.disconnect(self._connected_device)
         if self._running.is_set():
             log.info('Stopping')
         self._running.clear()
@@ -172,18 +172,19 @@ class GATTToolBackend(BLEBackend):
             log.error(message)
             raise exceptions.NotConnectedError(message)
 
-        self._connection_handle = (address, time.time())
-        return self._connection_handle
+        self._connected_device = GATTToolBLEDevice(address, self)
+        return self._connected_device
 
     @at_most_one_device
     def disconnect(self):
         with self._connection_lock:
             self._con.sendline('disconnect')
-        self._connection_handle = None
+        self._connected_device = None
+        # TODO make call a disconnected callback on the device, so the device
+        # knows if it was async disconnected?
 
     @at_most_one_device
     def bond(self):
-        """Securely Bonds to the BLE device."""
         log.info('Bonding')
         self._con.sendline('sec-level medium')
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
@@ -268,7 +269,7 @@ class GATTToolBackend(BLEBackend):
         hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
         handle = int(hex_handle, 16)
         value = bytearray.fromhex(hex_value)
-        self._handle_notification(handle, value)
+        self._connected_device.receive_notification(handle, value)
 
     @at_most_one_device
     def char_write(self, handle, value, wait_for_response=False):
@@ -340,13 +341,12 @@ class GATTToolBackend(BLEBackend):
         """
         log.info('Running...')
         while self._running.is_set():
-            with self._connection_lock:
-                try:
-                    self._expect("fooooooo", timeout=.1)
-                except exceptions.NotificationTimeout:
-                    pass
-                except (exceptions.NotConnectedError, pexpect.EOF):
-                    break
+            try:
+                self._expect("fooooooo", timeout=.1)
+            except exceptions.NotificationTimeout:
+                pass
+            except (exceptions.NotConnectedError, pexpect.EOF):
+                break
             # TODO need some delay to avoid aggresively grabbing the lock,
             # blocking out the others. worst case is 1 second delay for async
             # not received as a part of another request

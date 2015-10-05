@@ -10,20 +10,12 @@ from . import exceptions
 log = logging.getLogger(__name__)
 
 
-def connection_required(func):
-    def wrapper(self, *args, **kwargs):
-        if self._connection_handle is None:
-            raise exceptions.NotConnectedError()
-        return func(self, *args, **kwargs)
-    return wrapper
-
-
 class BLEDevice(object):
     """
     Interface for a Bluetooth Low Energy device that can use either the Bluegiga
     BGAPI (cross platform) or GATTTOOL (Linux only) as the backend.
     """
-    def __init__(self, address, handle, backend):
+    def __init__(self, address):
         """
         Initialize.
 
@@ -37,23 +29,19 @@ class BLEDevice(object):
             my_ble_device = pygatt.classes.BLEDevice(
                 '01:23:45:67:89:ab', bgapi=dongle)
         """
-        self._backend = backend
-        self._connection_handle = handle
         self._characteristics = {}
         self._address = address
         self._callbacks = defaultdict(set)
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
 
-    @connection_required
     def bond(self):
         """
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.
         """
-        self._backend.bond(self._connection_handle)
+        raise NotImplementedError()
 
-    @connection_required
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
@@ -62,9 +50,8 @@ class BLEDevice(object):
         Returns the RSSI value in dBm on success.
         Returns None on failure.
         """
-        return self._backend.get_rssi(self._connection_handle)
+        raise NotImplementedError()
 
-    @connection_required
     def char_read(self, uuid):
         """
         Reads a Characteristic by UUID.
@@ -77,10 +64,8 @@ class BLEDevice(object):
         Example:
             my_ble_device.char_read('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b')
         """
-        handle = self.get_handle(uuid)
-        return self._backend.char_read(self._connection_handle, handle)
+        raise NotImplementedError()
 
-    @connection_required
     def char_write(self, uuid, value, wait_for_response=False):
         """
         Writes a value to a given characteristic handle.
@@ -93,10 +78,10 @@ class BLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        log.info("char_write %s", uuid)
-        char_handle = self.get_handle(uuid)
-        self._backend.char_write(self._connection_handle, char_handle, value,
-                                 wait_for_response=wait_for_response)
+        raise NotImplementedError()
+
+    def disconnect(self):
+        raise NotImplementedError()
 
     def subscribe(self, uuid, callback=None, indication=False):
         """
@@ -141,12 +126,6 @@ class BLEDevice(object):
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
 
-    @connection_required
-    def disconnect(self):
-        self._backend.disconnect(self._connection_handle)
-        self._connection_handle = None
-
-    @connection_required
     def get_handle(self, uuid):
         """
         Look up and return the handle for an attribute by its UUID.
@@ -156,8 +135,7 @@ class BLEDevice(object):
         """
         log.debug("Looking up handle for characteristic %s", uuid)
         if uuid not in self._characteristics:
-            self._characteristics = self._backend.discover_characteristics(
-                self._connection_handle)
+            self._characteristics = self.discover_characteristics()
 
         characteristic = self._characteristics.get(uuid)
         if characteristic is None:

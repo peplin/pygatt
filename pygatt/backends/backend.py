@@ -20,8 +20,8 @@ class BLEBackend(object):
         return True
 
     def connect(self, address, **kwargs):
-        """Return a handle for the connection if connected, otherwise raise an
-        expception.
+        """Return a BLEDevice for the connection if connected, otherwise raise
+        an exception.
         """
         raise NotImplementedError()
 
@@ -31,22 +31,6 @@ class BLEBackend(object):
 
         Returns a list of BLE devices found.
         """
-        raise NotImplementedError()
-
-    def bond(self, connection_handle):
-        raise NotImplementedError()
-
-    def char_read(self, connection_handle, handle):
-        raise NotImplementedError()
-
-    def char_write(self, connection_handle, handle, value,
-                   wait_for_response=False):
-        raise NotImplementedError()
-
-    def measure_rssi(self, connection_handle):
-        raise NotImplementedError()
-
-    def disconnect(self, connection_handle):
         raise NotImplementedError()
 
 
