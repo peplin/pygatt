@@ -264,11 +264,11 @@ class BGAPIBackend(BLEBackend):
 
         Raises BGAPIError or NotConnectedError on failure.
         """
-        for handle, device in self._connections.iteritems():
-            if device == device:
+        address_bytes = [int(b, 16) for b in address.split(":")]
+        for device in self._connections.values():
+            if device._address == address_bytes:
                 return device
 
-        address_bytes = [int(b, 16) for b in address.split(":")]
         log.debug("Connecting to device at address %s (timeout %ds)",
                   address, timeout)
         self.send_command(
