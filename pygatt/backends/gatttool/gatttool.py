@@ -164,6 +164,7 @@ class GATTToolBackend(BLEBackend):
 
     def connect(self, address, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
         log.info('Connecting with timeout=%s', timeout)
+        self._con.sendline('sec-level low')
         self._address = address
         try:
             with self._connection_lock:
