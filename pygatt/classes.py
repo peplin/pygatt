@@ -36,7 +36,7 @@ class BLEDevice(object):
         self._subscribed_handlers = {}
         self._lock = threading.Lock()
 
-    def bond(self):
+    def bond(self, permanent=False):
         """
         Create a new bond or use an existing bond with the device and make the
         current connection bonded and encrypted.

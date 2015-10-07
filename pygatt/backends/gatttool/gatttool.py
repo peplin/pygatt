@@ -191,7 +191,7 @@ class GATTToolBackend(BLEBackend):
         # knows if it was async disconnected?
 
     @at_most_one_device
-    def bond(self):
+    def bond(self, *args, **kwargs):
         log.info('Bonding')
         self._con.sendline('sec-level medium')
         self._con.expect(self._GATTTOOL_PROMPT, timeout=1)

@@ -28,7 +28,7 @@ class BGAPIBLEDevice(BLEDevice):
         self._characteristics = {}
 
     @connection_required
-    def bond(self):
+    def bond(self, permanent=False):
         """
         Create a bond and encrypted connection with the device.
 
@@ -36,7 +36,8 @@ class BGAPIBLEDevice(BLEDevice):
         """
 
         # Set to bondable mode so bonds are store permanently
-        # self._backend.set_bondable(True)
+        if permanent:
+            self._backend.set_bondable(True)
         log.info("Bonding to %s", self._address)
         self._backend.send_command(
             CommandBuilder.sm_encrypt_start(
