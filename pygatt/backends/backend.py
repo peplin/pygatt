@@ -46,6 +46,9 @@ class BLEBackend(object):
         return [device for device in devices
                 if name_filter in (device['name'] or '')]
 
+    def clear_bond(self, address=None):
+        raise NotImplementedError()
+
 
 class Characteristic(object):
     """

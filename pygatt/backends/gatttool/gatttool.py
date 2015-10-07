@@ -178,6 +178,27 @@ class GATTToolBackend(BLEBackend):
         self._connected_device = GATTToolBLEDevice(address, self)
         return self._connected_device
 
+    def clear_bond(self, address=None):
+        # Since this may not be available on all platforms, and isn't otherwise
+        # required by this library (unless you are using the gatttool backend),
+        # defer importing until you actually run this code.
+        import pexpect
+
+        con = pexpect.spawn('sudo bluetoothctl')
+        con.expect("bluetooth", timeout=1)
+
+        log.info("Clearing bond for %s", address)
+        con.sendline("remove " + address.upper())
+        try:
+            con.expect(["Device has been removed",
+                        "# "
+                        ],
+                       timeout=.5)
+        except pexpect.TIMEOUT:
+            log.error("Unable to remove bonds for %s: %s",
+                      address, con.before)
+        log.info("Removed bonds for %s", address)
+
     @at_most_one_device
     def disconnect(self):
         with self._connection_lock:
