@@ -20,8 +20,8 @@ class GATTToolBLEDevice(BLEDevice):
         self._connected = True
 
     @connection_required
-    def bond(self):
-        self._backend.bond(self)
+    def bond(self, *args, **kwargs):
+        self._backend.bond(self, *args, **kwargs)
 
     @connection_required
     def char_read(self, uuid, *args, **kwargs):
