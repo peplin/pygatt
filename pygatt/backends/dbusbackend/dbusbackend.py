@@ -57,7 +57,9 @@ class DBusBackend(BLEBackend):
         for path, ifaces in objects.iteritems():
             device = ifaces.get("org.bluez.Device1")
             if device is not None:
+                log.debug('Adding ' + str(path) + ' to device list')
                 self._add_device(path)
+                log.debug('Added ' + str(path) + ' to device list')
         if adapter is None:
             raise Exception("Bluetooth adapter not found")
 
@@ -85,13 +87,24 @@ class DBusBackend(BLEBackend):
 
     def connect(self, address):
         device = self._bus.get_object("org.bluez", self._devices[address]["path"])
-        device.Connect(dbus_interface="org.bluez.Device1")
+        try:
+          device.Connect(dbus_interface="org.bluez.Device1")
+        except DBusException as e:
+          log.debug('Got exception ' + str(e) + '; waiting before reconnect')
+          time.sleep(self._connect_timeout)
+          log.debug('About to reconnect')
+          device.Connect(dbus_interface="org.bluez.Device1")
+
 
     def disconnect(self, address):
         device = self._bus.get_object("org.bluez", self._devices[address]["path"])
-        device.Disconnect(dbus_interface="org.bluez.Device1")
-        log.debug("Disconnected from " + self._devices[address]["path"])
-        self._devices[address]["connected"] = False
+        try:
+          device.Disconnect(dbus_interface="org.bluez.Device1")
+          log.debug("Disconnected from " + self._devices[address]["path"])
+          self._devices[address]["connected"] = False
+        except DBusConnection as e:
+          time.sleep(2)
+          device.Disconnect(dbus_interface="org.bluez.Device1")
 
     def char_read_uuid(self, address, uuid):
         if self._devices[address]["connected"] == False:
@@ -184,6 +197,7 @@ class DBusBackend(BLEBackend):
                 gatt_services = device_iface.Get("org.bluez.Device1", "GattServices")
             except DBusException as e:
                 log.debug("Device " + address + " doesn't have any GATT services. " + str(e))
+                self._lock.release()
                 return
 
         device.Disconnect(dbus_interface="org.bluez.Device1")
