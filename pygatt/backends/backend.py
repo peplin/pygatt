@@ -80,3 +80,7 @@ class Characteristic(object):
         Add a characteristic descriptor to the dictionary of descriptors.
         """
         self.descriptors[uuid] = handle
+
+    def __str__(self):
+        return "<%s uuid=%s handle=%d>" % (self.__class__.__name__,
+                                           self.uuid, self.handle)

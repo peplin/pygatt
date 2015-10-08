@@ -87,5 +87,5 @@ def find_usb_serial_devices(vendor_id=None, product_id=None):
                 devices.append(dev)
             elif dev.product_id == product_id and dev.vendor_id == vendor_id:
                 devices.append(dev)
-            log.info("USB device: %s", dev)
+            log.debug("USB device: %s", dev)
     return devices

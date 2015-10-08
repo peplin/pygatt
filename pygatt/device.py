@@ -108,9 +108,6 @@ class BLEDevice(object):
         indication -- use indications (where each notificaiton is ACKd). This is
                       more reliable, but slower.
         """
-        log.info(
-            'Subscribing to uuid=%s with callback=%s and indication=%s',
-            uuid, callback, indication)
         # Expect notifications on the value handle...
         value_handle = self.get_handle(uuid)
 
@@ -136,7 +133,7 @@ class BLEDevice(object):
                     properties,
                     wait_for_response=False
                 )
-                log.debug("Subscribed to uuid=%s", uuid)
+                log.info("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)

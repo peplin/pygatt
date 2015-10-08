@@ -5,7 +5,7 @@ import Queue
 import serial
 import time
 import threading
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 from uuid import UUID
 from enum import Enum
 from collections import defaultdict
@@ -30,6 +30,11 @@ BLED112_PRODUCT_ID = 0x0001
 
 UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
                              'descriptor', 'characteristic'])
+
+
+def bgapi_address_to_hex(address):
+    address = hexlify(bytearray(list(reversed(address)))).upper()
+    return ':'.join(''.join(pair) for pair in zip(*[iter(address)] * 2))
 
 
 class AdvertisingAndScanInfo(object):
@@ -132,7 +137,7 @@ class BGAPIBackend(BLEBackend):
         # TODO should disconnect from anything so we are in a clean slate
 
         # Stop any ongoing procedure
-        log.info("Stopping any outstanding GAP procedure")
+        log.debug("Stopping any outstanding GAP procedure")
         self.send_command(CommandBuilder.gap_end_procedure())
         try:
             self.expect(ResponsePacketType.gap_end_procedure)
@@ -190,7 +195,7 @@ class BGAPIBackend(BLEBackend):
               device.
         """
         # Find bonds
-        log.debug("Fetching existing bonds for devices")
+        log.info("Fetching existing bonds for devices")
         self._stored_bonds = []
         self.send_command(CommandBuilder.sm_get_bonds())
 
@@ -238,7 +243,7 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.gap_discover)
 
-        log.debug("Pausing for for %ds to allow scan to complete", timeout)
+        log.info("Pausing for for %ds to allow scan to complete", timeout)
         time.sleep(timeout)
 
         log.info("Stopping scan")
@@ -252,6 +257,7 @@ class BGAPIBackend(BLEBackend):
                 'name': info.name,
                 'rssi': info.rssi
             })
+        log.info("Discovered %d devices: %s", len(devices), devices)
         self._devices_discovered = {}
         return devices
 
@@ -273,13 +279,13 @@ class BGAPIBackend(BLEBackend):
         Raises BGAPIError or NotConnectedError on failure.
         """
 
-        address_bytes = [int(b, 16) for b in address.split(":")]
+        address_bytes = bytearray(unhexlify(address.replace(":", "")))
         for device in self._connections.values():
-            if device._address == address_bytes:
+            if device._address == bgapi_address_to_hex(address_bytes):
                 return device
 
-        log.debug("Connecting to device at address %s (timeout %ds)",
-                  address, timeout)
+        log.info("Connecting to device at address %s (timeout %ds)",
+                 address, timeout)
         self.set_bondable(False)
         self.send_command(
             CommandBuilder.gap_connect_direct(
@@ -298,7 +304,7 @@ class BGAPIBackend(BLEBackend):
             if self._connection_status_flag(
                     packet['flags'],
                     constants.connection_status_flag['connected']):
-                device = BGAPIBLEDevice(packet['address'],
+                device = BGAPIBLEDevice(bgapi_address_to_hex(packet['address']),
                                         packet['connection_handle'],
                                         self)
                 if self._connection_status_flag(
@@ -306,7 +312,7 @@ class BGAPIBackend(BLEBackend):
                         constants.connection_status_flag['encrypted']):
                     device.encrypted = True
                 self._connections[packet['connection_handle']] = device
-                log.debug("Connected to %s", address)
+                log.info("Connected to %s", address)
                 return device
         except ExpectedResponseTimeout:
             raise NotConnectedError()
@@ -330,7 +336,7 @@ class BGAPIBackend(BLEBackend):
                      char_uuid_str, char_obj.handle)
             for desc_uuid_str, desc_handle in (
                     char_obj.descriptors.iteritems()):
-                log.info("Characteristic descriptor 0x%s is handle %x",
+                log.info("Characteristic descriptor 0x%s is handle 0x%x",
                          desc_uuid_str, desc_handle)
         return self._characteristics[connection_handle]
 
@@ -411,8 +417,9 @@ class BGAPIBackend(BLEBackend):
                           'complete_list_128-bit_service_class_uuids'):
                         data_dict[field_name] = []
                         for i in range(0, len(field_value)/16):  # 16 bytes
-                            service_uuid = '0x'+hexlify(bytearray(list(reversed(
-                                field_value[i*16:i*16+16]))))
+                            service_uuid = (
+                                "0x%s" %
+                                bgapi_address_to_hex(field_value[i*16:i*16+16]))
                             data_dict[field_name].append(service_uuid)
                     else:
                         data_dict[field_name] = bytearray(field_value)
@@ -437,8 +444,8 @@ class BGAPIBackend(BLEBackend):
             not receiving withint the time limit.
         """
         timeout = timeout or 1
-        log.info("Expecting a response of one of %s within %fs",
-                 expected_packet_choices, timeout or 0)
+        log.debug("Expecting a response of one of %s within %fs",
+                  expected_packet_choices, timeout or 0)
 
         start_time = None
         if timeout is not None:
@@ -521,8 +528,8 @@ class BGAPIBackend(BLEBackend):
         raw_uuid = bytearray(reversed(args['uuid']))
         uuid_type = self._get_uuid_type(raw_uuid)
         if uuid_type != UUIDType.custom:
-            uuid = uuid16_to_uuid(
-                int(hexlify(bytearray(reversed(args['uuid']))), 16))
+            uuid = uuid16_to_uuid(int(
+                bgapi_address_to_hex(args['uuid']).replace(':', ''), 16))
         else:
             uuid = UUID(hexlify(raw_uuid))
 
@@ -585,8 +592,7 @@ class BGAPIBackend(BLEBackend):
         """
         # Parse packet
         packet_type = constants.scan_response_packet_type[args['packet_type']]
-        address = ":".join(list(reversed(
-            [format(b, '02x') for b in args['sender']])))
+        address = bgapi_address_to_hex(args['sender'])
         name, data_dict = self._scan_rsp_data(args['data'])
 
         # Store device information
@@ -601,9 +607,8 @@ class BGAPIBackend(BLEBackend):
                 len(dev.packet_data[packet_type]) < len(data_dict)):
             dev.packet_data[packet_type] = data_dict
         dev.rssi = args['rssi']
-        log.info("Received a scan response from %s with rssi=%d dBM "
-                 "and data=%s",
-                 address, args['rssi'], data_dict)
+        log.debug("Received a scan response from %s with rssi=%d dBM "
+                  "and data=%s", address, args['rssi'], data_dict)
 
     def _ble_evt_sm_bond_status(self, args):
         """
@@ -637,4 +642,4 @@ class BGAPIBackend(BLEBackend):
         args -- dictionary containing the number of stored bonds ('bonds'),
         """
         self._num_bonds = args['bonds']
-        log.info("num bonds = %d", args['bonds'])
+        log.debug("num bonds = %d", args['bonds'])

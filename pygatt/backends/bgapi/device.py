@@ -38,7 +38,7 @@ class BGAPIBLEDevice(BLEDevice):
         # Set to bondable mode so bonds are store permanently
         if permanent:
             self._backend.set_bondable(True)
-        log.info("Bonding to %s", self._address)
+        log.debug("Bonding to %s", self._address)
         self._backend.send_command(
             CommandBuilder.sm_encrypt_start(
                 self._handle, constants.bonding['create_bonding']))
@@ -49,6 +49,7 @@ class BGAPIBLEDevice(BLEDevice):
              EventPacketType.sm_bonding_fail])
         if packet_type == EventPacketType.sm_bonding_fail:
             raise BGAPIError("Bonding failed")
+        log.info("Bonded to %s", self._address)
 
     @connection_required
     def get_rssi(self):
@@ -96,7 +97,6 @@ class BGAPIBLEDevice(BLEDevice):
 
         while True:
             value_list = [b for b in value]
-            log.info("attribute_write")
             self._backend.send_command(
                 CommandBuilder.attclient_attribute_write(
                     self._handle, char_handle, value_list))
