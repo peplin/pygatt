@@ -7,7 +7,8 @@ class ErrorCode(Enum):
     insufficient_authentication = 0x0405
 
 
-error_codes = {
+return_codes = {
+    0: "Success",
     # BGAPI errors
     0x0180: "Invalid parameter",
     0x0181: "Device in wrong state",
@@ -72,9 +73,7 @@ error_codes = {
 
 
 def get_return_message(return_code):
-    if return_code == 0:
-        return "Success"
-    elif return_code in error_codes:
-        return error_codes[return_code]
-    else:
-        return str("Unknown return code %04x" % return_code)
+    try:
+        return return_codes[return_code]
+    except KeyError:
+        return "Unknown return code %04x" % return_code

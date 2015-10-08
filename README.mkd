@@ -6,70 +6,23 @@ behavior.
 
 pygatt provides a Pythonic API by wrapping two different backends:
 
-* BlueZ's `gatttool` command-line utility.
-* Bluegiga's BGAPI, compatble with dongles like the BLED112.
-
-Requires Python 2.7.
+* BlueZ (requires Linux), using the `gatttool` command-line utility.
+* Bluegiga's BGAPI, compatible with USB adapters like the BLED112.
 
 ## Motivation
 
-Despite the popularilty of BLE, we have yet to find a good programming interface
+Despite the popularity of BLE, we have yet to find a good programming interface
 for it on desktop computers. Since most peripherals are designed to work with
 smartphones, this space is neglected. One interactive interface, BlueZ's
 `gatttool`, is functional but difficult to use programatically. BlueZ itself
 obviously works, but the interface leaves something to be desired only
 works in Linux.
 
-pygatt consists of a front end that provies an API and two interchangable
-backends that implement the Bluetooth communication using differently. The
-backend can either use gatttool/BlueZ or a Bluegiga BGAPI compatible inteface.
-gatttool/BlueZ is Linux only whereas the BGAPI is cross platform.
+## Requirements
 
-### Front end
-
-The front end class pygatt.pygatt.BluetoothLEDevice represents a remote BLE
-device. The API provides the methods -- connect, char_read, char_write,
-subscribe -- that you need to interact with the device. When a BluetoothLEDevice
-object is created, there is an optional argument "backend" that allows for
-selection of the backend used. The default is gattool but the BGAPI can be
-used by setting the optional bled112 arguement to an instance of a
-BGAPIBackend. Note that there are optional arguments for some of the methods
-of BluetoothLEDevice that must be specified when using one backend and not the
-other.
-
-### BGAPI Backend
-
-This backend uses a minimalist implementation of Bluegiga's BGAPI to execute the
-Bluetooth communication. In this case, the class used by BluetoothLEDevice is
-pygatt.backends.BGAPIBackend.
-
-BGAPIBackend in turn uses pygatt.backends.bgapi.bglib to communicate with the
-BLED112 dongle. BGLib's job is to construct comands for the dongle and parse the
-bytes received from the dongle into packets. BGAPIBackend's job is to manage
-the timing of commands, handling of the data, and keep track of the state of the
-dongle and connection to the remote device.
-
-#### Dependencies
-
-* The BGAPI backend should work on Linux, Windows, and Mac OS and has no other
-    external dependencies.
-
-### GATTTool Backend
-
-This backend uses gatttool/BlueZ on Linux to execute the Bluetooth
-communication. In this case, the class used by BluetoothLEDevice is
-pygatt.gatttool_classes.GATTToolBackend. GATTToolBackend uses the python module
-pexpect to execute gatttool commannds as if a user were entering them on the
-comand line.
-
-#### Dependencies
-
-* Currently the gatttool backend is currently only tested under Linux as it
-    requires `gatttool` which is included with BlueZ which is a Linux library.
-* BlueZ >= 5.5
-    * Tested on 5.18 and 5.21
-    * Ubuntu is stuck on BlueZ 4.x and does not work - you need to build BlueZ
-      from source.
+* Python 2.7
+* BlueZ 5.5 or greater (with gatttool) - required for the gatttool backend only.
+    * Tested on 5.18, 5.21 and 5.35.
 
 ## Installation
 
@@ -82,6 +35,27 @@ can only be installed in a UNIX-based environment. If you wish to use that
 backend, install the optional dependencies with:
 
     $ pip install pygatt[GATTTOOL]
+
+## Example Use
+
+The primary API for users of this library is provided by
+`pygatt.backends.BLEBackend` and `pygatt.BLEDevice`. After initializing an
+instance of the preferred backend (available implementations are found in
+`pygatt.backends`, use the `BLEBackend.connect` method to connect to a device
+and get an instance of `BLEDevice.`
+
+```python
+import pygatt.backends
+
+# The BGAPI backend will attemt to auto-discover the serial device name of the
+# attached BGAPI-compatible USB adapter.
+adapter = pygatt.backends.BGAPIBackend()
+device = adapter.connect('01:23:45:67:89:ab')
+value = device.char_read("a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b")
+```
+
+Note that not all backends support connecting to more than 1 device at at time,
+so calling `BLEBackend.connect` again may terminate existing connections.
 
 ## Authors
 
