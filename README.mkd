@@ -6,8 +6,8 @@ behavior.
 
 pygatt provides a Pythonic API by wrapping two different backends:
 
-* BlueZ's `gatttool` command-line utility.
-* Bluegiga's BGAPI, compatble with dongles like the BLED112.
+* BlueZ (requires Linux), using the `gatttool` command-line utility.
+* Bluegiga's BGAPI, compatble with USB adapters like the BLED112.
 
 Requires Python 2.7.
 
@@ -44,10 +44,10 @@ Bluetooth communication. In this case, the class used by BluetoothLEDevice is
 pygatt.backends.BGAPIBackend.
 
 BGAPIBackend in turn uses pygatt.backends.bgapi.bglib to communicate with the
-BLED112 dongle. BGLib's job is to construct comands for the dongle and parse the
-bytes received from the dongle into packets. BGAPIBackend's job is to manage
-the timing of commands, handling of the data, and keep track of the state of the
-dongle and connection to the remote device.
+BLED112 adapter. BGLib's job is to construct comands for the adapter and parse
+the bytes received from the adapter into packets. BGAPIBackend's job is to
+manage the timing of commands, handling of the data, and keep track of the state
+of the adapter and connection to the remote device.
 
 #### Dependencies
 

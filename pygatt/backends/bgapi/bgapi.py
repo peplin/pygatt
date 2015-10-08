@@ -48,7 +48,7 @@ class AdvertisingAndScanInfo(object):
 
 class BGAPIBackend(BLEBackend):
     """
-    Pygatt BLE device backend using a Bluegiga BGAPI compatible dongle.
+    Pygatt BLE device backend using a Bluegiga BGAPI compatible adapter.
 
     Only supports 1 device connection at a time.
 
@@ -88,8 +88,8 @@ class BGAPIBackend(BLEBackend):
         }
 
         # State
-        self._num_bonds = 0  # number of bonds stored on the dongle
-        self._stored_bonds = []  # bond handles stored on the dongle
+        self._num_bonds = 0  # number of bonds stored on the adapter
+        self._stored_bonds = []  # bond handles stored on the adapter
         self._devices_discovered = {
             # 'address': AdvertisingAndScanInfo,
             # Note: address formatted like "01:23:45:67:89:AB"
@@ -188,7 +188,7 @@ class BGAPIBackend(BLEBackend):
 
     def clear_bond(self, address=None):
         """
-        Delete the bonds stored on the dongle.
+        Delete the bonds stored on the adapter.
 
         Note: this does not delete the corresponding bond stored on the remote
               device.
@@ -268,7 +268,7 @@ class BGAPIBackend(BLEBackend):
         Connnect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
 
-        Requires that the dongle is not connected to a device already.
+        Requires that the adapter is not connected to a device already.
 
         address -- a bytearray containing the device mac address.
         timeout -- number of seconds to wait before returning if not connected.

@@ -26,9 +26,9 @@ class BLEDevice(object):
 
         Example:
 
-            dongle = pygatt.backends.BGAPIBackend('/dev/ttyAMC0')
+            adapter = pygatt.backends.BGAPIBackend('/dev/ttyAMC0')
             my_ble_device = pygatt.classes.BLEDevice(
-                '01:23:45:67:89:ab', bgapi=dongle)
+                '01:23:45:67:89:ab', bgapi=adapter)
         """
         self._characteristics = {}
         self._address = address
