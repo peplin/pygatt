@@ -1,17 +1,24 @@
 import logging
 
-from pygatt.constants import DEFAULT_CONNECT_TIMEOUT_S
-
 log = logging.getLogger(__name__)
+
+DEFAULT_CONNECT_TIMEOUT_S = 5.0
 
 
 class BLEBackend(object):
-    """Abstract base class representing a Bluetooth adapter backend. """
+    """Abstract base class representing a Bluetooth adapter backend. See the
+    `pygatt.backends` module for available implementations.
+    """
 
     def start(self):
+        """Initialize and resource required to run the backend, e.g. background
+        threads, USB device connections, etc.
+        """
         raise NotImplementedError()
 
     def stop(self):
+        """Stop and free any resources required while the backend is running.
+        """
         raise NotImplementedError()
 
     def supports_unbonded(self):
@@ -52,7 +59,9 @@ class BLEBackend(object):
 
 class Characteristic(object):
     """
-    GATT characteristic. For internal use within BGAPIBackend.
+    A GATT characteristic, including it handle value and associated descriptors.
+    Only valid for the lifespan of a BLE connection, since the handle values are
+    dynamic.
     """
     def __init__(self, uuid, handle):
         """

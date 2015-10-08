@@ -3,7 +3,7 @@ import uuid
 from mock import MagicMock, patch
 from nose.tools import ok_, eq_
 
-from pygatt.classes import BLEDevice
+from pygatt import BLEDevice
 from pygatt.backends import Characteristic
 
 

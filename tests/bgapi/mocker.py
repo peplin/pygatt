@@ -1,9 +1,21 @@
 from mock import patch
+from binascii import unhexlify
 
 from tests.serial_mock import SerialMock
 
 from .packets import BGAPIPacketBuilder
-from pygatt.backends.bgapi.util import uuid_to_bytearray
+
+
+def uuid_to_bytearray(uuid_str):
+    """
+    Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    to a bytearray.
+
+    uuid -- the UUID to convert.
+
+    Returns a bytearray containing the UUID.
+    """
+    return unhexlify(uuid_str.replace('-', ''))
 
 
 class MockBGAPISerialDevice(object):

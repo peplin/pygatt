@@ -48,20 +48,15 @@ class AdvertisingAndScanInfo(object):
 
 class BGAPIBackend(BLEBackend):
     """
-    Pygatt BLE device backend using a Bluegiga BGAPI compatible adapter.
-
-    Only supports 1 device connection at a time.
-
-    This object is NOT threadsafe.
+    A BLE backend for a BGAPI compatible USB adapter.
     """
     def __init__(self, serial_port=None):
         """
-        Initialize the BGAPI device to be ready for use with a BLE device, i.e.,
-        stop ongoing procedures, disconnect any connections, optionally start
-        the receiver thread, and optionally delete any stored bonds.
+        Initialize the backend, but don't start the USB connection yet. Must
+        call .start().
 
         serial_port -- The name of the serial port for the BGAPI-compatible
-        USB interface.
+            USB interface. If not provided, will attempt to auto-detect.
         """
         self._lib = bglib.BGLib()
         if serial_port is None:
@@ -115,8 +110,8 @@ class BGAPIBackend(BLEBackend):
 
     def start(self):
         """
-        Put the interface into a known state to start. And start the receiver
-        thread.
+        Connect to the USB adapter, reset it's state and start a backgroud
+        receiver thread.
         """
         if self._running and self._running.is_set():
             self.stop()
@@ -164,8 +159,6 @@ class BGAPIBackend(BLEBackend):
             self._ser = None
 
     def set_bondable(self, bondable):
-        # If we are in bondable mode, every time we connect it upgrades to
-        # bonded. Is there a way to stop this?
         self.send_command(
             CommandBuilder.sm_set_bondable_mode(
                 constants.bondable['yes' if bondable else 'no']))
@@ -189,6 +182,9 @@ class BGAPIBackend(BLEBackend):
     def clear_bond(self, address=None):
         """
         Delete the bonds stored on the adapter.
+
+        address - the address of the device to unbond. If not provided, will
+            erase all bonds.
 
         Note: this does not delete the corresponding bond stored on the remote
               device.
@@ -220,11 +216,11 @@ class BGAPIBackend(BLEBackend):
         """
         Perform a scan to discover BLE devices.
 
+        timeout -- the number of seconds this scan should last.
         scan_interval -- the number of miliseconds until scanning is restarted.
         scan_window -- the number of miliseconds the scanner will listen on one
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
-        timeout -- the number of seconds this scan should last.
         discover_mode -- one of the gap_discover_mode constants.
         """
         parameters = 1 if active else 0

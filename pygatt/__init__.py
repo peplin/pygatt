@@ -1,2 +1,3 @@
 from .exceptions import BLEError  # noqa
-from .classes import BLEDevice  # noqa
+from .device import BLEDevice  # noqa
+from .backends import BGAPIBackend, GATTToolBackend  # noqa

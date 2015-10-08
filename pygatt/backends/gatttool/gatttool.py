@@ -15,16 +15,23 @@ except Exception as e:
     if platform.system() != 'Windows':
         print("WARNING:", e, file=sys.stderr)
 
-from pygatt import constants
 from pygatt.exceptions import (NotConnectedError, NotificationTimeout, BLEError,
                                NoResponseError)
 from pygatt.backends import BLEBackend, Characteristic
+from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
 
+DEFAULT_TIMEOUT_S = 0.5
+
 
 def at_most_one_device(func):
+    """Every connection-specific function on the backend takes an instance of
+    GATTToolBLEDevice as the first argument - this decorator will raise an
+    exception if that device is not what the backend thinks is the currently
+    connected device.
+    """
     def wrapper(self, connected_device, *args, **kwargs):
         if connected_device != self._connected_device:
             raise NotConnectedError()
@@ -34,7 +41,7 @@ def at_most_one_device(func):
 
 class GATTToolBackend(BLEBackend):
     """
-    Backend to pygatt that uses gatttool/bluez on the linux command line.
+    Backend to pygatt that uses BlueZ's interactive gatttool CLI prompt.
     """
     _GATTTOOL_PROMPT = r".*> "
 
@@ -43,8 +50,8 @@ class GATTToolBackend(BLEBackend):
         Initialize.
 
         hci_device -- the hci_device to use with GATTTool.
-        loghandler -- logging.handler object to use for the logger.
-        loglevel -- log level for this module's logger.
+        gatttool_logfile -- an optional filename to store raw gatttool
+                input and output.
         """
         self._hci_device = hci_device
         self._connected_device = None
@@ -86,7 +93,8 @@ class GATTToolBackend(BLEBackend):
 
     def stop(self):
         """
-        Stop the backgroud notification handler in preparation for a
+        Disconnects any connected device, stops the backgroud receiving thread
+        and closes the spawned gatttool process.
         disconnect.
         """
         self.disconnect(self._connected_device)
@@ -162,7 +170,7 @@ class GATTToolBackend(BLEBackend):
             return [device for device in devices.values()]
         return []
 
-    def connect(self, address, timeout=constants.DEFAULT_CONNECT_TIMEOUT_S):
+    def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         log.info('Connecting with timeout=%s', timeout)
         self._con.sendline('sec-level low')
         self._address = address
@@ -180,11 +188,8 @@ class GATTToolBackend(BLEBackend):
         return self._connected_device
 
     def clear_bond(self, address=None):
-        # Since this may not be available on all platforms, and isn't otherwise
-        # required by this library (unless you are using the gatttool backend),
-        # defer importing until you actually run this code.
-        import pexpect
-
+        """Use the 'bluetoothctl' program to erase a stored BLE bond.
+        """
         con = pexpect.spawn('sudo bluetoothctl')
         con.expect("bluetooth", timeout=1)
 
@@ -256,7 +261,7 @@ class GATTToolBackend(BLEBackend):
                         pass
         return characteristics
 
-    def _expect(self, expected, timeout=constants.DEFAULT_TIMEOUT_S):
+    def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
         """
         We may (and often do) get an indication/notification before a
         write completes, and so it can be lost if we "expect()"'d something

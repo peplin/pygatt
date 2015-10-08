@@ -6,6 +6,9 @@ log = logging.getLogger(__name__)
 
 
 def connection_required(func):
+    """Raise an exception before calling the actual function if the device is
+    not connection.
+    """
     def wrapper(self, *args, **kwargs):
         if not self._connected:
             raise exceptions.NotConnectedError()
@@ -14,6 +17,13 @@ def connection_required(func):
 
 
 class GATTToolBLEDevice(BLEDevice):
+    """A BLE device connection initiated by the GATTToolBackend.
+
+    Since the GATTToolBackend can only support 1 device connection at at time,
+    the device implementation defers to the backend for all functionality -
+    every command has to synchronize around a the same interactive gatttool
+    session, using the same connection.
+    """
     def __init__(self, address, backend):
         super(GATTToolBLEDevice, self).__init__(address)
         self._backend = backend

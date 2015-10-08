@@ -12,6 +12,9 @@ log = logging.getLogger(__name__)
 
 
 def connection_required(func):
+    """Raise an exception if the device is not connected before calling the
+    actual function.
+    """
     def wrapper(self, *args, **kwargs):
         if self._handle is None:
             raise exceptions.NotConnectedError()
@@ -22,7 +25,6 @@ def connection_required(func):
 class BGAPIBLEDevice(BLEDevice):
     def __init__(self, address, handle, backend):
         super(BGAPIBLEDevice, self).__init__(address)
-        self._address = address
         self._handle = handle
         self._backend = backend
         self._characteristics = {}
@@ -31,8 +33,6 @@ class BGAPIBLEDevice(BLEDevice):
     def bond(self, permanent=False):
         """
         Create a bond and encrypted connection with the device.
-
-        This requires that a connection is already extablished with the device.
         """
 
         # Set to bondable mode so bonds are store permanently
@@ -55,8 +55,6 @@ class BGAPIBLEDevice(BLEDevice):
         """
         Get the receiver signal strength indicator (RSSI) value from the device.
 
-        This requires that a connection is already established with the device.
-
         Returns the RSSI as in integer in dBm.
         """
         # The BGAPI has some strange behavior where it will return 25 for
@@ -74,16 +72,6 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def char_read(self, uuid):
-        """
-        Read a value from a characteristic on the device.
-
-        This requires that a connection is already established with the device.
-
-        handle -- the characteristic handle (integer) to read from.
-
-        Returns a bytearray containing the value read, on success.
-        Raised BGAPIError on failure.
-        """
         handle = self.get_handle(uuid)
         log.info("Reading characteristic at handle %d", handle)
         self._backend.send_command(
@@ -103,18 +91,8 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def char_write_handle(self, char_handle, value, wait_for_response=False):
-        """
-        Write a value to a characteristic on the device.
-
-        This requires that a connection is already extablished with the device.
-
-        handle -- the characteristic/descriptor handle (integer) to write to.
-        value -- a bytearray holding the value to write.
-
-        Raises BGAPIError on failure.
-        """
         if wait_for_response:
-            raise NotImplementedError("bgapi subscribe wait for response")
+            raise NotImplementedError()
 
         while True:
             value_list = [b for b in value]
@@ -133,9 +111,6 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def disconnect(self):
-        """
-        Disconnect from the device if connected.
-        """
         log.debug("Disconnecting from %s", self._address)
         self._backend.send_command(
             CommandBuilder.connection_disconnect(self._handle))
