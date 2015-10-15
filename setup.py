@@ -47,7 +47,7 @@ setup(
     install_requires=['pexpect >= 3.3'],
     setup_requires=[
       'coverage >= 3.7.1',
-      'nose >= 1.3.1'
+      'nose >= 1.3.7'
     ],
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,

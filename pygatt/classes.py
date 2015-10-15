@@ -29,14 +29,14 @@ class BluetoothLEDevice(object):
 
     """BluetoothLEDevice Object."""
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(pygatt.constants.LOG_LEVEL)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(pygatt.constants.LOG_LEVEL)
-    formatter = logging.Formatter(pygatt.constants.LOG_FORMAT)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    logger.propagate = False
+    _logger = logging.getLogger(__name__)
+    if not _logger.handlers:
+        _logger.setLevel(pygatt.constants.LOG_LEVEL)
+        _console_handler = logging.StreamHandler()
+        _console_handler.setLevel(pygatt.constants.LOG_LEVEL)
+        _console_handler.setFormatter(pygatt.constants.LOG_FORMAT)
+        _logger.addHandler(_console_handler)
+        _logger.propagate = False
 
     def __init__(self, mac_address, hci_device='hci0', app_options=''):
         self.handles = {}
@@ -58,7 +58,7 @@ class BluetoothLEDevice(object):
             '-I'
         ]))
 
-        self.logger.debug('gatttool_cmd=%s', gatttool_cmd)
+        self._logger.debug('gatttool_cmd=%s', gatttool_cmd)
         self.con = pexpect.spawn(gatttool_cmd)
 
         self.con.expect(r'\[LE\]>', timeout=1)
@@ -81,12 +81,12 @@ class BluetoothLEDevice(object):
 
     def bond(self):
         """Securely Bonds to the BLE device."""
-        self.logger.info('Bonding.')
+        self._logger.info('Bonding.')
         self.con.sendline('sec-level medium')
 
     def connect(self, timeout=pygatt.constants.DEFAULT_CONNECT_TIMEOUT_S):
         """Connect to the device."""
-        self.logger.info('Connecting with timeout=%s', timeout)
+        self._logger.info('Connecting with timeout=%s', timeout)
         try:
             with self.connection_lock:
                 self.con.sendline('connect')
@@ -97,7 +97,7 @@ class BluetoothLEDevice(object):
 
     def disconnect(self):
         """Send gatttool disconnect command"""
-        self.logger.info('Disconnecting...')
+        self._logger.info('Disconnecting...')
         self.con.sendline('disconnect')
 
     def get_handle(self, uuid):
@@ -180,13 +180,13 @@ class BluetoothLEDevice(object):
 
             cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
 
-            self.logger.debug('Sending cmd=%s', cmd)
+            self._logger.debug('Sending cmd=%s', cmd)
             self.con.sendline(cmd)
 
             if wait_for_response:
                 self._expect('Characteristic value was written successfully')
 
-            self.logger.debug('Sent cmd=%s', cmd)
+            self._logger.debug('Sent cmd=%s', cmd)
 
     def char_read_uuid(self, uuid, timeout=pygatt.constants.DEFAULT_TIMEOUT_S):
         """
@@ -233,7 +233,7 @@ class BluetoothLEDevice(object):
         :return:
         :rtype:
         """
-        self.logger.info(
+        self._logger.info(
             'Subscribing to uuid=%s with callback=%s and indication=%s',
             uuid, callback, indication)
         definition_handle = self.get_handle(uuid)
@@ -247,7 +247,7 @@ class BluetoothLEDevice(object):
         else:
             properties = bytearray([0x01, 0x00])
 
-        self.logger.debug(locals())
+        self._logger.debug(locals())
         try:
             self.lock.acquire()
 
@@ -268,7 +268,7 @@ class BluetoothLEDevice(object):
         """
         Handles notification?
         """
-        self.logger.debug('Handling notification msg=%s', msg)
+        self._logger.debug('Handling notification msg=%s', msg)
         handle, _, value = string.split(msg.strip(), maxsplit=5)[3:]
         handle = int(handle, 16)
         value = bytearray.fromhex(value)
@@ -284,12 +284,12 @@ class BluetoothLEDevice(object):
 
     def stop(self):
         """Stops?"""
-        self.logger.info('Stopping')
+        self._logger.info('Stopping')
         self.running = False
 
     def run(self):
         """Runs...?"""
-        self.logger.info('Running...')
+        self._logger.info('Running...')
         while self.running:
             with self.connection_lock:
                 try:

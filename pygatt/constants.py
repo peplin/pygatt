@@ -13,9 +13,10 @@ __copyright__ = 'Copyright 2015 Orion Labs, Inc.'
 import logging
 
 
-LOG_LEVEL = logging.DEBUG
-LOG_FORMAT = ('%(asctime)s %(levelname)s %(name)s.%(funcName)s:%(lineno)d'
-              ' - %(message)s')
+LOG_LEVEL = logging.INFO
+LOG_FORMAT = logging.Formatter(
+    '%(asctime)s %(levelname)s %(name)s.%(funcName)s:%(lineno)d - pygatt '
+    '- %(message)s')
 
 DEFAULT_TIMEOUT_S = .5
 DEFAULT_ASYNC_TIMEOUT_S = .5
