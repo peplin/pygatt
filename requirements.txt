@@ -2,7 +2,7 @@
 #
 # Source:: https://github.com/ampledata/pygatt
 # Author:: Greg Albrecht <gba@orionlabs.co>
-# Copyright:: Copyright 2015 Orion Labs
+# Copyright:: Copyright 2015 Orion Labs, Inc.
 # License:: Apache License, Version 2.0
 
 

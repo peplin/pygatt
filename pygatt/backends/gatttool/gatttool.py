@@ -45,7 +45,8 @@ class GATTToolBackend(BLEBackend):
     """
     _GATTTOOL_PROMPT = r".*> "
 
-    def __init__(self, hci_device='hci0', gatttool_logfile=None):
+    def __init__(self, hci_device='hci0', gatttool_logfile=None,
+                 cli_options=None):
         """
         Initialize.
 
@@ -54,6 +55,7 @@ class GATTToolBackend(BLEBackend):
                 input and output.
         """
         self._hci_device = hci_device
+        self._cli_options = cli_options
         self._connected_device = None
         self._gatttool_logfile = gatttool_logfile
         self._receiver = None  # background notification receiving thread
@@ -75,12 +77,13 @@ class GATTToolBackend(BLEBackend):
         self.reset()
 
         # Start gatttool interactive session for device
-        gatttool_cmd = ' '.join([
+        gatttool_cmd = ' '.join(filter(None, [
             'gatttool',
+            self._cli_options,
             '-i',
             self._hci_device,
             '-I'
-        ])
+        ]))
         log.debug('gatttool_cmd=%s', gatttool_cmd)
         self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile)
         # Wait for response
