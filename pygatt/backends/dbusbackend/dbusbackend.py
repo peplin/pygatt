@@ -113,6 +113,7 @@ class DBusBackend(BLEBackend):
         char = self._devices[address]["characteristics"][uuid]
         try:
             char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
+            log.debug("Reading from " + uuid + " on " + address)
             dbus_values = char_iface.ReadValue()
             python_values = bytearray(dbus_values)
         except DBusException as e:
@@ -126,6 +127,7 @@ class DBusBackend(BLEBackend):
         char = self._devices[address]["characteristics"][uuid]
         try:
             char_iface = dbus.Interface(char, "org.bluez.GattCharacteristic1")
+            log.debug("Writing to " + uuid + " on " + address)
             char_iface.WriteValue(value)
         except DBusException as e:
             raise NotConnectedError(e)
@@ -165,8 +167,13 @@ class DBusBackend(BLEBackend):
 
         device = self._bus.get_object("org.bluez", path)
         props_iface = dbus.Interface(device, "org.freedesktop.DBus.Properties")
-        address = props_iface.Get("org.bluez.Device1", "Address")
-        name = props_iface.Get("org.bluez.Device1", "Name")
+        try:
+            address = props_iface.Get("org.bluez.Device1", "Address")
+            name = props_iface.Get("org.bluez.Device1", "Name")
+        except DBusException as e:
+            log.warn("Device does not have name and address")
+            self._lock.release()
+            return
 
         #Ignore if we already have a record of the device
         if address in self._devices:
