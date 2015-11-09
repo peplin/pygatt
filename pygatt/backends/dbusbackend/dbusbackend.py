@@ -42,7 +42,7 @@ class DBusBackend(BLEBackend):
     def stop(self):
         self._mainloop.kill()
 
-    def scan(self, timeout=10, run_as_root=False):
+    def scan(self, timeout=10):
         adapter_obj = self._bus.get_object("org.bluez", "/org/bluez/" + self._hci_device)
         adapter = dbus.Interface(adapter_obj, "org.bluez.Adapter1")
         prop_intf = dbus.Interface(adapter_obj, "org.freedesktop.DBus.Properties")
