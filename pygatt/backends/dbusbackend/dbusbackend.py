@@ -5,6 +5,7 @@ import datetime
 import threading
 import dbus
 import gobject
+import re
 
 from pygatt.classes import BluetoothLEDevice
 from pygatt.exceptions import *
@@ -29,6 +30,7 @@ class DBusBackend(BLEBackend):
         self._devices = {}
         self._callbacks = {}
         self._num_threads_running = 0
+        self._match_device_name = None
 
         self._dbus_loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default = True)
         self._bus = dbus.SystemBus(mainloop = self._dbus_loop)
@@ -42,11 +44,14 @@ class DBusBackend(BLEBackend):
     def stop(self):
         self._mainloop.kill()
 
-    def scan(self, timeout=10):
+    def scan(self, timeout=10, min_devices=0, device_name=None):
         adapter_obj = self._bus.get_object("org.bluez", "/org/bluez/" + self._hci_device)
         adapter = dbus.Interface(adapter_obj, "org.bluez.Adapter1")
         prop_intf = dbus.Interface(adapter_obj, "org.freedesktop.DBus.Properties")
         prop_intf.Set("org.bluez.Adapter1", "Powered", True)
+
+        if device_name is not None:
+            self._match_device_name = re.compile(".*" + device_name + ".*")
 
         adapter.SetDiscoveryFilter({"Transport": "le"})
         adapter.StartDiscovery()
@@ -77,19 +82,27 @@ class DBusBackend(BLEBackend):
             arg0 = "org.bluez.Adapter1",
             path_keyword = "path")
 
-        #Find difference between supposed finish time and now
-        end_time = pytz.utc.localize(datetime.datetime.utcnow())
-        time_taken = (end_time - start_time).total_seconds()
-        if self._connect_timeout > timeout:
-            timeout = self._connect_timeout
-        if time_taken < timeout:
-            time.sleep(timeout - time_taken)
+        if timeout is not None and min_devices == 0:
+            log.debug("Using timeout to cancel scan")
+            #Find difference between supposed finish time and now
+            end_time = pytz.utc.localize(datetime.datetime.utcnow())
+            time_taken = (end_time - start_time).total_seconds()
+            if self._connect_timeout > timeout:
+                timeout = self._connect_timeout
+            if time_taken < timeout:
+                time.sleep(timeout - time_taken)
+        elif min_devices > 0:
+            log.debug("Using minimum of " + str(min_devices) + " to cancel scan")
+            #Wait until enough devices are discovered
+            while len(self._devices) < min_devices:
+                time.sleep(self._connect_timeout)
         adapter.StopDiscovery()
 
         #Wait for all discovery threads to finish
         self._lock.acquire()
         retval = [device for device in self._devices.values()]
         self._lock.release()
+        self._match_device_name = None
         log.debug("Scan returning " + str(retval))
         return retval
 
@@ -102,7 +115,6 @@ class DBusBackend(BLEBackend):
           time.sleep(self._connect_timeout)
           log.debug("About to reconnect")
           device.Connect(dbus_interface="org.bluez.Device1")
-
 
     def disconnect(self, address):
         device = self._bus.get_object("org.bluez", self._devices[address]["path"])
@@ -200,6 +212,11 @@ class DBusBackend(BLEBackend):
                     pass
             return
 
+        if self._match_device_name is not None:
+            if self._match_device_name.match(name) is None:
+                log.info("Ignoring device name " + name + " from " + address)
+                self._lock.relese()
+                return
         #Ignore if we already have a record of the device
         if address in self._devices:
             log.debug("Already have a record of " + address)
