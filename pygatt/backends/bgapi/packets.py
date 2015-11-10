@@ -175,7 +175,9 @@ class BGAPICommandPacketBuilder(object):
                     b''.join(chr(i) for i in uuid))
 
     @staticmethod
-    def attclient_read_by_type(connection, start, end, uuid):
+    def attclient_read_by_type(connection, start, end, uuid=[0x03, 0x28]):
+        # Using the default UUID type to find custom UUIDs, which seems to make
+        # querying for characteristics faster.
         return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
                     connection, start, end, len(uuid),
                     b''.join(chr(i) for i in uuid))
@@ -269,7 +271,7 @@ class BGAPICommandPacketBuilder(object):
     def gap_connect_direct(address, addr_type, conn_interval_min,
                            conn_interval_max, timeout, latency):
         return pack('<4B6sBHHHH', 0, 15, 6, 3,
-                    b''.join(chr(i) for i in address), addr_type,
+                    b''.join(reversed([chr(i) for i in address])), addr_type,
                     conn_interval_min, conn_interval_max, timeout, latency)
 
     @staticmethod

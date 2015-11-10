@@ -1,9 +1,21 @@
 from mock import patch
+from binascii import unhexlify
 
 from tests.serial_mock import SerialMock
 
 from .packets import BGAPIPacketBuilder
-from .util import uuid_to_bytearray
+
+
+def uuid_to_bytearray(uuid_str):
+    """
+    Turns a UUID string in the format "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    to a bytearray.
+
+    uuid -- the UUID to convert.
+
+    Returns a bytearray containing the UUID.
+    """
+    return unhexlify(uuid_str.replace('-', ''))
 
 
 class MockBGAPISerialDevice(object):
@@ -68,6 +80,8 @@ class MockBGAPISerialDevice(object):
             BGAPIPacketBuilder.sm_set_bondable_mode())
 
     def stage_connect_packets(self, addr, flags, connection_handle=0x00):
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.sm_set_bondable_mode())
         # Stage ble_rsp_gap_connect_direct (success)
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.gap_connect_direct(connection_handle, 0x0000))
@@ -82,20 +96,6 @@ class MockBGAPISerialDevice(object):
         # Stage ble_rsp_connection_get_rssi
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.connection_get_rssi(connection_handle, rssi))
-
-    def stage_encrypt_packets(self, addr, flags,
-                              connection_handle=0x00):
-        # Stage ble_rsp_sm_set_bondable_mode (always success)
-        self.mocked_serial.stage_output(
-            BGAPIPacketBuilder.sm_set_bondable_mode())
-        # Stage ble_rsp_sm_encrypt_start (success)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.sm_encrypt_start(
-            connection_handle, 0x0000))
-        # Stage ble_evt_connection_status
-        flags_byte = self._get_connection_status_flags_byte(flags)
-        self.mocked_serial.stage_output(BGAPIPacketBuilder.connection_status(
-            addr, flags_byte, connection_handle, 0,
-            0x0014, 0x0006, 0x0000, 0xFF))
 
     def stage_bond_packets(self, addr, flags,
                            connection_handle=0x00, bond_handle=0x01):
@@ -114,7 +114,7 @@ class MockBGAPISerialDevice(object):
             addr, flags_byte, connection_handle, 0,
             0x0014, 0x0006, 0x0000, 0xFF))
 
-    def stage_delete_stored_bonds_packets(
+    def stage_clear_bonds_packets(
             self, bonds, disconnects=False):
         """bonds -- list of 8-bit integer bond handles"""
         if disconnects:
@@ -153,7 +153,7 @@ class MockBGAPISerialDevice(object):
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.gap_end_procedure(0x0000))
 
-    def stage_get_handle_packets(
+    def stage_discover_characteristics_packets(
             self, uuid_handle_list, connection_handle=0x00):
         # Stage ble_rsp_attclient_find_information (success)
         self.mocked_serial.stage_output(

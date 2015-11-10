@@ -1,7 +1,14 @@
 from __future__ import print_function
 
+from enum import Enum
 
-error_codes = {
+
+class ErrorCode(Enum):
+    insufficient_authentication = 0x0405
+
+
+return_codes = {
+    0: "Success",
     # BGAPI errors
     0x0180: "Invalid parameter",
     0x0181: "Device in wrong state",
@@ -48,7 +55,7 @@ error_codes = {
     0x0402: "Read not permitted",
     0x0403: "Write not permitted",
     0x0404: "Invalid PDU",
-    0x0405: "Insufficient authentication",
+    ErrorCode.insufficient_authentication.value: "Insufficient authentication",
     0x0406: "Request not supported",
     0x0407: "Invalid offset",
     0x0408: "Insufficient authorization",
@@ -66,9 +73,7 @@ error_codes = {
 
 
 def get_return_message(return_code):
-    if return_code == 0:
-        return "Success"
-    elif return_code in error_codes:
-        return error_codes[return_code]
-    else:
-        return str("Unknown return code %04x" % return_code)
+    try:
+        return return_codes[return_code]
+    except KeyError:
+        return "Unknown return code %04x" % return_code
