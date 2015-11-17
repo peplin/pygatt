@@ -173,13 +173,15 @@ class GATTToolBackend(BLEBackend):
             return [device for device in devices.values()]
         return []
 
-    def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S):
+    def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
+                address_type='public'):
         log.info('Connecting with timeout=%s', timeout)
         self._con.sendline('sec-level low')
         self._address = address
         try:
             with self._connection_lock:
-                self._con.sendline('connect %s' % self._address)
+                cmd = 'connect %s %s' % (self._address, address_type)
+                self._con.sendline(cmd)
                 self._con.expect(r'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."

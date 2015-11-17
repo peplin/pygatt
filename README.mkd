@@ -15,7 +15,7 @@ Despite the popularity of BLE, we have yet to find a good programming interface
 for it on desktop computers. Since most peripherals are designed to work with
 smartphones, this space is neglected. One interactive interface, BlueZ's
 `gatttool`, is functional but difficult to use programatically. BlueZ itself
-obviously works, but the interface leaves something to be desired only
+obviously works, but the interface leaves something to be desired and only
 works in Linux.
 
 ## Requirements
