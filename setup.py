@@ -2,7 +2,7 @@ import os
 import sys
 
 __title__ = 'pygatt'
-__version__ = '1.0.1'
+__version__ = '2.0.0'
 __license__ = 'Apache License, Version 2.0 and MIT License'
 __copyright__ = 'Copyright 2015 Stratos Inc. and Orion Labs'
 
