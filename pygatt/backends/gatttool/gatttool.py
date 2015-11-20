@@ -3,7 +3,6 @@ from __future__ import print_function
 import re
 import logging
 import platform
-import string
 import sys
 import time
 import threading
@@ -250,7 +249,8 @@ class GATTToolBackend(BLEBackend):
                 else:
                     try:
                         value_handle = int(self._con.match.group(2), 16)
-                        char_uuid = self._con.match.group(3).strip().decode('ascii')
+                        char_uuid = (
+                            self._con.match.group(3).strip().decode('ascii'))
                         characteristics[UUID(char_uuid)] = Characteristic(
                             char_uuid, value_handle)
                         log.debug(
