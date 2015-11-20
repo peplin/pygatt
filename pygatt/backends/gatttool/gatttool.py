@@ -141,13 +141,13 @@ class GATTToolBackend(BLEBackend):
             scan.expect('foooooo', timeout=timeout)
         except pexpect.EOF:
             message = "Unexpected error when scanning"
-            if "No such device" in scan.before:
+            if "No such device" in scan.before.decode('utf-8'):
                 message = "No BLE adapter found"
             log.error(message)
             raise BLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
-            for line in scan.before.split('\r\n'):
+            for line in scan.before.decode('utf-8').split('\r\n'):
                 match = re.match(
                     r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
@@ -182,7 +182,7 @@ class GATTToolBackend(BLEBackend):
             with self._connection_lock:
                 cmd = 'connect %s %s' % (self._address, address_type)
                 self._con.sendline(cmd)
-                self._con.expect(r'Connection successful.*\[LE\]>', timeout)
+                self._con.expect(b'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."
                        % (self._address, timeout))
@@ -250,7 +250,7 @@ class GATTToolBackend(BLEBackend):
                 else:
                     try:
                         value_handle = int(self._con.match.group(2), 16)
-                        char_uuid = self._con.match.group(3).strip()
+                        char_uuid = self._con.match.group(3).strip().decode('ascii')
                         characteristics[UUID(char_uuid)] = Characteristic(
                             char_uuid, value_handle)
                         log.debug(
@@ -301,9 +301,9 @@ class GATTToolBackend(BLEBackend):
                         "Timed out waiting for a notification")
 
     def _handle_notification_string(self, msg):
-        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
+        hex_handle, _, hex_value = msg.strip().split()[3:]
         handle = int(hex_handle, 16)
-        value = bytearray.fromhex(hex_value)
+        value = bytearray(hex_value)
         if self._connected_device is not None:
             self._connected_device.receive_notification(handle, value)
 
