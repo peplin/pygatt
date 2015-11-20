@@ -3,9 +3,9 @@ from __future__ import print_function
 # for Python 2/3 compatibility
 import logging
 try:
-    from queue import Queue
+    import queue
 except:
-    from Queue import Queue
+    import Queue as queue
 import serial
 import time
 import threading
@@ -85,7 +85,7 @@ class BGAPIBackend(BLEBackend):
         self._lock = threading.Lock()
 
         # buffer for packets received
-        self._receiver_queue = Queue.Queue()
+        self._receiver_queue = queue.Queue()
 
         self._connected_devices = {
             # handle: BLEDevice
@@ -460,7 +460,7 @@ class BGAPIBackend(BLEBackend):
             try:
                 # TODO can we increase the timeout here?
                 packet = self._receiver_queue.get(timeout=0.1)
-            except Queue.Empty:
+            except queue.Empty:
                 if timeout is not None:
                     if time.time() - start_time > timeout:
                         raise ExpectedResponseTimeout(
