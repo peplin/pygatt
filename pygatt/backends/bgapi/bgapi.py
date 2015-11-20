@@ -3,9 +3,9 @@ from __future__ import print_function
 # for Python 2/3 compatibility
 import logging
 try:
-    from Queue import Queue
-except:
     from queue import Queue
+except:
+    from Queue import Queue
 import serial
 import time
 import threading
