@@ -234,7 +234,7 @@ class GATTToolBackend(BLEBackend):
         with self._connection_lock:
             self._con.sendline('characteristics')
 
-            timeout = 2
+            timeout = 6
             while True:
                 try:
                     self._con.expect(
