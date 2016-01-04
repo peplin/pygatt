@@ -45,8 +45,19 @@ class DBusBackend(BLEBackend):
         self._mainloop.kill()
 
     def scan(self, timeout=10, min_devices=0, device_name=None):
-        adapter_obj = self._bus.get_object("org.bluez", "/org/bluez/" + self._hci_device)
-        adapter = dbus.Interface(adapter_obj, "org.bluez.Adapter1")
+        manager = dbus.Interface(self._bus.get_object("org.bluez", "/"),
+				"org.freedesktop.DBus.ObjectManager")
+        objects = manager.GetManagedObjects()
+        for path, ifaces in objects.iteritems():
+            adapter = ifaces.get("org.bluez.Adapter1")
+            if adapter is not None:
+                log.debug("Found adapter " + str(path))
+                if path == "/org/bluez/" + self._hci_device:
+                    break
+
+        if adapter is None:
+            raise Exception("Could not acquire adapter interface from DBus")
+
         prop_intf = dbus.Interface(adapter_obj, "org.freedesktop.DBus.Properties")
         prop_intf.Set("org.bluez.Adapter1", "Powered", True)
 
@@ -57,17 +68,13 @@ class DBusBackend(BLEBackend):
         adapter.StartDiscovery()
 
         start_time = pytz.utc.localize(datetime.datetime.utcnow())
-        manager = dbus.Interface(self._bus.get_object("org.bluez", "/"),
-				"org.freedesktop.DBus.ObjectManager")
-        objects = manager.GetManagedObjects()
+
         for path, ifaces in objects.iteritems():
             device = ifaces.get("org.bluez.Device1")
             if device is not None:
                 log.debug("Adding " + str(path) + " to device list")
                 self._add_device(path)
                 log.debug("Added " + str(path) + " to device list")
-        if adapter is None:
-            raise Exception("Bluetooth adapter not found")
 
         self._bus.add_signal_receiver(self._adapters_added,
             signal_name = "InterfacesAdded")
@@ -243,6 +250,7 @@ class DBusBackend(BLEBackend):
             log.debug("Device " + address + " doesn't have any GATT services declared yet. " + str(e))
 
             self._num_threads_running -= 1
+            log.debug('Number of threads running: ' + str(self._num_threads_running))
             if self._num_threads_running == 0:
                 try:
                     self._lock.release()
