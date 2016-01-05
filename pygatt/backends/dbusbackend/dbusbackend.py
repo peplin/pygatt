@@ -45,6 +45,7 @@ class DBusBackend(BLEBackend):
         self._mainloop.kill()
 
     def scan(self, timeout=10, min_devices=0, device_name=None):
+        adapter = None
         manager = dbus.Interface(self._bus.get_object("org.bluez", "/"),
 				"org.freedesktop.DBus.ObjectManager")
         objects = manager.GetManagedObjects()
@@ -53,6 +54,9 @@ class DBusBackend(BLEBackend):
             if adapter is not None:
                 log.debug("Found adapter " + str(path))
                 if path == "/org/bluez/" + self._hci_device:
+                    log.info("Using adapter " + path)
+                    adapter_obj = self._bus.get_object("org.bluez", path)
+                    adapter_intf = dbus.Interface(adapter_obj, "org.bluez.Adapter1")
                     break
 
         if adapter is None:
@@ -64,8 +68,8 @@ class DBusBackend(BLEBackend):
         if device_name is not None:
             self._match_device_name = re.compile(".*" + device_name + ".*")
 
-        adapter.SetDiscoveryFilter({"Transport": "le"})
-        adapter.StartDiscovery()
+        adapter_intf.SetDiscoveryFilter({"Transport": "le"})
+        adapter_intf.StartDiscovery()
 
         start_time = pytz.utc.localize(datetime.datetime.utcnow())
 
@@ -103,7 +107,7 @@ class DBusBackend(BLEBackend):
             #Wait until enough devices are discovered
             while len(self._devices) < min_devices:
                 time.sleep(self._connect_timeout)
-        adapter.StopDiscovery()
+        adapter_intf.StopDiscovery()
 
         #Wait for all discovery threads to finish
         self._lock.acquire()
