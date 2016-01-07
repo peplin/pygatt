@@ -243,6 +243,7 @@ class DBusBackend(BLEBackend):
         gatt_services = None
         try:
             device.Connect(dbus_interface="org.bluez.Device1")
+            log.debug("Connected to " + str(path))
         except DBusException as e:
             log.warn("Could not connect to " + str(path) + " - already connected?")
 
@@ -253,14 +254,8 @@ class DBusBackend(BLEBackend):
         except DBusException as e:
             log.debug("Device " + address + " doesn't have any GATT services declared yet. " + str(e))
 
-            self._num_threads_running -= 1
-            log.debug('Number of threads running: ' + str(self._num_threads_running))
-            if self._num_threads_running == 0:
-                try:
-                    self._lock.release()
-                except ThreadError as e:
-                    pass
-            return
+            #Wait for GATT characteristics to be populated
+            time.sleep(self._connect_timeout)
 
             #Get all characteristics
             try:
