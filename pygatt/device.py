@@ -145,7 +145,7 @@ class BLEDevice(object):
         :type uuid: str
         :return: None if the UUID was not found.
         """
-        if isinstance(char_uuid, str):
+        if isinstance(char_uuid, basestring):
             char_uuid = UUID(char_uuid)
         log.debug("Looking up handle for characteristic %s", char_uuid)
         if char_uuid not in self._characteristics:

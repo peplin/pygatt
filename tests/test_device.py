@@ -58,3 +58,7 @@ class BLEDeviceTest(unittest.TestCase):
         self.device.receive_notification(
             TestBLEDevice.EXPECTED_HANDLE + 1, value)
         ok_(not callback.called)
+
+    def test_unicode_get_handle(self):
+        for chars in self.device.discover_characteristics().values():
+            self.device.get_handle(unicode(chars.uuid))
