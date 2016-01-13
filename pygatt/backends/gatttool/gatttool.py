@@ -63,7 +63,7 @@ class GATTToolBackend(BLEBackend):
     def supports_unbonded(self):
         return False
 
-    def start(self):
+    def start(self, reset_on_start=True):
         if self._con and self._running.is_set():
             self.stop()
 
@@ -71,9 +71,10 @@ class GATTToolBackend(BLEBackend):
         self._running.set()
         self._connection_lock = threading.RLock()
 
-        # Without restarting, sometimes when trying to bond with the GATTTool
-        # backend, the entire computer will lock up.
-        self.reset()
+        if reset_on_start:
+            # Without restarting, sometimes when trying to bond with the
+            # GATTTool backend, the entire computer will lock up.
+            self.reset()
 
         # Start gatttool interactive session for device
         gatttool_cmd = ' '.join(filter(None, [
