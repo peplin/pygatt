@@ -2,12 +2,12 @@ import os
 import sys
 
 __title__ = 'pygatt'
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 __license__ = 'Apache License, Version 2.0 and MIT License'
 __copyright__ = 'Copyright 2015 Stratos Inc. and Orion Labs'
 
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup  # pylint: disable=F0401,E0611
 
@@ -27,7 +27,7 @@ setup(
     description='Python GATT Module',
     author='Greg Albrecht <gba@orionlabs.co',
     author_email='gba@orionlabs.co',
-    packages=['pygatt'],
+    packages=find_packages(exclude=("tests", "tests.*")),
     package_data={'': ['LICENSE', 'NOTICE']},
     license=open('LICENSE').read(),
     long_description=open('README.mkd').read(),
