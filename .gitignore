@@ -16,3 +16,4 @@ dist/
 # test file
 pygatt/bluegiga/test.py
 .tox
+.eggs/

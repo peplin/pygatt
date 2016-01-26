@@ -3,7 +3,6 @@ from __future__ import print_function
 import re
 import logging
 import platform
-import string
 import sys
 import time
 import threading
@@ -45,7 +44,8 @@ class GATTToolBackend(BLEBackend):
     """
     _GATTTOOL_PROMPT = r".*> "
 
-    def __init__(self, hci_device='hci0', gatttool_logfile=None):
+    def __init__(self, hci_device='hci0', gatttool_logfile=None,
+                 cli_options=None):
         """
         Initialize.
 
@@ -54,6 +54,7 @@ class GATTToolBackend(BLEBackend):
                 input and output.
         """
         self._hci_device = hci_device
+        self._cli_options = cli_options
         self._connected_device = None
         self._gatttool_logfile = gatttool_logfile
         self._receiver = None  # background notification receiving thread
@@ -75,12 +76,13 @@ class GATTToolBackend(BLEBackend):
         self.reset()
 
         # Start gatttool interactive session for device
-        gatttool_cmd = ' '.join([
+        gatttool_cmd = ' '.join(filter(None, [
             'gatttool',
+            self._cli_options,
             '-i',
             self._hci_device,
             '-I'
-        ])
+        ]))
         log.debug('gatttool_cmd=%s', gatttool_cmd)
         self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile)
         # Wait for response
@@ -138,13 +140,13 @@ class GATTToolBackend(BLEBackend):
             scan.expect('foooooo', timeout=timeout)
         except pexpect.EOF:
             message = "Unexpected error when scanning"
-            if "No such device" in scan.before:
+            if "No such device" in scan.before.decode('utf-8'):
                 message = "No BLE adapter found"
             log.error(message)
             raise BLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
-            for line in scan.before.split('\r\n'):
+            for line in scan.before.decode('utf-8').split('\r\n'):
                 match = re.match(
                     r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
@@ -179,7 +181,7 @@ class GATTToolBackend(BLEBackend):
             with self._connection_lock:
                 cmd = 'connect %s %s' % (self._address, address_type)
                 self._con.sendline(cmd)
-                self._con.expect(r'Connection successful.*\[LE\]>', timeout)
+                self._con.expect(b'Connection successful.*\[LE\]>', timeout)
         except pexpect.TIMEOUT:
             message = ("Timed out connecting to %s after %s seconds."
                        % (self._address, timeout))
@@ -231,7 +233,7 @@ class GATTToolBackend(BLEBackend):
         with self._connection_lock:
             self._con.sendline('characteristics')
 
-            timeout = 2
+            timeout = 6
             while True:
                 try:
                     self._con.expect(
@@ -247,7 +249,8 @@ class GATTToolBackend(BLEBackend):
                 else:
                     try:
                         value_handle = int(self._con.match.group(2), 16)
-                        char_uuid = self._con.match.group(3).strip()
+                        char_uuid = (
+                            self._con.match.group(3).strip().decode('ascii'))
                         characteristics[UUID(char_uuid)] = Characteristic(
                             char_uuid, value_handle)
                         log.debug(
@@ -298,9 +301,9 @@ class GATTToolBackend(BLEBackend):
                         "Timed out waiting for a notification")
 
     def _handle_notification_string(self, msg):
-        hex_handle, _, hex_value = string.split(msg.strip(), maxsplit=5)[3:]
+        hex_handle, _, hex_value = msg.strip().split()[3:]
         handle = int(hex_handle, 16)
-        value = bytearray.fromhex(hex_value)
+        value = bytearray(hex_value)
         if self._connected_device is not None:
             self._connected_device.receive_notification(handle, value)
 
