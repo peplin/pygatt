@@ -97,6 +97,19 @@ class BLEDevice(object):
         """
         raise NotImplementedError()
 
+    def _notification_handles(self, uuid):
+        # Expect notifications on the value handle...
+        value_handle = self.get_handle(uuid)
+
+        # but write to the characteristic config to enable notifications
+        # TODO with the BGAPI backend we can be smarter and fetch the actual
+        # characteristic config handle - we can also do that with gattool if we
+        # use the 'desc' command, so we'll need to change the "get_handle" API
+        # to be able to get the value or characteristic config handle.
+        characteristic_config_handle = value_handle + 1
+
+        return value_handle, characteristic_config_handle
+
     def subscribe(self, uuid, callback=None, indication=False):
         """
         Enable notifications or indications for a characteristic and register a
@@ -108,15 +121,10 @@ class BLEDevice(object):
         indication -- use indications (where each notificaiton is ACKd). This is
                       more reliable, but slower.
         """
-        # Expect notifications on the value handle...
-        value_handle = self.get_handle(uuid)
 
-        # but write to the characteristic config to enable notifications
-        # TODO with the BGAPI backend we can be smarter and fetch the actual
-        # characteristic config handle - we can also do that with gattool if we
-        # use the 'desc' command, so we'll need to change the "get_handle" API
-        # to be able to get the value or characteristic config handle.
-        characteristic_config_handle = value_handle + 1
+        value_handle, characteristic_config_handle = (
+            self._notification_handles(uuid)
+        )
 
         properties = bytearray([
             0x2 if indication else 0x1,
@@ -137,6 +145,30 @@ class BLEDevice(object):
                 self._subscribed_handlers[value_handle] = properties
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
+
+    def unsubscribe(self, uuid):
+        """
+        Disable notification for a charecteristic and de-register the callback.
+        """
+        value_handle, characteristic_config_handle = (
+            self._notification_handles(uuid)
+        )
+
+        properties = bytearray([0x0, 0x0])
+
+        with self._lock:
+            if value_handle in self._callbacks:
+                del(self._callbacks[value_handle])
+            if value_handle in self._subscribed_handlers:
+                del(self._subscribed_handlers[value_handle])
+                self.char_write_handle(
+                    characteristic_config_handle,
+                    properties,
+                    wait_for_response=False
+                )
+                log.info("Unsubscribed from uuid=%s", uuid)
+            else:
+                log.debug("Already unsubscribed from uuid=%s", uuid)
 
     def get_handle(self, char_uuid):
         """
