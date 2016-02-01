@@ -33,8 +33,20 @@ class BLEDeviceTest(unittest.TestCase):
             eq_(bytearray([1, 0]), char_write.call_args[0][1])
         return callback
 
+    def _unsubscribe(self):
+        callback = MagicMock()
+        with patch.object(self.device, 'char_write_handle') as char_write:
+            self.device.unsubscribe(self.device.CHAR_UUID)
+            eq_(self.device.EXPECTED_HANDLE + 1, char_write.call_args[0][0])
+            eq_(bytearray([0, 0]), char_write.call_args[0][1])
+        return callback
+
     def test_subscribe(self):
         self._subscribe()
+
+    def test_unsubscribe(self):
+        self._subscribe()
+        self._unsubscribe()
 
     def test_subscribe_another_callback(self):
         self._subscribe()
