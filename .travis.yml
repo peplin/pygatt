@@ -4,8 +4,17 @@ python:
 - '2.7'
 cache:
   directories:
-  - $HOME/.cache/pip
-  - .tox
+  - "$HOME/.cache/pip"
+  - ".tox"
 install:
-  - pip install tox
+- pip install tox
 script: tox --recreate
+deploy:
+  provider: pypi
+  user: peplin
+  password:
+    secure: dLMAsEz0Suzhq4eOMZ4t05wwI6GrwTvAju9cN28dc1uivSrvqga4lTSajQubVQ0gRIJZYg/WZZxXG9hHg9VMWHrdYNY/va9V8lz9nDCLPjg2xadOQPj6A5CqyD+rxK7tZvwfKPDIoUWDfrMIFVEGFptCCgePBuEiE5MhL9Bqxes=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: peplin/pygatt
