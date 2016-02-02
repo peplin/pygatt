@@ -31,7 +31,7 @@ setup(
     package_data={'': ['LICENSE', 'NOTICE']},
     license=open('LICENSE').read(),
     long_description=open('README.mkd').read(),
-    url='https://github.com/ampledata/pygatt',
+    url='https://github.com/peplin/pygatt',
     install_requires=[
         'pyserial',
         'enum34'
