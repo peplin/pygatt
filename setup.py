@@ -37,8 +37,8 @@ setup(
         'enum34'
     ],
     setup_requires=[
-      'coverage >= 3.7.1',
-      'nose >= 1.3.7'
+        'coverage >= 3.7.1',
+        'nose >= 1.3.7'
     ],
     extras_require={
         'GATTTOOL': ["pexpect"],
