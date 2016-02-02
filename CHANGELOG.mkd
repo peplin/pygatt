@@ -1,0 +1,11 @@
+# pyGATT Changelog
+
+## V2.0.1
+
+* Fix: Fix packaging so the version on PyPI can be installed.
+* Fix: Fix Python 3 compatibility.
+* Improvement: Allow more time to discover characteristics [GATTTOOL]
+
+## v2.0.0
+
+* New API with support for multiple BLE adapters.
