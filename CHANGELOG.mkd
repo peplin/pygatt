@@ -2,9 +2,14 @@
 
 ## V2.0.1
 
+* Feature: Allow unsubscribing from notifications.
+* Improvement: Allow more time to discover characteristics. [GATTTOOL]
+* Improvement: Allow using gatttol backend without root. [GATTTOOL]
+* Improvement: Standardize type of UUID so comparison always works (str vs unicode)
 * Fix: Fix packaging so the version on PyPI can be installed.
 * Fix: Fix Python 3 compatibility.
-* Improvement: Allow more time to discover characteristics [GATTTOOL]
+
+Thanks to Ilya Sukhanov and Alexey Roslyakov for the changes in this release!
 
 ## v2.0.0
 
