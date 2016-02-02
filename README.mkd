@@ -68,6 +68,18 @@ so calling `BLEBackend.connect` again may terminate existing connections.
 
 Derived from the work of several others, see NOTICE.
 
+## Releasing to PyPI
+
+For the maintainers of the project, when you want to make a release:
+
+* Merge all of the changes into `master`.
+* Update the version in `setup.py`.
+* Update the `CHANGELOG.mkd`
+* Tag the commit and push to GitHub (will need to push to a separate branch of
+  PR first since `master` is a protected branch).
+* Travis CI will take care of the rest - it will build and deploy tagged commits
+  to PyPI automatically.
+
 ## License
 
 Copyright 2015 Stratos Inc. and Orion Labs
