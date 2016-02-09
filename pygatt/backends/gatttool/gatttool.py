@@ -179,6 +179,14 @@ class GATTToolBackend(BLEBackend):
         self._characteristics = {}
         self._running = threading.Event()
         self._address = None
+        self._send_lock = threading.Lock()
+
+    def sendline(self, command):
+        """
+        send a raw command to gatttool
+        """
+        with self._send_lock:
+            self._con.sendline(command)
 
     def supports_unbonded(self):
         return False
@@ -228,7 +236,7 @@ class GATTToolBackend(BLEBackend):
         and closes the spawned gatttool process.
         disconnect.
         """
-        self.disconnect()
+        self.disconnect(self._connected_device)
         if self._running.is_set():
             log.info('Stopping')
         self._running.clear()
@@ -237,7 +245,7 @@ class GATTToolBackend(BLEBackend):
             while True:
                 if not self._con.isalive():
                     break
-                self._con.sendline('exit')
+                self.sendline('exit')
                 time.sleep(0.1)
             self._con.close()
             self._con = None
@@ -300,13 +308,13 @@ class GATTToolBackend(BLEBackend):
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
                 address_type='public'):
         log.info('Connecting with timeout=%s', timeout)
-        self._con.sendline('sec-level low')
+        self.sendline('sec-level low')
         self._address = address
 
         try:
             cmd = 'connect {0} {1}'.format(self._address, address_type)
             with self._receiver.event("connect", timeout):
-                self._con.sendline(cmd)
+                self.sendline(cmd)
         except TimeoutError:
             message = "Timed out connecting to {0} after {1} seconds.".format(
                 self._address, timeout
@@ -340,7 +348,7 @@ class GATTToolBackend(BLEBackend):
         # TODO with gattool from bluez 5.35, gatttol consumes 100% CPU after
         # sending "disconnect". If you let the remote device do the
         # disconnect, it doesn't. Leaving it commented out for now.
-        # self._con.sendline('disconnect')
+        # self.sendline('disconnect')
         self._connected_device = None
         # TODO make call a disconnected callback on the device, so the device
         # knows if it was async disconnected?
@@ -348,7 +356,7 @@ class GATTToolBackend(BLEBackend):
     @at_most_one_device
     def bond(self, *args, **kwargs):
         log.info('Bonding')
-        self._con.sendline('sec-level medium')
+        self.sendline('sec-level medium')
 
     def _save_charecteristic_callback(self, event):
         match = event["match"]
@@ -372,7 +380,7 @@ class GATTToolBackend(BLEBackend):
             "discover",
             self._save_charecteristic_callback,
         )
-        self._con.sendline('characteristics')
+        self.sendline('characteristics')
 
         max_time = time.time() + 5
         while not self._characteristics and time.time() < max_time:
@@ -406,12 +414,12 @@ class GATTToolBackend(BLEBackend):
         if wait_for_response:
             try:
                 with self._receiver.event("char_written", timeout=1):
-                    self._con.sendline(cmd)
+                    self.sendline(cmd)
             except TimeoutError:
                 log.error("No response received", exc_info=True)
                 raise
         else:
-            self._con.sendline(cmd)
+            self.sendline(cmd)
 
         log.info('Sent cmd=%s', cmd)
 
@@ -425,7 +433,7 @@ class GATTToolBackend(BLEBackend):
         :rtype: bytearray
         """
         with self._receiver.event("value", timeout=1):
-            self._con.sendline('char-read-uuid %s' % uuid)
+            self.sendline('char-read-uuid %s' % uuid)
         rval = self._receiver.last_value("value", "after").split()[1:]
         return bytearray([int(x, 16) for x in rval])
 
