@@ -61,7 +61,7 @@ class GATTToolReceiver(threading.Thread):
                 'pattern': r'.*Disconnected\r',
             },
             'char_written': {
-                'pattern': r'Characteristic value written successfully',
+                'pattern': r'Characteristic value (was )?written successfully',
             },
             'value': {
                 'pattern': r'value: .*? \r',
