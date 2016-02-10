@@ -18,7 +18,3 @@ class NotConnectedError(BLEError):
 
 class NotificationTimeout(BLEError):
     pass
-
-
-class NoResponseError(BLEError):
-    pass
