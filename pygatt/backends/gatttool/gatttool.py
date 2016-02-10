@@ -15,16 +15,12 @@ except Exception as err:
     if platform.system() != 'Windows':
         print("WARNING:", err, file=sys.stderr)
 
-from pygatt.exceptions import NotConnectedError, BLEError
+from pygatt.exceptions import NotConnectedError, BLEError, NotificationTimeout
 from pygatt.backends import BLEBackend, Characteristic
 from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
-
-
-class TimeoutError(RuntimeError):
-    pass
 
 
 def at_most_one_device(func):
@@ -127,7 +123,7 @@ class GATTToolReceiver(threading.Thread):
         Wait for event to be trigerred
         """
         if not self._event_vector[event]["event"].wait(timeout):
-            raise TimeoutError()
+            raise NotificationTimeout()
 
     def register_callback(self, event, callback):
         """
@@ -315,7 +311,7 @@ class GATTToolBackend(BLEBackend):
             cmd = 'connect {0} {1}'.format(self._address, address_type)
             with self._receiver.event("connect", timeout):
                 self.sendline(cmd)
-        except TimeoutError:
+        except NotificationTimeout:
             message = "Timed out connecting to {0} after {1} seconds.".format(
                 self._address, timeout
             )
@@ -415,7 +411,7 @@ class GATTToolBackend(BLEBackend):
             try:
                 with self._receiver.event("char_written", timeout=1):
                     self.sendline(cmd)
-            except TimeoutError:
+            except NotificationTimeout:
                 log.error("No response received", exc_info=True)
                 raise
         else:
