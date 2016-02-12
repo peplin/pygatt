@@ -376,6 +376,7 @@ class GATTToolBackend(BLEBackend):
 
     @at_most_one_device
     def discover_characteristics(self):
+        self._characteristics = {}
         self._receiver.register_callback(
             "discover",
             self._save_charecteristic_callback,
@@ -385,6 +386,13 @@ class GATTToolBackend(BLEBackend):
         max_time = time.time() + 5
         while not self._characteristics and time.time() < max_time:
             time.sleep(.5)
+
+        # Sleep one extra second in case we caught characteristic
+        # in the middle
+        time.sleep(1)
+
+        if not self._characteristics:
+            raise NotConnectedError("Characteristic discovery failed")
 
         return self._characteristics
 
