@@ -54,9 +54,6 @@ class GATTToolReceiver(threading.Thread):
             'indication': {
                 'pattern': r'Indication   handle = .*? \r',
             },
-            'invalid_fd': {
-                'pattern': r'.*Invalid file descriptor.*',
-            },
             'disconnected': {
                 'pattern': r'.*Disconnected\r',
             },
@@ -117,6 +114,9 @@ class GATTToolReceiver(threading.Thread):
         Clear event
         """
         self._event_vector[event]["event"].clear()
+
+    def is_set(self, event):
+        return self._event_vector[event]["event"].is_set()
 
     def wait(self, event, timeout=None):
         """
@@ -215,16 +215,13 @@ class GATTToolBackend(BLEBackend):
         # Start the notification receiving thread
         self._receiver = GATTToolReceiver(self._con, self._running)
         self._receiver.daemon = True
-        self._receiver.register_callback("disconnected", self._stop)
+        self._receiver.register_callback("disconnected", self._disconnect)
         for event in ["notification", "indication"]:
             self._receiver.register_callback(
                 event,
                 self._handle_notification_string
             )
         self._receiver.start()
-
-    def _stop(self, event):
-        self.stop()
 
     def stop(self):
         """
@@ -339,12 +336,19 @@ class GATTToolBackend(BLEBackend):
                       address, con.before)
         log.info("Removed bonds for %s", address)
 
+    def _disconnect(self, event):
+        try:
+            self.disconnect(self._connected_device)
+        except NotConnectedError:
+            pass
+
     @at_most_one_device
     def disconnect(self, *args, **kwargs):
         # TODO with gattool from bluez 5.35, gatttol consumes 100% CPU after
         # sending "disconnect". If you let the remote device do the
         # disconnect, it doesn't. Leaving it commented out for now.
-        # self.sendline('disconnect')
+        if not self._receiver.is_set("disconnected"):
+            self.sendline('disconnect')
         self._connected_device = None
         # TODO make call a disconnected callback on the device, so the device
         # knows if it was async disconnected?
