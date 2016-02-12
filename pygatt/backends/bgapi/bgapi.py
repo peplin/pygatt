@@ -247,7 +247,7 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.gap_discover)
 
-        log.info("Pausing for for %ds to allow scan to complete", timeout)
+        log.info("Pausing for %ds to allow scan to complete", timeout)
         time.sleep(timeout)
 
         log.info("Stopping scan")
@@ -259,7 +259,8 @@ class BGAPIBackend(BLEBackend):
             devices.append({
                 'address': address,
                 'name': info.name,
-                'rssi': info.rssi
+                'rssi': info.rssi,
+                'packet_data': info.packet_data
             })
         log.info("Discovered %d devices: %s", len(devices), devices)
         self._devices_discovered = {}
