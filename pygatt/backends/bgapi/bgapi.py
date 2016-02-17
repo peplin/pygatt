@@ -125,7 +125,7 @@ class BGAPIBackend(BLEBackend):
         if self._running and self._running.is_set():
             self.stop()
 
-        self._ser = serial.Serial(self._serial_port, baudrate=256000,
+        self._ser = serial.Serial(self._serial_port, baudrate=115200,
                                   timeout=0.25)
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
