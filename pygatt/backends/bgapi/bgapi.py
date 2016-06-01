@@ -542,8 +542,11 @@ class BGAPIBackend(BLEBackend):
         if (uuid_type == UUIDType.descriptor and
                 self._current_characteristic is not None):
             self._current_characteristic.add_descriptor(uuid, args['chrhandle'])
-        elif uuid_type == UUIDType.custom:
-            log.info("Found custom characteristic %s" % uuid)
+        elif uuid_type == UUIDType.custom or uuid_type == UUIDType.characteristic:
+            if uuid_type == UUIDType.custom:
+                log.info("Found custom characteristic %s" % uuid)
+            elif uuid_type == UUIDType.characteristic:
+                log.info("Found approved characteristic %s" % uuid)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[
