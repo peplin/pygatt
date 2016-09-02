@@ -182,7 +182,7 @@ gatt_characteristic_type_uuid = {
     'http_status_code': bytearray([0x2A, 0xB8]),
     'https_security': bytearray([0x2A, 0xBB]),
     'humidity': bytearray([0x2A, 0x6F]),
-    'ieee_11073-20601_regulatory_certification_data_list': bytearray([0x2A, 0x2A]),
+    'ieee_11073-20601_regulatory_certification_data_list': bytearray([0x2A, 0x2A]),  # noqa
     'indoor_positioning_configuration': bytearray([0x2A, 0xAD]),
     'intermediate_cuff_pressure': bytearray([0x2A, 0x36]),
     'intermediate_temperature': bytearray([0x2A, 0x1E]),
