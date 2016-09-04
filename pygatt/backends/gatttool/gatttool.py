@@ -344,14 +344,11 @@ class GATTToolBackend(BLEBackend):
 
     @at_most_one_device
     def disconnect(self, *args, **kwargs):
-        # TODO with gattool from bluez 5.35, gatttol consumes 100% CPU after
-        # sending "disconnect". If you let the remote device do the
-        # disconnect, it doesn't. Leaving it commented out for now.
         if not self._receiver.is_set("disconnected"):
             self.sendline('disconnect')
         self._connected_device = None
-        # TODO make call a disconnected callback on the device, so the device
-        # knows if it was async disconnected?
+        # TODO maybe call a disconnected callback on the device instance, so the
+        # device knows if it was asynchronously disconnected?
 
     @at_most_one_device
     def bond(self, *args, **kwargs):
