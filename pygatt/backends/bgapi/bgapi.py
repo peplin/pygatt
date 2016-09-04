@@ -420,10 +420,11 @@ class BGAPIBackend(BLEBackend):
                     elif (field_name ==
                           'complete_list_128-bit_service_class_uuids'):
                         data_dict[field_name] = []
-                        for i in range(0, len(field_value)/16):  # 16 bytes
+                        for i in range(0, len(field_value) / 16):  # 16 bytes
                             service_uuid = (
                                 "0x%s" %
-                                bgapi_address_to_hex(field_value[i*16:i*16+16]))
+                                bgapi_address_to_hex(
+                                    field_value[i * 16:i * 16 + 16]))
                             data_dict[field_name].append(service_uuid)
                     else:
                         data_dict[field_name] = bytearray(field_value)
@@ -542,8 +543,12 @@ class BGAPIBackend(BLEBackend):
         if (uuid_type == UUIDType.descriptor and
                 self._current_characteristic is not None):
             self._current_characteristic.add_descriptor(uuid, args['chrhandle'])
-        elif uuid_type == UUIDType.custom:
-            log.info("Found custom characteristic %s" % uuid)
+        elif (uuid_type == UUIDType.custom or
+                uuid_type == UUIDType.characteristic):
+            if uuid_type == UUIDType.custom:
+                log.info("Found custom characteristic %s" % uuid)
+            elif uuid_type == UUIDType.characteristic:
+                log.info("Found approved characteristic %s" % uuid)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[

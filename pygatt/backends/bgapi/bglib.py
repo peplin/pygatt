@@ -128,7 +128,7 @@ ResponsePacketType = Enum('ResponsePacketType', [
     'test_phy_reset',
     'test_get_channel_map',
     'test_debug',
-    ])
+])
 
 
 EventPacketType = Enum('EventPacketType', [
@@ -164,7 +164,7 @@ EventPacketType = Enum('EventPacketType', [
     'hardware_io_port_status',
     'hardware_soft_timer',
     'hardware_adc_result',
-    ])
+])
 
 # Map a tuple of (class, command) to an enum identifier for the packet
 RESPONSE_PACKET_MAPPING = {
@@ -219,7 +219,6 @@ RESPONSE_PACKET_MAPPING = {
     (4, 7): ResponsePacketType.attclient_indicate_confirm,
     (4, 8): ResponsePacketType.attclient_read_long,
     (4, 9): ResponsePacketType.attclient_prepare_write,
-    (4, 10): ResponsePacketType.attclient_execute_write,
     (4, 10): ResponsePacketType.attclient_execute_write,
 
     (5, 0): ResponsePacketType.sm_encrypt_start,
@@ -474,23 +473,23 @@ class BGLib(object):
                 'value': value_data
             }
         elif packet_type in [
-                ResponsePacketType.connection_disconnect,
-                ResponsePacketType.connection_update,
-                ResponsePacketType.connection_version_update,
-                ResponsePacketType.connection_channel_map_set,
-                ResponsePacketType.connection_features_get,
-                ResponsePacketType.attclient_find_by_type_value,
-                ResponsePacketType.attclient_read_by_group_type,
-                ResponsePacketType.attclient_read_by_type,
-                ResponsePacketType.attclient_find_information,
-                ResponsePacketType.attclient_read_by_handle,
-                ResponsePacketType.attclient_attribute_write,
-                ResponsePacketType.attclient_write_command,
-                ResponsePacketType.attclient_read_long,
-                ResponsePacketType.attclient_prepare_write,
-                ResponsePacketType.attclient_execute_write,
-                ResponsePacketType.attclient_read_multiple,
-                ]:
+            ResponsePacketType.connection_disconnect,
+            ResponsePacketType.connection_update,
+            ResponsePacketType.connection_version_update,
+            ResponsePacketType.connection_channel_map_set,
+            ResponsePacketType.connection_features_get,
+            ResponsePacketType.attclient_find_by_type_value,
+            ResponsePacketType.attclient_read_by_group_type,
+            ResponsePacketType.attclient_read_by_type,
+            ResponsePacketType.attclient_find_information,
+            ResponsePacketType.attclient_read_by_handle,
+            ResponsePacketType.attclient_attribute_write,
+            ResponsePacketType.attclient_write_command,
+            ResponsePacketType.attclient_read_long,
+            ResponsePacketType.attclient_prepare_write,
+            ResponsePacketType.attclient_execute_write,
+            ResponsePacketType.attclient_read_multiple,
+        ]:
             connection, result = unpack(
                 '<BH', payload[:3]
             )
