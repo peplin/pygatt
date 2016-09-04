@@ -39,17 +39,18 @@ backend, install the optional dependencies with:
 ## Example Use
 
 The primary API for users of this library is provided by
-`pygatt.backends.BLEBackend` and `pygatt.BLEDevice`. After initializing an
+`pygatt.BLEBackend` and `pygatt.BLEDevice`. After initializing an
 instance of the preferred backend (available implementations are found in
 `pygatt.backends`, use the `BLEBackend.connect` method to connect to a device
 and get an instance of `BLEDevice.`
 
 ```python
-import pygatt.backends
+import pygatt
 
 # The BGAPI backend will attemt to auto-discover the serial device name of the
 # attached BGAPI-compatible USB adapter.
-adapter = pygatt.backends.BGAPIBackend()
+adapter = pygatt.BGAPIBackend()
+
 try:
     adapter.start()
     device = adapter.connect('01:23:45:67:89:ab')
@@ -60,6 +61,22 @@ finally:
 
 Note that not all backends support connecting to more than 1 device at at time,
 so calling `BLEBackend.connect` again may terminate existing connections.
+
+Here's the same example using the GATTTool backend. It's identical except for
+the initialization of the backend:
+
+```python
+import pygatt
+
+adapter = pygatt.GATTToolBackend()
+
+try:
+    adapter.start()
+    device = adapter.connect('01:23:45:67:89:ab')
+    value = device.char_read("a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b")
+finally:
+    adapter.stop()
+```
 
 ## Debugging
 
