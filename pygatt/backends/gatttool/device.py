@@ -1,3 +1,4 @@
+import functools
 import logging
 
 from pygatt import BLEDevice, exceptions
@@ -9,6 +10,7 @@ def connection_required(func):
     """Raise an exception before calling the actual function if the device is
     not connection.
     """
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         if not self._connected:
             raise exceptions.NotConnectedError()

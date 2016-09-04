@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import functools
 import re
 import logging
 import platform
@@ -29,6 +30,7 @@ def at_most_one_device(func):
     exception if that device is not what the backend thinks is the currently
     connected device.
     """
+    @functools.wraps(func)
     def wrapper(self, connected_device, *args, **kwargs):
         if connected_device != self._connected_device:
             raise NotConnectedError()
