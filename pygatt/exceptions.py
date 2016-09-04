@@ -17,6 +17,6 @@ class NotConnectedError(BLEError):
 
 
 class NotificationTimeout(BLEError):
-    def __init__(self, msg, gatttool_output=None):
+    def __init__(self, msg=None, gatttool_output=None):
         super(NotificationTimeout, self).__init__(msg)
         self.gatttool_output = gatttool_output
