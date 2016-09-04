@@ -8,21 +8,19 @@ import time
 import threading
 import subprocess
 from uuid import UUID
+from contextlib import contextmanager
 try:
     import pexpect
-except Exception as e:
+except Exception as err:
     if platform.system() != 'Windows':
-        print("WARNING:", e, file=sys.stderr)
+        print("WARNING:", err, file=sys.stderr)
 
-from pygatt.exceptions import (NotConnectedError, NotificationTimeout, BLEError,
-                               NoResponseError)
+from pygatt.exceptions import NotConnectedError, BLEError, NotificationTimeout
 from pygatt.backends import BLEBackend, Characteristic
 from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
-
-DEFAULT_TIMEOUT_S = 0.5
 
 
 def at_most_one_device(func):
@@ -38,11 +36,126 @@ def at_most_one_device(func):
     return wrapper
 
 
+class GATTToolReceiver(threading.Thread):
+    """
+    Observe pygatttool stdout in seperate thread and dispatch events /
+    callbacks.
+    """
+
+    def __init__(self, connection, parent_aliveness):
+        super(GATTToolReceiver, self).__init__()
+        self.daemon = True
+        self._connection = connection
+        self._parent_aliveness = parent_aliveness
+        self._event_vector = {
+            'notification': {
+                'pattern': r'Notification handle = .*? \r',
+            },
+            'indication': {
+                'pattern': r'Indication   handle = .*? \r',
+            },
+            'disconnected': {
+                'pattern': r'.*Disconnected\r',
+            },
+            'char_written': {
+                'pattern': r'Characteristic value (was )?written successfully',
+            },
+            'value': {
+                'pattern': r'value: .*? \r',
+            },
+            'discover': {
+                'pattern':
+                    r'handle: 0x([a-fA-F0-9]{4}), '
+                    'char properties: 0x[a-fA-F0-9]{2}, '
+                    'char value handle: 0x([a-fA-F0-9]{4}), '
+                    'uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]'
+                    '{4}-[0-9a-f]{12})\r\n',  # noqa
+            },
+            'connect': {
+                'pattern': r'Connection successful.*\[LE\]>',
+            },
+        }
+
+        for event in self._event_vector.values():
+            event["event"] = threading.Event()
+            event["before"] = None
+            event["after"] = None
+            event["match"] = None
+            event["callback"] = None
+
+    def run(self):
+        items = [
+            (event["pattern"], event)
+            for event in self._event_vector.values()
+        ]
+        patterns = [item[0] for item in items]
+        events = [item[1] for item in items]
+
+        log.info('Running...')
+        while self._parent_aliveness.is_set():
+            try:
+                event_index = self._connection.expect(patterns, timeout=.5)
+            except pexpect.TIMEOUT:
+                continue
+            except (NotConnectedError, pexpect.EOF):
+                self._event_vector["disconnected"]["event"].set()
+                break
+            event = events[event_index]
+            event["before"] = self._connection.before
+            event["after"] = self._connection.after
+            event["match"] = self._connection.match
+            event["event"].set()
+            if event["callback"]:
+                event["callback"](event)
+        log.info("Listener thread finished")
+
+    def clear(self, event):
+        """
+        Clear event
+        """
+        self._event_vector[event]["event"].clear()
+
+    def is_set(self, event):
+        return self._event_vector[event]["event"].is_set()
+
+    def wait(self, event, timeout=None):
+        """
+        Wait for event to be trigerred
+        """
+        if not self._event_vector[event]["event"].wait(timeout):
+            raise NotificationTimeout()
+
+    def register_callback(self, event, callback):
+        """
+        Call the callback function when event happens. Event wrapper
+        is passed as argument.
+        """
+        self._event_vector[event]["callback"] = callback
+
+    def last_value(self, event, value_type):
+        """
+        Retrieve last value that saved by the event
+        """
+        return self._event_vector[event][value_type]
+
+    @contextmanager
+    def event(self, event, timeout=None):
+        """
+        Clear an event, execute context and then wait for event
+
+        >>> with gtr.event("connect", 10):
+        >>>     gtb.send(connect_command)
+
+        """
+        self.clear(event)
+        yield
+        self.wait(event, timeout)
+
+
 class GATTToolBackend(BLEBackend):
     """
     Backend to pygatt that uses BlueZ's interactive gatttool CLI prompt.
     """
-    _GATTTOOL_PROMPT = r".*> "
 
     def __init__(self, hci_device='hci0', gatttool_logfile=None,
                  cli_options=None):
@@ -57,8 +170,19 @@ class GATTToolBackend(BLEBackend):
         self._cli_options = cli_options
         self._connected_device = None
         self._gatttool_logfile = gatttool_logfile
-        self._receiver = None  # background notification receiving thread
+        self._receiver = None
         self._con = None  # gatttool interactive session
+        self._characteristics = {}
+        self._running = threading.Event()
+        self._address = None
+        self._send_lock = threading.Lock()
+
+    def sendline(self, command):
+        """
+        send a raw command to gatttool
+        """
+        with self._send_lock:
+            self._con.sendline(command)
 
     def supports_unbonded(self):
         return False
@@ -67,9 +191,7 @@ class GATTToolBackend(BLEBackend):
         if self._con and self._running.is_set():
             self.stop()
 
-        self._running = threading.Event()
         self._running.set()
-        self._connection_lock = threading.RLock()
 
         if reset_on_start:
             # Without restarting, sometimes when trying to bond with the
@@ -77,21 +199,28 @@ class GATTToolBackend(BLEBackend):
             self.reset()
 
         # Start gatttool interactive session for device
-        gatttool_cmd = ' '.join(filter(None, [
+        args = [
             'gatttool',
             self._cli_options,
             '-i',
             self._hci_device,
             '-I'
-        ]))
+        ]
+        gatttool_cmd = ' '.join([arg for arg in args if arg])
         log.debug('gatttool_cmd=%s', gatttool_cmd)
         self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile)
         # Wait for response
         self._con.expect(r'\[LE\]>', timeout=1)
 
         # Start the notification receiving thread
-        self._receiver = threading.Thread(target=self._receive)
+        self._receiver = GATTToolReceiver(self._con, self._running)
         self._receiver.daemon = True
+        self._receiver.register_callback("disconnected", self._disconnect)
+        for event in ["notification", "indication"]:
+            self._receiver.register_callback(
+                event,
+                self._handle_notification_string
+            )
         self._receiver.start()
 
     def stop(self):
@@ -105,15 +234,11 @@ class GATTToolBackend(BLEBackend):
             log.info('Stopping')
         self._running.clear()
 
-        if self._receiver:
-            self._receiver.join()
-            self._receiver = None
-
         if self._con and self._con.isalive():
-            self._con.sendline('exit')
             while True:
                 if not self._con.isalive():
                     break
+                self.sendline('exit')
                 time.sleep(0.1)
             self._con.close()
             self._con = None
@@ -176,16 +301,17 @@ class GATTToolBackend(BLEBackend):
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
                 address_type='public'):
         log.info('Connecting with timeout=%s', timeout)
-        self._con.sendline('sec-level low')
+        self.sendline('sec-level low')
         self._address = address
+
         try:
-            with self._connection_lock:
-                cmd = 'connect %s %s' % (self._address, address_type)
-                self._con.sendline(cmd)
-                self._con.expect(b'Connection successful.*\[LE\]>', timeout)
-        except pexpect.TIMEOUT:
-            message = ("Timed out connecting to %s after %s seconds."
-                       % (self._address, timeout))
+            cmd = 'connect {0} {1}'.format(self._address, address_type)
+            with self._receiver.event("connect", timeout):
+                self.sendline(cmd)
+        except NotificationTimeout:
+            message = "Timed out connecting to {0} after {1} seconds.".format(
+                self._address, timeout
+            )
             log.error(message)
             raise NotConnectedError(message)
 
@@ -201,119 +327,79 @@ class GATTToolBackend(BLEBackend):
         log.info("Clearing bond for %s", address)
         con.sendline("remove " + address.upper())
         try:
-            con.expect(["Device has been removed",
-                        "# "
-                        ],
-                       timeout=.5)
+            con.expect(
+                ["Device has been removed", "# "],
+                timeout=.5
+            )
         except pexpect.TIMEOUT:
             log.error("Unable to remove bonds for %s: %s",
                       address, con.before)
         log.info("Removed bonds for %s", address)
 
-    @at_most_one_device
-    def disconnect(self):
-        with self._connection_lock:
-            # TODO with gattool from bluez 5.35, gatttol consumes 100% CPU after
-            # sending "disconnect". If you let the remote device do the
-            # disconnect, it doesn't. Leaving it commented out for now.
-            # self._con.sendline('disconnect')
+    def _disconnect(self, event):
+        try:
+            self.disconnect(self._connected_device)
+        except NotConnectedError:
             pass
+
+    @at_most_one_device
+    def disconnect(self, *args, **kwargs):
+        if not self._receiver.is_set("disconnected"):
+            self.sendline('disconnect')
         self._connected_device = None
-        # TODO make call a disconnected callback on the device, so the device
-        # knows if it was async disconnected?
+        # TODO maybe call a disconnected callback on the device instance, so the
+        # device knows if it was asynchronously disconnected?
 
     @at_most_one_device
     def bond(self, *args, **kwargs):
         log.info('Bonding')
-        self._con.sendline('sec-level medium')
-        self._con.expect(self._GATTTOOL_PROMPT, timeout=1)
+        self.sendline('sec-level medium')
+
+    def _save_charecteristic_callback(self, event):
+        match = event["match"]
+        try:
+            value_handle = int(match.group(2), 16)
+            char_uuid = match.group(3).strip().decode('ascii')
+            self._characteristics[UUID(char_uuid)] = Characteristic(
+                char_uuid, value_handle
+            )
+            log.debug(
+                "Found characteristic %s, value handle: 0x%x",
+                char_uuid,
+                value_handle
+            )
+        except AttributeError:
+            pass
 
     @at_most_one_device
     def discover_characteristics(self):
-        characteristics = {}
-        with self._connection_lock:
-            self._con.sendline('characteristics')
+        self._characteristics = {}
+        self._receiver.register_callback(
+            "discover",
+            self._save_charecteristic_callback,
+        )
+        self.sendline('characteristics')
 
-            timeout = 6
-            while True:
-                try:
-                    self._con.expect(
-                        r"handle: 0x([a-fA-F0-9]{4}), "
-                        "char properties: 0x[a-fA-F0-9]{2}, "
-                        "char value handle: 0x([a-fA-F0-9]{4}), "
-                        "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\r\n",  # noqa
-                        timeout=timeout)
-                except pexpect.TIMEOUT:
-                    break
-                except pexpect.EOF:
-                    break
-                else:
-                    try:
-                        value_handle = int(self._con.match.group(2), 16)
-                        char_uuid = (
-                            self._con.match.group(3).strip().decode('ascii'))
-                        characteristics[UUID(char_uuid)] = Characteristic(
-                            char_uuid, value_handle)
-                        log.debug(
-                            "Found characteristic %s, value handle: 0x%x",
-                            char_uuid,
-                            value_handle)
+        max_time = time.time() + 5
+        while not self._characteristics and time.time() < max_time:
+            time.sleep(.5)
 
-                        # The characteristics all print at once, so after
-                        # waiting 1-2 seconds for them to all fetch, you can
-                        # load the rest without much delay at all.
-                        timeout = .01
-                    except AttributeError:
-                        pass
-        return characteristics
+        # Sleep one extra second in case we caught characteristic
+        # in the middle
+        time.sleep(1)
 
-    def _expect(self, expected, timeout=DEFAULT_TIMEOUT_S):
-        """
-        We may (and often do) get an indication/notification before a
-        write completes, and so it can be lost if we "expect()"'d something
-        that came after it in the output, e.g.:
-        > char-write-req 0x1 0x2
-        Notification handle: xxx
-        Write completed successfully.
-        >
-        Anytime we expect something we have to expect noti/indication first for
-        a short time.
-        """
-        with self._connection_lock:
-            patterns = [
-                expected,
-                'Notification handle = .*? \r',
-                'Indication   handle = .*? \r',
-                '.*Invalid file descriptor.*',
-                '.*Disconnected\r',
-            ]
-            while True:
-                try:
-                    matched_pattern_index = self._con.expect(patterns, timeout)
-                    if matched_pattern_index == 0:
-                        break
-                    elif matched_pattern_index in [1, 2]:
-                        self._handle_notification_string(self._con.after)
-                    elif matched_pattern_index == 3:
-                        if self._running.is_set():
-                            log.error("Device disconnected unexpectedly "
-                                      "(gatttool output: %s)" % self._con.after)
-                            raise NotConnectedError(
-                                "Device disconnected unexpectedly",
-                                gatttool_output=(
-                                    self._con.before + self._con.after))
-                except pexpect.TIMEOUT:
-                    raise NotificationTimeout(
-                        "Timed out waiting for a notification, "
-                        "device may have disconnected",
-                        gatttool_output=self._con.before)
+        if not self._characteristics:
+            raise NotConnectedError("Characteristic discovery failed")
 
-    def _handle_notification_string(self, msg):
-        hex_handle, _, hex_value = msg.strip().split()[3:]
+        return self._characteristics
+
+    def _handle_notification_string(self, event):
+        msg = event["after"]
+        hex_handle, _, hex_values = msg.strip().split(None, 5)[3:]
         handle = int(hex_handle, 16)
-        value = bytearray(hex_value)
+        values = bytearray(hex_values.replace(" ", "").decode("hex"))
         if self._connected_device is not None:
-            self._connected_device.receive_notification(handle, value)
+            self._connected_device.receive_notification(handle, values)
 
     @at_most_one_device
     def char_write_handle(self, handle, value, wait_for_response=False):
@@ -323,27 +409,24 @@ class GATTToolBackend(BLEBackend):
         :param value:
         :param wait_for_response:
         """
-        with self._connection_lock:
-            hexstring = ''.join('%02x' % byte for byte in value)
+        cmd = 'char-write-{0} 0x{1:02x} {2}'.format(
+            'req' if wait_for_response else 'cmd',
+            handle,
+            ''.join("{0:02x}".format(byte) for byte in value),
+        )
 
-            if wait_for_response:
-                cmd = 'req'
-            else:
-                cmd = 'cmd'
+        log.debug('Sending cmd=%s', cmd)
+        if wait_for_response:
+            try:
+                with self._receiver.event("char_written", timeout=1):
+                    self.sendline(cmd)
+            except NotificationTimeout:
+                log.error("No response received", exc_info=True)
+                raise
+        else:
+            self.sendline(cmd)
 
-            cmd = 'char-write-%s 0x%02x %s' % (cmd, handle, hexstring)
-
-            log.debug('Sending cmd=%s', cmd)
-            self._con.sendline(cmd)
-
-            if wait_for_response:
-                try:
-                    self._expect('Characteristic value written successfully')
-                except NoResponseError:
-                    log.error("No response received", exc_info=True)
-                    raise
-
-            log.info('Sent cmd=%s', cmd)
+        log.info('Sent cmd=%s', cmd)
 
     @at_most_one_device
     def char_read(self, uuid):
@@ -354,31 +437,10 @@ class GATTToolBackend(BLEBackend):
         :return: bytearray of result.
         :rtype: bytearray
         """
-        with self._connection_lock:
-            self._con.sendline('char-read-uuid %s' % uuid)
-            self._expect('value: .*? \r')
-
-            rval = self._con.after.split()[1:]
-
-            return bytearray([int(x, 16) for x in rval])
-
-    def _receive(self):
-        """
-        Run a background thread to listen for notifications.
-        """
-        log.info('Running...')
-        while self._running.is_set():
-            try:
-                self._expect("fooooooo", timeout=.1)
-            except NotificationTimeout:
-                pass
-            except (NotConnectedError, pexpect.EOF):
-                break
-            # TODO need some delay to avoid aggresively grabbing the lock,
-            # blocking out the others. worst case is 1 second delay for async
-            # not received as a part of another request
-            time.sleep(.01)
-        log.info("Listener thread finished")
+        with self._receiver.event("value", timeout=1):
+            self.sendline('char-read-uuid %s' % uuid)
+        rval = self._receiver.last_value("value", "after").split()[1:]
+        return bytearray([int(x, 16) for x in rval])
 
     def reset(self):
         subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()

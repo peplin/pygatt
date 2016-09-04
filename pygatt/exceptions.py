@@ -20,7 +20,3 @@ class NotificationTimeout(BLEError):
     def __init__(self, msg, gatttool_output=None):
         super(NotificationTimeout, self).__init__(msg)
         self.gatttool_output = gatttool_output
-
-
-class NoResponseError(BLEError):
-    pass
