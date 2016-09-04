@@ -72,8 +72,11 @@ class BGAPIBLEDevice(BLEDevice):
         raise BGAPIError("get rssi failed")
 
     @connection_required
-    def char_read(self, uuid):
-        handle = self.get_handle(uuid)
+    def char_read(self, uuid, timeout=None):
+        return self.char_read_handle(self.get_handle(uuid), timeout=timeout)
+
+    @connection_required
+    def char_read_handle(self, handle, timeout=None):
         log.info("Reading characteristic at handle %d", handle)
         self._backend.send_command(
             CommandBuilder.attclient_read_by_handle(
@@ -82,7 +85,7 @@ class BGAPIBLEDevice(BLEDevice):
         self._backend.expect(ResponsePacketType.attclient_read_by_handle)
         matched_packet_type, response = self._backend.expect_any(
             [EventPacketType.attclient_attribute_value,
-             EventPacketType.attclient_procedure_completed])
+             EventPacketType.attclient_procedure_completed], timeout=timeout)
         # TODO why not just expect *only* the attribute value response, then it
         # would time out and raise an exception if allwe got was the 'procedure
         # completed' response?
