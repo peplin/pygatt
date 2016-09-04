@@ -296,10 +296,17 @@ class GATTToolBackend(BLEBackend):
                         self._handle_notification_string(self._con.after)
                     elif matched_pattern_index == 3:
                         if self._running.is_set():
-                            log.info("Disconnected")
+                            log.error("Device disconnected unexpectedly "
+                                      "(gatttool output: %s)" % self._con.after)
+                            raise NotConnectedError(
+                                "Device disconnected unexpectedly",
+                                gatttool_output=(
+                                    self._con.before + self._con.after))
                 except pexpect.TIMEOUT:
                     raise NotificationTimeout(
-                        "Timed out waiting for a notification")
+                        "Timed out waiting for a notification, "
+                        "device may have disconnected",
+                        gatttool_output=self._con.before)
 
     def _handle_notification_string(self, msg):
         hex_handle, _, hex_value = msg.strip().split()[3:]

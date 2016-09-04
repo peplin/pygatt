@@ -61,6 +61,20 @@ finally:
 Note that not all backends support connecting to more than 1 device at at time,
 so calling `BLEBackend.connect` again may terminate existing connections.
 
+## Debugging
+
+While debugging software using pygatt, it is often useful to see what's
+happening inside the library. You can enable debugging logging and have it
+printed to your terminal with this code:
+
+```
+import pygatt
+import logging
+
+logging.basicConfig()
+logging.getLogger('pygatt').setLevel(logging.DEBUG)
+```
+
 ## Authors
 
 - Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
