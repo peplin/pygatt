@@ -404,7 +404,8 @@ class GATTToolBackend(BLEBackend):
             self._connected_device.receive_notification(handle, values)
 
     @at_most_one_device
-    def char_write_handle(self, handle, value, wait_for_response=False):
+    def char_write_handle(self, handle, value, wait_for_response=False,
+                          timeout=1):
         """
         Writes a value to a given characteristic handle.
         :param handle:
@@ -420,7 +421,7 @@ class GATTToolBackend(BLEBackend):
         log.debug('Sending cmd=%s', cmd)
         if wait_for_response:
             try:
-                with self._receiver.event("char_written", timeout=1):
+                with self._receiver.event("char_written", timeout=timeout):
                     self.sendline(cmd)
             except NotificationTimeout:
                 log.error("No response received", exc_info=True)
@@ -431,7 +432,7 @@ class GATTToolBackend(BLEBackend):
         log.info('Sent cmd=%s', cmd)
 
     @at_most_one_device
-    def char_read(self, uuid):
+    def char_read(self, uuid, timeout=1):
         """
         Reads a Characteristic by uuid.
         :param uuid: UUID of Characteristic to read.
@@ -439,7 +440,7 @@ class GATTToolBackend(BLEBackend):
         :return: bytearray of result.
         :rtype: bytearray
         """
-        with self._receiver.event("value", timeout=1):
+        with self._receiver.event("value", timeout=timeout):
             self.sendline('char-read-uuid %s' % uuid)
         rval = self._receiver.last_value("value", "after").split()[1:]
         return bytearray([int(x, 16) for x in rval])
