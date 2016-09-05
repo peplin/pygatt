@@ -1,5 +1,11 @@
 # pyGATT Changelog
 
+## V2.1.0
+
+* Added all standard GATT characteristics. [BGAPI]
+* Move gatttool monitor to a background thread for increased performance.
+  [GATTTOOL]
+
 ## V2.0.1
 
 * Feature: Allow unsubscribing from notifications.

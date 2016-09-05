@@ -1,8 +1,5 @@
-import os
-import sys
-
 __title__ = 'pygatt'
-__version__ = '2.0.1'
+__version__ = '2.1.0'
 __license__ = 'Apache License, Version 2.0 and MIT License'
 __copyright__ = 'Copyright 2015 Stratos Inc. and Orion Labs'
 
@@ -11,24 +8,14 @@ try:
 except ImportError:
     from distutils.core import setup  # pylint: disable=F0401,E0611
 
-
-def publish():
-    """Function for publishing package to pypi."""
-    if sys.argv[-1] == 'publish':
-        os.system('python setup.py sdist upload')
-        sys.exit()
-
-
-publish()
-
 setup(
     name=__title__,
     version=__version__,
-    description='Python GATT Module',
-    author='Greg Albrecht <gba@orionlabs.co',
-    author_email='gba@orionlabs.co',
+    description='Python Bluetooth LE (LowEnergy) and GATT Library',
+    author='Chris Peplin <github@rhubarbtech.com>',
+    author_email='github@rhubarbtech.com',
     packages=find_packages(exclude=("tests", "tests.*")),
-    package_data={'': ['LICENSE', 'NOTICE']},
+    package_data={'': ['LICENSE']},
     license=open('LICENSE').read(),
     long_description=open('README.mkd').read(),
     url='https://github.com/peplin/pygatt',

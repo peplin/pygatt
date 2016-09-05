@@ -103,9 +103,8 @@ logging.getLogger('pygatt').setLevel(logging.DEBUG)
 - Christopher Peplin @peplin https://github.com/peplin/pygatt
 - Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
-- Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
-
-Derived from the work of several others, see NOTICE.
+- Steven Sloboda https://github.com/sloboste
+- Ilya Sukhanov @IlyaSukhanov
 
 ## Releasing to PyPI
 
