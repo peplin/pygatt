@@ -26,15 +26,19 @@ works in Linux.
 
 ## Installation
 
-Install `pygatt` with pip:
+Install `pygatt` with pip from PyPI:
 
-    $ pip install https://github.com/stratosinc/pygatt
+    $ pip install pygatt
 
 The BlueZ backend is not supported by default as it requires `pexpect`, which
 can only be installed in a UNIX-based environment. If you wish to use that
 backend, install the optional dependencies with:
 
     $ pip install pygatt[GATTTOOL]
+
+Install the latest development version of `pygatt` with pip:
+
+    $ pip install git+https://github.com/peplin/pygatt
 
 ## Example Use
 
@@ -96,7 +100,7 @@ logging.getLogger('pygatt').setLevel(logging.DEBUG)
 
 - Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
 - Greg Albrecht @ampledata https://github.com/ampledata/pygatt
-- Christopher Peplin @peplin https://github.com/stratosinc/pygatt
+- Christopher Peplin @peplin https://github.com/peplin/pygatt
 - Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
 - Steven Sloboda <sloboste@umich.edu> https://github.com/sloboste
