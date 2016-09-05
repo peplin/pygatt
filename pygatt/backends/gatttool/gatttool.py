@@ -86,10 +86,10 @@ class GATTToolReceiver(threading.Thread):
             event["callback"] = None
 
     def run(self):
-        items = [
+        items = sorted([
             (event["pattern"], event)
             for event in self._event_vector.values()
-        ]
+        ])
         patterns = [item[0] for item in items]
         events = [item[1] for item in items]
 
@@ -397,7 +397,16 @@ class GATTToolBackend(BLEBackend):
 
     def _handle_notification_string(self, event):
         msg = event["after"]
-        hex_handle, _, hex_values = msg.strip().split(None, 5)[3:]
+        if not msg:
+            log.warn("Blank message received in notification, ignored")
+            return
+
+        split_msg = msg.strip().split(None, 5)
+        if len(split_msg) < 6:
+            log.warn("Unable to parse notification string, ignoring: %s", msg)
+            return
+
+        hex_handle, _, hex_values = split_msg[3:]
         handle = int(hex_handle, 16)
         values = bytearray(hex_values.replace(" ", "").decode("hex"))
         if self._connected_device is not None:
