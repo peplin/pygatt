@@ -8,6 +8,11 @@ from uuid import UUID
 
 from . import exceptions
 
+try:
+    string_type = basestring
+except NameError:
+    string_type = str
+
 log = logging.getLogger(__name__)
 
 
@@ -177,7 +182,7 @@ class BLEDevice(object):
         :type uuid: str
         :return: None if the UUID was not found.
         """
-        if isinstance(char_uuid, basestring):
+        if isinstance(char_uuid, string_type):
             char_uuid = UUID(char_uuid)
         log.debug("Looking up handle for characteristic %s", char_uuid)
         if char_uuid not in self._characteristics:
