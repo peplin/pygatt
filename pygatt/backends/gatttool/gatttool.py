@@ -23,6 +23,15 @@ from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
 
+if hasattr(bytes, 'fromhex'):
+    # Python 3.
+    def _hex_value_parser(x):
+        return bytearray.fromhex(x.decode('utf8'))
+else:
+    # Python 2.7
+    def _hex_value_parser(x):
+        return bytearray.fromhex(x)
+
 
 def at_most_one_device(func):
     """Every connection-specific function on the backend takes an instance of
@@ -408,7 +417,7 @@ class GATTToolBackend(BLEBackend):
 
         hex_handle, _, hex_values = split_msg[3:]
         handle = int(hex_handle, 16)
-        values = bytearray(hex_values.replace(" ", "").decode("hex"))
+        values = _hex_value_parser(hex_values)
         if self._connected_device is not None:
             self._connected_device.receive_notification(handle, values)
 
