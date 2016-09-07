@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 if hasattr(bytes, 'fromhex'):
     # Python 3.
     def _hex_value_parser(x):
-        return bytearray.fromhex(x.decode('utf8'))
+        return bytes.fromhex(x)
 else:
     # Python 2.7
     def _hex_value_parser(x):
@@ -311,7 +311,7 @@ class GATTToolBackend(BLEBackend):
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
                 address_type='public'):
-        log.info('Connecting with timeout=%s', timeout)
+        log.info('Connecting to %s with timeout=%s', address, timeout)
         self.sendline('sec-level low')
         self._address = address
 

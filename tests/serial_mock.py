@@ -31,14 +31,14 @@ class SerialMock(object):
             try:
                 self._active_packet = self._output_queue.get_nowait()
             except queue.Empty:
-                # When no bytes to read, serial.read() returns empty byte string
-                return b''
+                # When no bytes to read, serial.read() returns empty bytes
+                return bytes()
         read_byte = self._active_packet[0]
         if len(self._active_packet) == 1:  # we read the last byte
             self._active_packet = None
         else:
             self._active_packet = self._active_packet[1:]
-        return read_byte
+        return bytearray([read_byte])
 
     def stage_output(self, next_output):
-        self._output_queue.put(next_output)
+        self._output_queue.put(bytearray(next_output))
