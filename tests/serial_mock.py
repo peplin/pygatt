@@ -1,4 +1,8 @@
-import Queue
+# for Python 2/3 compatibility
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 
 class SerialMock(object):
@@ -9,9 +13,9 @@ class SerialMock(object):
         self._isOpen = True
         self._port = port
         self._timeout = timeout
-        self._output_queue = Queue.Queue()
+        self._output_queue = queue.Queue()
         self._active_packet = None
-        self._expected_input_queue = Queue.Queue()
+        self._expected_input_queue = queue.Queue()
 
     def open(self):
         self._isOpen = True
@@ -26,7 +30,7 @@ class SerialMock(object):
         if self._active_packet is None:
             try:
                 self._active_packet = self._output_queue.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 # When no bytes to read, serial.read() returns empty byte string
                 return b''
         read_byte = self._active_packet[0]

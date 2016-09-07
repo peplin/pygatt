@@ -1,11 +1,13 @@
 from __future__ import print_function
 
+
 # for Python 2/3 compatibility
-import logging
 try:
     import queue
-except:
+except ImportError:
     import Queue as queue
+
+import logging
 import serial
 import time
 import threading
