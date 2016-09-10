@@ -7,7 +7,7 @@ import pygatt
 YOUR_DEVICE_ADDRESS = "11:22:33:44:55:66"
 # Many devices, e.g. Fitbit, use random addressing - this is required to
 # connect.
-ADDRESS_TYPE = "random"
+ADDRESS_TYPE = pygatt.BLEAddressType.random
 
 adapter = pygatt.GATTToolBackend()
 adapter.start()

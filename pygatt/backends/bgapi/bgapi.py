@@ -17,7 +17,7 @@ from enum import Enum
 from collections import defaultdict
 
 from pygatt.exceptions import NotConnectedError
-from pygatt.backends import BLEBackend, Characteristic
+from pygatt.backends import BLEBackend, Characteristic, BLEAddressType
 from pygatt.util import uuid16_to_uuid
 
 from . import bglib, constants
@@ -270,8 +270,7 @@ class BGAPIBackend(BLEBackend):
         return devices
 
     def connect(self, address, timeout=5,
-                addr_type=constants.ble_address_type[
-                    'gap_address_type_public'],
+                address_type=BLEAddressType.public,
                 interval_min=60, interval_max=76, supervision_timeout=100,
                 latency=0):
         """
@@ -282,7 +281,7 @@ class BGAPIBackend(BLEBackend):
 
         address -- a bytearray containing the device mac address.
         timeout -- number of seconds to wait before returning if not connected.
-        addr_type -- one of the ble_address_type constants.
+        address_type -- one of BLEAddressType's values, either public or random.
 
         Raises BGAPIError or NotConnectedError on failure.
         """
@@ -295,6 +294,12 @@ class BGAPIBackend(BLEBackend):
         log.info("Connecting to device at address %s (timeout %ds)",
                  address, timeout)
         self.set_bondable(False)
+
+        if address_type == BLEAddressType.public:
+            addr_type = constants.ble_address_type['gap_address_type_public']
+        else:
+            addr_type = constants.ble_address_type['gap_address_type_random']
+
         self.send_command(
             CommandBuilder.gap_connect_direct(
                 address_bytes, addr_type, interval_min, interval_max,

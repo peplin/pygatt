@@ -1,8 +1,12 @@
 import logging
 
+from enum import Enum
+
 log = logging.getLogger(__name__)
 
 DEFAULT_CONNECT_TIMEOUT_S = 5.0
+
+BLEAddressType = Enum('BLEAddressType', 'public random')
 
 
 class BLEBackend(object):
