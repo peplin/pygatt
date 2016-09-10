@@ -123,5 +123,6 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def discover_characteristics(self):
-        self._characteristics = self._backend.discover_characteristics(self._handle)
+        self._characteristics = self._backend.discover_characteristics(
+            self._handle)
         return self._characteristics

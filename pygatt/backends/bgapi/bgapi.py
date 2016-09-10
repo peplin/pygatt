@@ -224,7 +224,8 @@ class BGAPIBackend(BLEBackend):
             self.expect(ResponsePacketType.sm_delete_bonding)
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
-             discover_mode=constants.gap_discover_mode['observation'], **kwargs):
+             discover_mode=constants.gap_discover_mode['observation'],
+             **kwargs):
         """
         Perform a scan to discover BLE devices.
 
