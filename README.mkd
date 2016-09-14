@@ -34,7 +34,7 @@ The BlueZ backend is not supported by default as it requires `pexpect`, which
 can only be installed in a UNIX-based environment. If you wish to use that
 backend, install the optional dependencies with:
 
-    $ pip install pygatt[GATTTOOL]
+    $ pip install "pygatt[GATTTOOL]"
 
 Install the latest development version of `pygatt` with pip:
 
