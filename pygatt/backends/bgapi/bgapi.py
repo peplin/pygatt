@@ -127,6 +127,27 @@ class BGAPIBackend(BLEBackend):
 
         self._ser = serial.Serial(self._serial_port, baudrate=115200,
                                   timeout=0.25)
+
+        # Blow everything away and start anew.
+        # Only way to be sure is to burn it down and start again. (Aka reset remote state machine)
+        # Note: Could make this a conditional based on parameter if this
+        # happens to be too slow on some systems.
+
+        # The zero param just means we want to do a normal restart instead of 
+        # starting a firmware update restart.
+        self.send_command(CommandBuilder.system_reset(0))
+
+        self._ser.flush()
+        self._ser.close()
+        self._ser = None
+        while self._ser == None :
+            try:
+                self._ser = serial.Serial(self._serial_port, baudrate=115200,
+                                          timeout=0.25)
+            except serial.serialutil.SerialException as e :
+                log.debug("Trying to open serial port after restart.")
+                time.sleep(0.25)
+
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
 
@@ -134,11 +155,13 @@ class BGAPIBackend(BLEBackend):
         self._running.set()
         self._receiver.start()
 
+        # Sanity check that the system believes
+        # that it just awoke from a restart.
+        self.expect(EventPacketType.system_boot)
+
         self.disable_advertising()
 
         self.set_bondable(False)
-
-        # TODO should disconnect from anything so we are in a clean slate
 
         # Stop any ongoing procedure
         log.debug("Stopping any outstanding GAP procedure")
