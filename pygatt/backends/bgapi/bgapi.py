@@ -297,30 +297,41 @@ class BGAPIBackend(BLEBackend):
                 address_bytes, addr_type, interval_min, interval_max,
                 supervision_timeout, latency))
 
-        self.expect(ResponsePacketType.gap_connect_direct)
-        try:
-            _, packet = self.expect(EventPacketType.connection_status,
-                                    timeout=timeout)
-            # TODO what do we do if the status isn't 'connected'? Retry? Raise
-            # an exception? Should also check the address matches the expected
-            # TODO i'm finding that when reconnecting to the same MAC, we geta
-            # conneciotn status of "disconnected" but that is picked up here as
-            # "connected", then we don't get anything else.
-            if self._connection_status_flag(
-                    packet['flags'],
-                    constants.connection_status_flag['connected']):
-                device = BGAPIBLEDevice(bgapi_address_to_hex(packet['address']),
-                                        packet['connection_handle'],
-                                        self)
+        try :
+            self.expect(ResponsePacketType.gap_connect_direct)
+        except ExpectedResponseTimeout:
+            # If the connection doesn't occur because the device isn't there
+            # then you should manually stop the command.
+            self.send_command(CommandBuilder.gap_end_procedure())
+            self.expect(ResponsePacketType.gap_end_procedure)
+        else :
+            try:
+                _, packet = self.expect(EventPacketType.connection_status,
+                                        timeout=timeout)
+                # TODO what do we do if the status isn't 'connected'? Retry? Raise
+                # an exception? Should also check the address matches the expected
+                # TODO i'm finding that when reconnecting to the same MAC, we geta
+                # connection status of "disconnected" but that is picked up here as
+                # "connected", then we don't get anything else.
                 if self._connection_status_flag(
                         packet['flags'],
-                        constants.connection_status_flag['encrypted']):
-                    device.encrypted = True
-                self._connections[packet['connection_handle']] = device
-                log.info("Connected to %s", address)
-                return device
-        except ExpectedResponseTimeout:
-            raise NotConnectedError()
+                        constants.connection_status_flag['connected']):
+                    device = BGAPIBLEDevice(bgapi_address_to_hex(packet['address']),
+                                            packet['connection_handle'],
+                                            self)
+                    if self._connection_status_flag(
+                            packet['flags'],
+                            constants.connection_status_flag['encrypted']):
+                        device.encrypted = True
+                    self._connections[packet['connection_handle']] = device
+                    log.info("Connected to %s", address)
+                    return device
+            except ExpectedResponseTimeout:
+                # If the connection doesn't occur because the device isn't there
+                # then you should manually stop the command.
+                self.send_command(CommandBuilder.gap_end_procedure())
+                self.expect(ResponsePacketType.gap_end_procedure)
+                raise NotConnectedError()
 
     def discover_characteristics(self, connection_handle):
         att_handle_start = 0x0001  # first valid handle
