@@ -129,22 +129,23 @@ class BGAPIBackend(BLEBackend):
                                   timeout=0.25)
 
         # Blow everything away and start anew.
-        # Only way to be sure is to burn it down and start again. (Aka reset remote state machine)
+        # Only way to be sure is to burn it down and start again.
+        # (Aka reset remote state machine)
         # Note: Could make this a conditional based on parameter if this
         # happens to be too slow on some systems.
 
-        # The zero param just means we want to do a normal restart instead of 
+        # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
         self.send_command(CommandBuilder.system_reset(0))
 
         self._ser.flush()
         self._ser.close()
         self._ser = None
-        while self._ser == None :
+        while self._ser is None:
             try:
                 self._ser = serial.Serial(self._serial_port, baudrate=115200,
                                           timeout=0.25)
-            except serial.serialutil.SerialException as e :
+            except serial.serialutil.SerialException:
                 log.debug("Trying to open serial port after restart.")
                 time.sleep(0.25)
 
@@ -320,14 +321,14 @@ class BGAPIBackend(BLEBackend):
                 address_bytes, addr_type, interval_min, interval_max,
                 supervision_timeout, latency))
 
-        try :
+        try:
             self.expect(ResponsePacketType.gap_connect_direct)
         except ExpectedResponseTimeout:
             # If the connection doesn't occur because the device isn't there
             # then you should manually stop the command.
             self.send_command(CommandBuilder.gap_end_procedure())
             self.expect(ResponsePacketType.gap_end_procedure)
-        else :
+        else:
             try:
                 _, packet = self.expect(EventPacketType.connection_status,
                                         timeout=timeout)
@@ -339,9 +340,10 @@ class BGAPIBackend(BLEBackend):
                 if self._connection_status_flag(
                         packet['flags'],
                         constants.connection_status_flag['connected']):
-                    device = BGAPIBLEDevice(bgapi_address_to_hex(packet['address']),
-                                            packet['connection_handle'],
-                                            self)
+                    device = BGAPIBLEDevice(
+                                        bgapi_address_to_hex(packet['address']),
+                                        packet['connection_handle'],
+                                        self)
                     if self._connection_status_flag(
                             packet['flags'],
                             constants.connection_status_flag['encrypted']):
