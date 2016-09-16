@@ -22,6 +22,9 @@ class SerialMock(object):
     def write(self, input_data):
         pass
 
+    def flush(self):
+        pass
+
     def read(self):
         if self._active_packet is None:
             try:
