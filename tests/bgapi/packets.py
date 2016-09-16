@@ -118,6 +118,12 @@ class BGAPIPacketBuilder(object):
                     bond, b''.join(chr(i) for i in data))
 
     @staticmethod
+    def system_boot():
+        (major_version, minor_version, patch, build, linklayer_ver, protocol_ver, hw_ver ) = (1,2,3,4,5,6,7)
+        return pack('<4B5H2B', 0x80, 0x0C, 0x00, 0x00, major_version, minor_version,
+                    patch, build, linklayer_ver, protocol_ver, hw_ver)
+
+    @staticmethod
     def sm_bond_status(bond_handle, keysize, mitm, keys):
         return pack('<4B4B', 0x80, 0x04, 0x05, 0x04, bond_handle, keysize, mitm,
                     keys)
