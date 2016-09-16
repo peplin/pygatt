@@ -332,10 +332,14 @@ class BGAPIBackend(BLEBackend):
             try:
                 _, packet = self.expect(EventPacketType.connection_status,
                                         timeout=timeout)
-                # TODO what do we do if the status isn't 'connected'? Retry? Raise
-                # an exception? Should also check the address matches the expected
-                # TODO i'm finding that when reconnecting to the same MAC, we geta
-                # connection status of "disconnected" but that is picked up here as
+                # TODO what do we do if the status isn't 'connected'?
+                # Retry? Raise
+                # an exception? Should also check the address matches the
+                # expected
+                # TODO i'm finding that when reconnecting to the same MAC,
+                # we geta
+                # connection status of "disconnected" but that is picked up
+                # here as
                 # "connected", then we don't get anything else.
                 if self._connection_status_flag(
                         packet['flags'],
