@@ -290,6 +290,10 @@ class BGAPIBackend(BLEBackend):
         self._devices_discovered = {}
         return devices
 
+    def _end_procedure(self):
+        self.send_command(CommandBuilder.gap_end_procedure())
+        self.expect(ResponsePacketType.gap_end_procedure)
+
     def connect(self, address, timeout=5,
                 addr_type=constants.ble_address_type[
                     'gap_address_type_public'],
@@ -326,8 +330,7 @@ class BGAPIBackend(BLEBackend):
         except ExpectedResponseTimeout:
             # If the connection doesn't occur because the device isn't there
             # then you should manually stop the command.
-            self.send_command(CommandBuilder.gap_end_procedure())
-            self.expect(ResponsePacketType.gap_end_procedure)
+            self._end_procedure()
         else:
             try:
                 _, packet = self.expect(EventPacketType.connection_status,
@@ -356,10 +359,10 @@ class BGAPIBackend(BLEBackend):
                     log.info("Connected to %s", address)
                     return device
             except ExpectedResponseTimeout:
-                # If the connection doesn't occur because the device isn't there
-                # then you should manually stop the command.
-                self.send_command(CommandBuilder.gap_end_procedure())
-                self.expect(ResponsePacketType.gap_end_procedure)
+                # If we never get the connection status it is likely that it
+                # didn't occur because the device isn't there. If that is true
+                # then we have to manually stop the command.
+                self._end_procedure()
                 raise NotConnectedError()
 
     def discover_characteristics(self, connection_handle):
