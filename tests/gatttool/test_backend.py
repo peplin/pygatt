@@ -51,7 +51,7 @@ class GATTToolBackendTests(unittest.TestCase):
 
     def test_single_byte_notification(self):
         event = {
-            'after': "Notification handle = 0x0024 value: 64"
+            'after': "Notification handle = 0x0024 value: 64".encode("utf8")
         }
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
@@ -63,7 +63,8 @@ class GATTToolBackendTests(unittest.TestCase):
 
     def test_multi_byte_notification(self):
         event = {
-            'after': "Notification handle = 0x0024 value: 64 46 72"
+            'after': (
+                "Notification handle = 0x0024 value: 64 46 72".encode("utf8"))
         }
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
@@ -76,7 +77,7 @@ class GATTToolBackendTests(unittest.TestCase):
 
     def test_malformed_notification(self):
         event = {
-            'after': "Notification handle = 0x0024 value: "
+            'after': "Notification handle = 0x0024 value: ".encode("utf8")
         }
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
