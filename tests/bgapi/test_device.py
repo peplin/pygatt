@@ -33,7 +33,9 @@ class BGAPIDeviceTests(unittest.TestCase):
     def _connect(self):
         self.mock_device.stage_connect_packets(
             self.address, ['connected', 'completed'])
-        return self.backend.connect(self.address_string)
+        device = self.backend.connect(self.address_string)
+        self.assertNotEqual(None, device)
+        return device
 
     def test_disconnect_when_connected(self):
         device = self._connect()

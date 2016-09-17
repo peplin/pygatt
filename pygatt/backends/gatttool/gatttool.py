@@ -17,7 +17,7 @@ except Exception as err:
         print("WARNING:", err, file=sys.stderr)
 
 from pygatt.exceptions import NotConnectedError, BLEError, NotificationTimeout
-from pygatt.backends import BLEBackend, Characteristic
+from pygatt.backends import BLEBackend, Characteristic, BLEAddressType
 from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from .device import GATTToolBLEDevice
 
@@ -310,13 +310,13 @@ class GATTToolBackend(BLEBackend):
         return []
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
-                address_type='public'):
-        log.info('Connecting with timeout=%s', timeout)
+                address_type=BLEAddressType.public):
+        log.info('Connecting to %s with timeout=%s', address, timeout)
         self.sendline('sec-level low')
         self._address = address
 
         try:
-            cmd = 'connect {0} {1}'.format(self._address, address_type)
+            cmd = 'connect {0} {1}'.format(self._address, address_type.name)
             with self._receiver.event("connect", timeout):
                 self.sendline(cmd)
         except NotificationTimeout:

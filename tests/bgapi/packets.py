@@ -76,17 +76,16 @@ class BGAPIPacketBuilder(object):
             connection_handle, att_handle, att_type, value):
         # the first byte of value must be the length of value
         assert((len(value) > 0) and (value[0] == len(value)))
-        return pack('<4BBHB' + str(len(value)) + 's', 0x80, 4 + len(value),
+        return pack('<4BBHB%dB' % len(value), 0x80, 4 + len(value),
                     0x04, 0x05, connection_handle, att_handle, att_type,
-                    b''.join(chr(i) for i in value))
+                    *bytearray(value))
 
     @staticmethod
     def attclient_find_information_found(connection_handle, chr_handle, uuid):
         # the first byte of uuid must be the length of uuid
         assert((len(uuid) > 0) and (uuid[0] == len(uuid)))
-        return pack('<4BBH' + str(len(uuid)) + 's', 0x80, 3 + len(uuid), 0x04,
-                    0x04, connection_handle, chr_handle,
-                    b''.join(chr(i) for i in uuid))
+        return pack('<4BBH%dB' % len(uuid), 0x80, 3 + len(uuid), 0x04,
+                    0x04, connection_handle, chr_handle, *bytearray(uuid))
 
     @staticmethod
     def attclient_procedure_completed(
@@ -112,10 +111,10 @@ class BGAPIPacketBuilder(object):
             rssi, packet_type, bd_addr, addr_type, bond, data):
         # the first byte of data must be the length of data
         assert((len(data) > 0) and (data[0] == len(data)))
-        return pack('<4Bb9B' + str(len(data)) + 's', 0x80, 10 + len(data),
+        return pack('<4Bb9B%dB' % len(data), 0x80, 10 + len(data),
                     0x06, 0x00, rssi, packet_type, bd_addr[5], bd_addr[4],
                     bd_addr[3], bd_addr[2], bd_addr[1], bd_addr[0], addr_type,
-                    bond, b''.join(chr(i) for i in data))
+                    bond, *data)
 
     @staticmethod
     def system_boot():
