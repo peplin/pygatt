@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 
 BLED112_VENDOR_ID = 0x2458
 BLED112_PRODUCT_ID = 0x0001
+MAX_RECONNECTION_ATTEMPTS = 10
 
 
 UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
@@ -122,16 +123,34 @@ class BGAPIBackend(BLEBackend):
         return detected_devices[0].port_name
 
     def _open_serial_port(self):
+        """
+        Open a connection to the named serial port, or auto-detect the first
+        port matching the BLED device. This will wait until data can actually be
+        read from the connection, so it will not return until the device is
+        fully booted.
+
+        Raises a NotConnectedError if the device cannot connect after 10
+        attempts, with a short pause in between each attempt.
+        """
         serial_port = self._serial_port or self._detect_device_port()
         self._ser = None
-        while self._ser is None:
+        for _ in range(MAX_RECONNECTION_ATTEMPTS):
             try:
+                log.debug("Attempting to connect to serial port after "
+                          "restarting device")
                 self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
+                # Wait until we can actually read from the device
+                self._ser.read()
+                break
             except serial.serialutil.SerialException:
-                log.info("Trying to open serial port after restart.",
-                         exc_info=True)
+                if self._ser:
+                    self._ser.close()
+                self._ser = None
                 time.sleep(0.25)
+        else:
+            raise NotConnectedError("Unable to reconnect with USB "
+                                    "device after rebooting")
 
     def start(self):
         """
@@ -154,10 +173,6 @@ class BGAPIBackend(BLEBackend):
         self.send_command(CommandBuilder.system_reset(0))
         self._ser.flush()
         self._ser.close()
-
-        # Empircally it takes about this amount of time for the device to reset
-        # and for the serial port to be available again.
-        time.sleep(1)
 
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
