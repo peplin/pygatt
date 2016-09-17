@@ -4,8 +4,10 @@ from nose.tools import eq_, ok_
 import unittest
 
 from pygatt.backends import BGAPIBackend
+from pygatt.backends.bgapi.bgapi import bgapi_address_to_hex
 from pygatt.backends.bgapi.util import extract_vid_pid
 from pygatt.backends.bgapi.error_codes import get_return_message
+from pygatt.backends.bgapi import bglib
 
 from .mocker import MockBGAPISerialDevice
 
@@ -100,3 +102,25 @@ class ReturnCodeTests(unittest.TestCase):
 
     def test_unrecognized_return_code(self):
         ok_(get_return_message(123123123123123) is not None)
+
+
+class BGAPIAddressToHexTests(unittest.TestCase):
+
+    def test_convert(self):
+        bgapi_address = bytearray([21, 19, 11, 210, 2, 97])
+        eq_("61:02:D2:0B:13:15", bgapi_address_to_hex(bgapi_address))
+
+
+class DecodePacketTests(unittest.TestCase):
+
+    def setUp(self):
+        self.lib = bglib.BGLib()
+
+    def test_decode_scan_packet(self):
+        data = [128, 34, 6, 0, 166, 0, 21, 19, 11, 210, 2, 97, 1, 255, 23, 2, 1,
+                6, 19, 255, 76, 0, 12, 14, 0, 100, 39, 38, 61, 167, 226, 128,
+                135, 0, 76, 200, 60, 78]
+
+        packet_type, packet = self.lib.decode_packet(data)
+        eq_(bglib.EventPacketType.gap_scan_response, packet_type)
+        eq_(bytearray([21, 19, 11, 210, 2, 97]), packet['sender'])

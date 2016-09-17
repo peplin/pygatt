@@ -40,17 +40,29 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def system_endpoint_tx(endpoint, data):
-        return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 0, 9,
-                    endpoint, len(data), b''.join(chr(i) for i in data))
+        return pack('<4BBB%dB' % len(data), 0, 2 + len(data), 0, 9,
+                    endpoint, len(data), *data)
 
     @staticmethod
     def system_whitelist_append(address, address_type):
-        return pack('<4B6sB', 0, 7, 0, 10, b''.join(chr(i) for i in address),
+        return pack('<4B6BB', 0, 7, 0, 10,
+                    address[0],
+                    address[1],
+                    address[2],
+                    address[3],
+                    address[4],
+                    address[5],
                     address_type)
 
     @staticmethod
     def system_whitelist_remove(address, address_type):
-        return pack('<4B6sB', 0, 7, 0, 11, b''.join(chr(i) for i in address),
+        return pack('<4B6BB', 0, 7, 0, 11,
+                    address[0],
+                    address[1],
+                    address[2],
+                    address[3],
+                    address[4],
+                    address[5],
                     address_type)
 
     @staticmethod
@@ -79,8 +91,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def flash_ps_save(key, value):
-        return pack('<4BHB' + str(len(value)) + 's', 0, 3 + len(value), 1, 3,
-                    key, len(value), b''.join(chr(i) for i in value))
+        return pack('<4BHB%dB' % len(value), 0, 3 + len(value), 1, 3,
+                    key, len(value), *value)
 
     @staticmethod
     def flash_ps_load(key):
@@ -96,13 +108,13 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def flash_write_words(address, words):
-        return pack('<4BHB' + str(len(words)) + 's', 0, 3 + len(words), 1, 7,
-                    address, len(words), b''.join(chr(i) for i in words))
+        return pack('<4BHB%dB' % len(words), 0, 3 + len(words), 1, 7,
+                    address, len(words), *words)
 
     @staticmethod
     def attributes_write(handle, offset, value):
-        return pack('<4BHBB' + str(len(value)) + 's', 0, 4 + len(value), 2, 0,
-                    handle, offset, len(value), b''.join(chr(i) for i in value))
+        return pack('<4BHBB%dB' % len(value), 0, 4 + len(value), 2, 0,
+                    handle, offset, len(value), *value)
 
     @staticmethod
     def attributes_read(handle, offset):
@@ -114,9 +126,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def attributes_user_read_response(connection, att_error, value):
-        return pack('<4BBBB' + str(len(value)) + 's', 0, 3 + len(value), 2, 3,
-                    connection, att_error, len(value),
-                    b''.join(chr(i) for i in value))
+        return pack('<4BBBB%dB' % len(value), 0, 3 + len(value), 2, 3,
+                    connection, att_error, len(value), *value)
 
     @staticmethod
     def attributes_user_write_response(connection, att_error):
@@ -145,9 +156,10 @@ class BGAPICommandPacketBuilder(object):
         return pack('<4BB', 0, 1, 3, 4, connection)
 
     @staticmethod
-    def connection_channel_map_set(connection, map):
-        return pack('<4BBB' + str(len(map)) + 's', 0, 2 + len(map), 3, 5,
-                    connection, len(map), b''.join(chr(i) for i in map))
+    def connection_channel_map_set(connection, channel_map):
+        return pack('<4BBB%dB' % len(channel_map), 0, 2 +
+                    len(channel_map), 3, 5,
+                    connection, len(channel_map), *channel_map)
 
     @staticmethod
     def connection_features_get(connection):
@@ -159,28 +171,25 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def connection_raw_tx(connection, data):
-        return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 3, 8,
-                    connection, len(data), b''.join(chr(i) for i in data))
+        return pack('<4BBB%dB' % len(data), 0, 2 + len(data), 3, 8,
+                    connection, len(data), *data)
 
     @staticmethod
     def attclient_find_by_type_value(connection, start, end, uuid, value):
-        return pack('<4BBHHHB' + str(len(value)) + 's', 0, 8 + len(value), 4, 0,
-                    connection, start, end, uuid, len(value),
-                    b''.join(chr(i) for i in value))
+        return pack('<4BBHHHB%dB' % len(value), 0, 8 + len(value), 4, 0,
+                    connection, start, end, uuid, len(value), *value)
 
     @staticmethod
     def attclient_read_by_group_type(connection, start, end, uuid):
-        return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 1,
-                    connection, start, end, len(uuid),
-                    b''.join(chr(i) for i in uuid))
+        return pack('<4BBHHB%dB' % len(uuid), 0, 6 + len(uuid), 4, 1,
+                    connection, start, end, len(uuid), *uuid)
 
     @staticmethod
     def attclient_read_by_type(connection, start, end, uuid=[0x03, 0x28]):
         # Using the default UUID type to find custom UUIDs, which seems to make
         # querying for characteristics faster.
-        return pack('<4BBHHB' + str(len(uuid)) + 's', 0, 6 + len(uuid), 4, 2,
-                    connection, start, end, len(uuid),
-                    b''.join(chr(i) for i in uuid))
+        return pack('<4BBHHB%dB' % len(uuid), 0, 6 + len(uuid), 4, 2,
+                    connection, start, end, len(uuid), *uuid)
 
     @staticmethod
     def attclient_find_information(connection, start, end):
@@ -192,15 +201,13 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def attclient_attribute_write(connection, atthandle, data):
-        return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 5,
-                    connection, atthandle, len(data),
-                    b''.join(chr(i) for i in data))
+        return pack('<4BBHB%dB' % len(data), 0, 4 + len(data), 4, 5,
+                    connection, atthandle, len(data), *data)
 
     @staticmethod
     def attclient_write_command(connection, atthandle, data):
-        return pack('<4BBHB' + str(len(data)) + 's', 0, 4 + len(data), 4, 6,
-                    connection, atthandle, len(data),
-                    b''.join(chr(i) for i in data))
+        return pack('<4BBHB%dB' % len(data), 0, 4 + len(data), 4, 6,
+                    connection, atthandle, len(data), *data)
 
     @staticmethod
     def attclient_indicate_confirm(connection):
@@ -212,9 +219,9 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def attclient_prepare_write(connection, atthandle, offset, data):
-        return pack('<4BBHHB' + str(len(data)) + 's', 0, 6 + len(data), 4, 9,
+        return pack('<4BBHHB%dB' % len(data), 0, 6 + len(data), 4, 9,
                     connection, atthandle, offset, len(data),
-                    b''.join(chr(i) for i in data))
+                    *data)
 
     @staticmethod
     def attclient_execute_write(connection, commit):
@@ -222,9 +229,10 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def attclient_read_multiple(connection, handles):
-        return pack('<4BBB' + str(len(handles)) + 's', 0, 2 + len(handles), 4,
+        return pack('<4BBB%dB' % len(handles), 0,
+                    2 + len(handles), 4,
                     11, connection, len(handles),
-                    b''.join(chr(i) for i in handles))
+                    *handles)
 
     @staticmethod
     def sm_encrypt_start(handle, bonding):
@@ -252,8 +260,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def sm_set_oob_data(oob):
-        return pack('<4BB' + str(len(oob)) + 's', 0, 1 + len(oob), 5, 6,
-                    len(oob), b''.join(chr(i) for i in oob))
+        return pack('<4BB%dB' % len(oob), 0, 1 + len(oob), 5, 6,
+                    len(oob), *oob)
 
     @staticmethod
     def gap_set_privacy_flags(peripheral_privacy, central_privacy):
@@ -270,8 +278,14 @@ class BGAPICommandPacketBuilder(object):
     @staticmethod
     def gap_connect_direct(address, addr_type, conn_interval_min,
                            conn_interval_max, timeout, latency):
-        return pack('<4B6sBHHHH', 0, 15, 6, 3,
-                    b''.join(reversed([chr(i) for i in address])), addr_type,
+        return pack('<4B6BBHHHH', 0, 15, 6, 3,
+                    address[-1],
+                    address[-2],
+                    address[-3],
+                    address[-4],
+                    address[-5],
+                    address[-6],
+                    addr_type,
                     conn_interval_min, conn_interval_max, timeout, latency)
 
     @staticmethod
@@ -301,13 +315,18 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def gap_set_adv_data(set_scanrsp, adv_data):
-        return pack('<4BBB' + str(len(adv_data)) + 's', 0, 2 + len(adv_data), 6,
-                    9, set_scanrsp, len(adv_data),
-                    b''.join(chr(i) for i in adv_data))
+        return pack('<4BBB%dB' % len(adv_data), 0, 2 + len(adv_data), 6,
+                    9, set_scanrsp, len(adv_data), *adv_data)
 
     @staticmethod
     def gap_set_directed_connectable_mode(address, addr_type):
-        return pack('<4B6sB', 0, 7, 6, 10, b''.join(chr(i) for i in address),
+        return pack('<4B6BB', 0, 7, 6, 10,
+                    address[0],
+                    address[1],
+                    address[2],
+                    address[3],
+                    address[4],
+                    address[5],
                     addr_type)
 
     @staticmethod
@@ -351,8 +370,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def hardware_spi_transfer(channel, data):
-        return pack('<4BBB' + str(len(data)) + 's', 0, 2 + len(data), 7, 9,
-                    channel, len(data), b''.join(chr(i) for i in data))
+        return pack('<4BBB%dB' % len(data), 0, 2 + len(data), 7, 9,
+                    channel, len(data), *data)
 
     @staticmethod
     def hardware_i2c_read(address, stop, length):
@@ -360,8 +379,8 @@ class BGAPICommandPacketBuilder(object):
 
     @staticmethod
     def hardware_i2c_write(address, stop, data):
-        return pack('<4BBBB' + str(len(data)) + 's', 0, 3 + len(data), 7, 11,
-                    address, stop, len(data), b''.join(chr(i) for i in data))
+        return pack('<4BBBB%dB' % len(data), 0, 3 + len(data), 7, 11,
+                    address, stop, len(data), *data)
 
     @staticmethod
     def hardware_set_txpower(power):
@@ -393,6 +412,6 @@ class BGAPICommandPacketBuilder(object):
         return pack('<4B', 0, 0, 8, 4)
 
     @staticmethod
-    def test_debug(input):
-        return pack('<4BB' + str(len(input)) + 's', 0, 1 + len(input), 8, 5,
-                    len(input), b''.join(chr(i) for i in input))
+    def test_debug(data):
+        return pack('<4BB%dB' % len(data), 0, 1 + len(data), 8, 5,
+                    len(data), *data)

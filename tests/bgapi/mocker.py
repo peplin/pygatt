@@ -159,7 +159,7 @@ class MockBGAPISerialDevice(object):
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.attclient_find_information(
                 connection_handle, 0x0000))
-        for i in range(0, len(uuid_handle_list)/2):
+        for i in range(0, len(uuid_handle_list) // 2):
             uuid = uuid_to_bytearray(uuid_handle_list[2*i])
             handle = uuid_handle_list[2*i + 1]
             # Stage ble_evt_attclient_find_information_found
@@ -167,7 +167,7 @@ class MockBGAPISerialDevice(object):
             self.mocked_serial.stage_output(
                 BGAPIPacketBuilder.attclient_find_information_found(
                     connection_handle, handle,
-                    (u+list(reversed([ord(b) for b in uuid])))))
+                    (u+list(reversed(bytes(uuid))))))
         # Stage ble_evt_attclient_procedure_completed (success)
         self.mocked_serial.stage_output(
             BGAPIPacketBuilder.attclient_procedure_completed(
