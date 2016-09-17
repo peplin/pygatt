@@ -120,6 +120,16 @@ class BGAPIBackend(BLEBackend):
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
 
+    def _open_serial_port(self):
+        self._ser = None
+        while self._ser is None:
+            try:
+                self._ser = serial.Serial(self._serial_port, baudrate=115200,
+                                          timeout=0.25)
+            except serial.serialutil.SerialException:
+                log.debug("Trying to open serial port after restart.")
+                time.sleep(0.25)
+
     def start(self):
         """
         Connect to the USB adapter, reset it's state and start a backgroud
@@ -128,8 +138,7 @@ class BGAPIBackend(BLEBackend):
         if self._running and self._running.is_set():
             self.stop()
 
-        self._ser = serial.Serial(self._serial_port, baudrate=115200,
-                                  timeout=0.25)
+        self._open_serial_port()
 
         # Blow everything away and start anew.
         # Only way to be sure is to burn it down and start again.
@@ -143,14 +152,7 @@ class BGAPIBackend(BLEBackend):
 
         self._ser.flush()
         self._ser.close()
-        self._ser = None
-        while self._ser is None:
-            try:
-                self._ser = serial.Serial(self._serial_port, baudrate=115200,
-                                          timeout=0.25)
-            except serial.serialutil.SerialException:
-                log.debug("Trying to open serial port after restart.")
-                time.sleep(0.25)
+        self._open_serial_port()
 
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
