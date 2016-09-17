@@ -72,5 +72,10 @@ class BLEDeviceTest(unittest.TestCase):
         ok_(not callback.called)
 
     def test_unicode_get_handle(self):
+        try:
+            string_type = unicode
+        except NameError:
+            string_type = str
+
         for chars in self.device.discover_characteristics().values():
-            self.device.get_handle(unicode(chars.uuid))
+            self.device.get_handle(string_type(chars.uuid))

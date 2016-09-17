@@ -27,7 +27,6 @@ class BGAPIBLEDevice(BLEDevice):
         super(BGAPIBLEDevice, self).__init__(address)
         self._handle = handle
         self._backend = backend
-        self._characteristics = {}
 
     @connection_required
     def bond(self, permanent=False):
@@ -124,4 +123,6 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def discover_characteristics(self):
-        return self._backend.discover_characteristics(self._handle)
+        self._characteristics = self._backend.discover_characteristics(
+            self._handle)
+        return self._characteristics

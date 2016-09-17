@@ -331,31 +331,38 @@ class BGLib(object):
         """
         ser.write(packet)
 
-    def parse_byte(self, byte):
+    def parse_byte(self, new_byte):
         """
         Re-build packets read in from bytes over serial one byte at a time.
 
-        byte -- the next byte to add to the packet.
+        new_byte -- the next bytes to add to the packet.
 
         Returns a list of the bytes in the packet once a full packet is read.
         Returns None otherwise.
         """
+        if new_byte is None or len(new_byte) == 0:
+            return None
+
+        # Convert from str or bytes to an integer for comparison
+        new_byte = ord(new_byte)
+
         if (len(self.buffer) == 0 and
-            (byte == self._ble_event or byte == self._ble_response or
-             byte == self._wifi_event or byte == self._wifi_response)):
-            self.buffer.append(byte)
+                new_byte in [self._ble_event, self._ble_response,
+                             self._wifi_event, self._wifi_response]):
+            self.buffer.append(new_byte)
         elif len(self.buffer) == 1:
-            self.buffer.append(byte)
-            self.expected_length = 4 +\
-                (self.buffer[0] & 0x07) + self.buffer[1]
+            self.buffer.append(new_byte)
+            self.expected_length = (
+                4 + (self.buffer[0] & 0x07) + self.buffer[1])
         elif len(self.buffer) > 1:
-            self.buffer.append(byte)
+            self.buffer.append(new_byte)
 
         if (self.expected_length > 0 and
                 len(self.buffer) == self.expected_length):
             packet = self.buffer
             self.buffer = []
             return packet
+
         return None
 
     def _decode_response_packet(self, packet_class, packet_command, payload,
@@ -368,8 +375,7 @@ class BGLib(object):
 
         response = {}
         if packet_type == ResponsePacketType.system_address_get:
-            address = unpack('<6s', payload[:6])[0]
-            address = [ord(b) for b in address]
+            address = unpack('<6B', payload[:6])
             response = {
                 'address': address
             }
@@ -392,9 +398,8 @@ class BGLib(object):
                 'maxconn': maxconn
             }
         elif packet_type == ResponsePacketType.system_read_memory:
-            address, data_len =\
-                unpack('<IB', payload[:5])
-            data_data = [ord(b) for b in payload[5:]]
+            address, data_len = unpack('<IB', payload[:5])
+            data_data = bytearray(payload[5:])
             response = {
                 'address': address, 'data': data_data
             }
@@ -443,14 +448,14 @@ class BGLib(object):
         elif packet_type == ResponsePacketType.system_endpoint_rx:
             result, data_len =\
                 unpack('<HB', payload[:3])
-            data_data = [ord(b) for b in payload[3:]]
+            data_data = bytearray(payload[3:])
             response = {
                 'result': result, 'data': data_data
             }
         elif packet_type == ResponsePacketType.flash_ps_load:
             result, value_len = unpack('<HB',
                                        payload[:3])
-            value_data = [ord(b) for b in payload[3:]]
+            value_data = bytearray(payload[3:])
             response = {
                 'result': result, 'value': value_data
             }
@@ -458,7 +463,7 @@ class BGLib(object):
             handle, offset, result, value_len = unpack(
                 '<HHHB', payload[:7]
             )
-            value_data = [ord(b) for b in payload[7:]]
+            value_data = bytearray(payload[7:])
             response = {
                 'handle': handle, 'offset': offset,
                 'result': result, 'value': value_data
@@ -467,7 +472,7 @@ class BGLib(object):
             handle, result, value_len = unpack(
                 '<HHB', payload[:5]
             )
-            value_data = [ord(b) for b in payload[5:]]
+            value_data = bytearray(payload[5:])
             response = {
                 'handle': handle, 'result': result,
                 'value': value_data
@@ -507,7 +512,7 @@ class BGLib(object):
             connection, map_len = unpack(
                 '<BB', payload[:2]
             )
-            map_data = [ord(b) for b in payload[2:]]
+            map_data = bytearray(payload[2:])
             response = {
                 'connection_handle': connection, 'map': map_data
             }
@@ -560,7 +565,7 @@ class BGLib(object):
             result, channel, data_len = unpack(
                 '<HBB', payload[:4]
             )
-            data_data = [ord(b) for b in payload[4:]]
+            data_data = bytearray(payload[4:])
             response = {
                 'result': result, 'channel': channel,
                 'data': data_data
@@ -569,7 +574,7 @@ class BGLib(object):
             result, data_len = unpack(
                 '<HB', payload[:3]
             )
-            data_data = [ord(b) for b in payload[3:]]
+            data_data = bytearray(payload[3:])
             response = {
                 'result': result, 'data': data_data
             }
@@ -582,16 +587,14 @@ class BGLib(object):
             # channel_map_len = unpack(
             #    '<B', payload[:1]
             # )[0]
-            channel_map_data =\
-                [ord(b) for b in payload[1:]]
+            channel_map_data = bytearray(payload[1:])
             response = {
                 'channel_map': channel_map_data
             }
         elif packet_type == ResponsePacketType.test_debug:
             # output_len = unpack('<B',
             #                     payload[:1])[0]
-            output_data =\
-                [ord(b) for b in payload[1:]]
+            output_data = bytearray(payload[1:])
             response = {
                 'output': output_data
             }
@@ -616,7 +619,7 @@ class BGLib(object):
             }
         elif packet_type == EventPacketType.system_debug:
             data_len = unpack('<B', payload[:1])[0]
-            data_data = [ord(b) for b in payload[1:]]
+            data_data = bytearray(payload[1:])
             response = {
                 'data': data_data
             }
@@ -640,7 +643,7 @@ class BGLib(object):
             key, value_len = unpack(
                 '<HB', payload[:3]
             )
-            value_data = [ord(b) for b in payload[3:]]
+            value_data = bytearray(payload[3:])
             response = {
                 'key': key, 'value': value_data
             }
@@ -648,7 +651,7 @@ class BGLib(object):
             connection, reason, handle, offset, value_len = unpack(
                 '<BBHHB', payload[:7]
             )
-            value_data = [ord(b) for b in payload[7:]]
+            value_data = bytearray(payload[7:])
             response = {
                 'connection_handle': connection, 'reason': reason,
                 'handle': handle, 'offset': offset,
@@ -668,8 +671,8 @@ class BGLib(object):
                 'handle': handle, 'flags': flags
             }
         elif packet_type == EventPacketType.connection_status:
-            data = unpack('<BB6sBHHHB', payload[:16])
-            address = [ord(b) for b in data[2]]
+            data = unpack('<BB6BBHHHB', payload[:16])
+            address = data[2:8]
             response = {
                 'connection_handle': data[0], 'flags': data[1],
                 'address': address, 'address_type': data[3],
@@ -688,8 +691,7 @@ class BGLib(object):
             connection, features_len = unpack(
                 '<BB', payload[:2]
             )
-            features_data =\
-                [ord(b) for b in payload[2:]]
+            features_data = bytearray(payload[2:])
             response = {
                 'connection_handle': connection, 'features': features_data
             }
@@ -697,7 +699,7 @@ class BGLib(object):
             connection, data_len = unpack(
                 '<BB', payload[:2]
             )
-            data_data = [ord(b) for b in payload[2:]]
+            data_data = bytearray(payload[2:])
             response = {
                 'connection_handle': connection, 'data': data_data
             }
@@ -727,14 +729,14 @@ class BGLib(object):
             connection, start, end, uuid_len = unpack(
                 '<BHHB', payload[:6]
             )
-            uuid_data = [ord(b) for b in payload[6:]]
+            uuid_data = bytearray(payload[6:])
             response = {
                 'connection_handle': connection, 'start': start,
                 'end': end, 'uuid': uuid_data
             }
         elif packet_type == EventPacketType.attclient_attribute_found:
             data = unpack('<BHHBB', payload[:7])
-            uuid_data = [ord(b) for b in payload[7:]]
+            uuid_data = bytearray(payload[7:])
             response = {
                 'connection_handle': data[0], 'chrdecl': data[1],
                 'value': data[2], 'properties': data[3],
@@ -744,7 +746,7 @@ class BGLib(object):
             connection, chrhandle, uuid_len = unpack(
                 '<BHB', payload[:4]
             )
-            uuid_data = [ord(b) for b in payload[4:]]
+            uuid_data = bytearray(payload[4:])
             response = {
                 'connection_handle': connection, 'chrhandle': chrhandle,
                 'uuid': uuid_data
@@ -753,7 +755,7 @@ class BGLib(object):
             connection, atthandle, type, value_len = unpack(
                 '<BHBB', payload[:5]
             )
-            value_data = [ord(b) for b in payload[5:]]
+            value_data = bytearray(payload[5:])
             response = {
                 'connection_handle': connection, 'atthandle': atthandle,
                 'type': type, 'value': value_data
@@ -762,8 +764,7 @@ class BGLib(object):
             connection, handles_len = unpack(
                 '<BB', payload[:2]
             )
-            handles_data =\
-                [ord(b) for b in payload[2:]]
+            handles_data = bytearray(payload[2:])
             response = {
                 'connection_handle': connection, 'handles': handles_data
             }
@@ -771,7 +772,7 @@ class BGLib(object):
             handle, packet, data_len = unpack(
                 '<BBB', payload[:3]
             )
-            data_data = [ord(b) for b in payload[3:]]
+            data_data = bytearray(payload[3:])
             response = {
                 'handle': handle, 'packet': packet,
                 'data': data_data
@@ -804,13 +805,13 @@ class BGLib(object):
                 'keys': keys
             }
         elif packet_type == EventPacketType.gap_scan_response:
-            data = unpack('<bB6sBBB', payload[:11])
-            sender = [ord(b) for b in data[2]]
-            data_data = [ord(b) for b in payload[11:]]
+            data = unpack('<bB6BBBB', payload[:11])
+            sender = bytearray(data[2:8])
+            data_data = bytearray(payload[11:])
             response = {
                 'rssi': data[0], 'packet_type': data[1],
-                'sender': sender, 'address_type': data[3],
-                'bond': data[4], 'data': data_data
+                'sender': sender, 'address_type': data[9],
+                'bond': data[10], 'data': data_data
             }
         elif packet_type == EventPacketType.gap_mode_changed:
             discover, connect = unpack(
@@ -861,7 +862,7 @@ class BGLib(object):
         packet_id, payload_length, packet_class, packet_command = packet[:4]
         # TODO we are not parsing out the high bits of the payload length from
         # the first byte
-        payload = b''.join(chr(i) for i in packet[4:])
+        payload = bytearray(packet[4:])
         message_type = packet_id & 0x88
         if message_type == 0:
             return self._decode_response_packet(
