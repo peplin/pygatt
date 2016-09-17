@@ -71,15 +71,6 @@ class BGAPIBackend(BLEBackend):
             USB interface. If not provided, will attempt to auto-detect.
         """
         self._lib = bglib.BGLib()
-        if serial_port is None:
-            log.info("Auto-discovering serial port for BLED112")
-            detected_devices = find_usb_serial_devices(
-                vendor_id=BLED112_VENDOR_ID,
-                product_id=BLED112_PRODUCT_ID)
-            if len(detected_devices) > 0:
-                serial_port = detected_devices[0].port_name
-            else:
-                raise BGAPIError("Unable to auto-detect BLED112 serial port")
         self._serial_port = serial_port
 
         self._ser = None
@@ -120,14 +111,26 @@ class BGAPIBackend(BLEBackend):
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
 
+    def _detect_device_port(self):
+        log.info("Auto-discovering serial port for BLED112")
+        detected_devices = find_usb_serial_devices(
+            vendor_id=BLED112_VENDOR_ID,
+            product_id=BLED112_PRODUCT_ID)
+        if len(detected_devices) == 0:
+            raise BGAPIError("Unable to auto-detect BLED112 serial port")
+
+        return detected_devices[0].port_name
+
     def _open_serial_port(self):
+        serial_port = self._serial_port or self._detect_device_port()
         self._ser = None
         while self._ser is None:
             try:
-                self._ser = serial.Serial(self._serial_port, baudrate=115200,
+                self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
             except serial.serialutil.SerialException:
-                log.debug("Trying to open serial port after restart.")
+                log.info("Trying to open serial port after restart.",
+                         exc_info=True)
                 time.sleep(0.25)
 
     def start(self):
@@ -149,11 +152,14 @@ class BGAPIBackend(BLEBackend):
         # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
         self.send_command(CommandBuilder.system_reset(0))
-
         self._ser.flush()
         self._ser.close()
-        self._open_serial_port()
 
+        # Empircally it takes about this amount of time for the device to reset
+        # and for the serial port to be available again.
+        time.sleep(1)
+
+        self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
 
@@ -161,12 +167,7 @@ class BGAPIBackend(BLEBackend):
         self._running.set()
         self._receiver.start()
 
-        # Sanity check that the system believes
-        # that it just awoke from a restart.
-        self.expect(EventPacketType.system_boot)
-
         self.disable_advertising()
-
         self.set_bondable(False)
 
         # Stop any ongoing procedure
