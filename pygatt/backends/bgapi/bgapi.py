@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 
 BLED112_VENDOR_ID = 0x2458
 BLED112_PRODUCT_ID = 0x0001
+MAX_RECONNECTION_ATTEMPTS = 10
 
 
 UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
@@ -71,15 +72,6 @@ class BGAPIBackend(BLEBackend):
             USB interface. If not provided, will attempt to auto-detect.
         """
         self._lib = bglib.BGLib()
-        if serial_port is None:
-            log.info("Auto-discovering serial port for BLED112")
-            detected_devices = find_usb_serial_devices(
-                vendor_id=BLED112_VENDOR_ID,
-                product_id=BLED112_PRODUCT_ID)
-            if len(detected_devices) > 0:
-                serial_port = detected_devices[0].port_name
-            else:
-                raise BGAPIError("Unable to auto-detect BLED112 serial port")
         self._serial_port = serial_port
 
         self._ser = None
@@ -120,6 +112,46 @@ class BGAPIBackend(BLEBackend):
 
         log.info("Initialized new BGAPI backend on %s", serial_port)
 
+    def _detect_device_port(self):
+        log.info("Auto-discovering serial port for BLED112")
+        detected_devices = find_usb_serial_devices(
+            vendor_id=BLED112_VENDOR_ID,
+            product_id=BLED112_PRODUCT_ID)
+        if len(detected_devices) == 0:
+            raise BGAPIError("Unable to auto-detect BLED112 serial port")
+
+        return detected_devices[0].port_name
+
+    def _open_serial_port(self):
+        """
+        Open a connection to the named serial port, or auto-detect the first
+        port matching the BLED device. This will wait until data can actually be
+        read from the connection, so it will not return until the device is
+        fully booted.
+
+        Raises a NotConnectedError if the device cannot connect after 10
+        attempts, with a short pause in between each attempt.
+        """
+        serial_port = self._serial_port or self._detect_device_port()
+        self._ser = None
+        for _ in range(MAX_RECONNECTION_ATTEMPTS):
+            try:
+                log.debug("Attempting to connect to serial port after "
+                          "restarting device")
+                self._ser = serial.Serial(serial_port, baudrate=115200,
+                                          timeout=0.25)
+                # Wait until we can actually read from the device
+                self._ser.read()
+                break
+            except serial.serialutil.SerialException:
+                if self._ser:
+                    self._ser.close()
+                self._ser = None
+                time.sleep(0.25)
+        else:
+            raise NotConnectedError("Unable to reconnect with USB "
+                                    "device after rebooting")
+
     def start(self):
         """
         Connect to the USB adapter, reset it's state and start a backgroud
@@ -128,8 +160,7 @@ class BGAPIBackend(BLEBackend):
         if self._running and self._running.is_set():
             self.stop()
 
-        self._ser = serial.Serial(self._serial_port, baudrate=115200,
-                                  timeout=0.25)
+        self._open_serial_port()
 
         # Blow everything away and start anew.
         # Only way to be sure is to burn it down and start again.
@@ -140,18 +171,10 @@ class BGAPIBackend(BLEBackend):
         # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
         self.send_command(CommandBuilder.system_reset(0))
-
         self._ser.flush()
         self._ser.close()
-        self._ser = None
-        while self._ser is None:
-            try:
-                self._ser = serial.Serial(self._serial_port, baudrate=115200,
-                                          timeout=0.25)
-            except serial.serialutil.SerialException:
-                log.debug("Trying to open serial port after restart.")
-                time.sleep(0.25)
 
+        self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
 
@@ -159,12 +182,7 @@ class BGAPIBackend(BLEBackend):
         self._running.set()
         self._receiver.start()
 
-        # Sanity check that the system believes
-        # that it just awoke from a restart.
-        self.expect(EventPacketType.system_boot)
-
         self.disable_advertising()
-
         self.set_bondable(False)
 
         # Stop any ongoing procedure
@@ -336,45 +354,39 @@ class BGAPIBackend(BLEBackend):
 
         try:
             self.expect(ResponsePacketType.gap_connect_direct)
+            _, packet = self.expect(EventPacketType.connection_status,
+                                    timeout=timeout)
+            # TODO what do we do if the status isn't 'connected'? Retry?
+            # Raise an exception? Should also check the address matches the
+            # expected TODO i'm finding that when reconnecting to the same
+            # MAC, we geta conneciotn status of "disconnected" but that is
+            # picked up here as "connected", then we don't get anything
+            # else.
+            if self._connection_status_flag(
+                    packet['flags'],
+                    constants.connection_status_flag['connected']):
+                device = BGAPIBLEDevice(
+                    bgapi_address_to_hex(packet['address']),
+                    packet['connection_handle'],
+                    self)
+                if self._connection_status_flag(
+                        packet['flags'],
+                        constants.connection_status_flag['encrypted']):
+                    device.encrypted = True
+                self._connections[packet['connection_handle']] = device
+                log.info("Connected to %s", address)
+                return device
         except ExpectedResponseTimeout:
             # If the connection doesn't occur because the device isn't there
             # then you should manually stop the command.
+            #
+            # If we never get the connection status it is likely that it
+            # didn't occur because the device isn't there. If that is true
+            # then we have to manually stop the command.
             self._end_procedure()
-        else:
-            try:
-                _, packet = self.expect(EventPacketType.connection_status,
-                                        timeout=timeout)
-                # TODO what do we do if the status isn't 'connected'?
-                # Retry? Raise
-                # an exception? Should also check the address matches the
-                # expected
-                # TODO i'm finding that when reconnecting to the same MAC,
-                # we geta
-                # connection status of "disconnected" but that is picked up
-                # here as
-                # "connected", then we don't get anything else.
-                if self._connection_status_flag(
-                        packet['flags'],
-                        constants.connection_status_flag['connected']):
-                    device = BGAPIBLEDevice(
-                                        bgapi_address_to_hex(packet['address']),
-                                        packet['connection_handle'],
-                                        self)
-                    if self._connection_status_flag(
-                            packet['flags'],
-                            constants.connection_status_flag['encrypted']):
-                        device.encrypted = True
-                    self._connections[packet['connection_handle']] = device
-                    log.info("Connected to %s", address)
-                    return device
-            except ExpectedResponseTimeout:
-                # If we never get the connection status it is likely that it
-                # didn't occur because the device isn't there. If that is true
-                # then we have to manually stop the command.
-                self._end_procedure()
-                exc = NotConnectedError()
-                exc.__cause__ = None
-                raise exc
+            exc = NotConnectedError()
+            exc.__cause__ = None
+            raise exc
 
     def discover_characteristics(self, connection_handle):
         att_handle_start = 0x0001  # first valid handle
