@@ -7,6 +7,7 @@ try:
 except ImportError:
     import Queue as queue
 
+import termios
 import logging
 import serial
 import time
@@ -143,7 +144,7 @@ class BGAPIBackend(BLEBackend):
                 # Wait until we can actually read from the device
                 self._ser.read()
                 break
-            except serial.serialutil.SerialException:
+            except (serial.serialutil.SerialException, termios.error):
                 if self._ser:
                     self._ser.close()
                 self._ser = None
