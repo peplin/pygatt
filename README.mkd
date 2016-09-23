@@ -105,6 +105,7 @@ logging.getLogger('pygatt').setLevel(logging.DEBUG)
 - Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
 - Steven Sloboda https://github.com/sloboste
 - Ilya Sukhanov @IlyaSukhanov
+- @dcliftreaves
 
 ## Releasing to PyPI
 

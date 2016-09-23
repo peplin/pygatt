@@ -1,12 +1,13 @@
 # pyGATT Changelog
 
-## V3.0.0-dev
+## V3.0.0
 
 * [API Change] The BGAPIBackend.connect method now takes the same `address_type`
   argument as the GATTTool backend [BGAPI].
 * [API Change] The `address_type` argument on both backends now requires a value
   from a new enum, `pygatt.BLEAddressType`, instead of a string.
 * Made Python 3 support a priority for both GATTTOOL and BGAPI backends.
+* Improve reliability of BGAPI backend by re-setting device for each connection.
 
 ## V2.1.0
 
