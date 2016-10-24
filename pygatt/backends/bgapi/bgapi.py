@@ -120,8 +120,8 @@ class BGAPIBackend(BLEBackend):
             product_id=BLED112_PRODUCT_ID)
         if len(detected_devices) == 0:
             raise BGAPIError("Unable to auto-detect BLED112 serial port")
-
-        return detected_devices[0].port_name
+        self._serial_port = detected_devices[0].port_name
+        return self._serial_port
 
     def _open_serial_port(self):
         """
