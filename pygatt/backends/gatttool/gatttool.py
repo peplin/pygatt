@@ -74,6 +74,9 @@ class GATTToolReceiver(threading.Thread):
             'value': {
                 'pattern': r'value: .*? \r',
             },
+            'value/descriptor': {
+                'pattern': r'value/descriptor: .*? \r',
+            },
             'discover': {
                 'pattern':
                     r'handle: 0x([a-fA-F0-9]{4}), '
@@ -461,6 +464,20 @@ class GATTToolBackend(BLEBackend):
         with self._receiver.event("value", timeout=timeout):
             self.sendline('char-read-uuid %s' % uuid)
         rval = self._receiver.last_value("value", "after").split()[1:]
+        return bytearray([int(x, 16) for x in rval])
+
+    @at_most_one_device
+    def char_read_handle(self, handle, timeout=4):
+        """
+        Reads a Characteristic by handle.
+        :param handle: handle of Characteristic to read.
+        :type handle: str
+        :return: bytearray of result.
+        :rtype: bytearray
+        """
+        with self._receiver.event("value/descriptor", timeout=timeout):
+            self.sendline('char-read-hnd %s' % handle)
+        rval = self._receiver.last_value("value/descriptor", "after").split()[1:]
         return bytearray([int(x, 16) for x in rval])
 
     def reset(self):
