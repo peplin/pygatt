@@ -287,6 +287,9 @@ class GATTToolBackend(BLEBackend):
         except pexpect.TIMEOUT:
             devices = {}
             for line in scan.before.decode('utf-8').split('\r\n'):
+                if 'sudo' in line:
+                    raise BLEError("Enable passwordless sudo for 'hcitool' "
+                                   "before scanning")
                 match = re.match(
                     r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
 
