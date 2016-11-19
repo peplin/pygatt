@@ -7,7 +7,6 @@ try:
 except ImportError:
     import Queue as queue
 
-import termios
 import logging
 import serial
 import time
@@ -28,6 +27,15 @@ from .bglib import EventPacketType, ResponsePacketType
 from .packets import BGAPICommandPacketBuilder as CommandBuilder
 from .error_codes import get_return_message
 from .util import find_usb_serial_devices
+
+try:
+    import termios
+except ImportError:
+    # Running in Windows (not Linux/OS X/Cygwin)
+    serial_exception = RuntimeError
+else:
+    serial_exception = termios.error
+
 
 log = logging.getLogger(__name__)
 
@@ -144,7 +152,7 @@ class BGAPIBackend(BLEBackend):
                 # Wait until we can actually read from the device
                 self._ser.read()
                 break
-            except (serial.serialutil.SerialException, termios.error):
+            except (serial.serialutil.SerialException, serial_exception):
                 if self._ser:
                     self._ser.close()
                 self._ser = None

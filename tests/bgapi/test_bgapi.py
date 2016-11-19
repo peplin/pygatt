@@ -8,6 +8,7 @@ from pygatt.backends.bgapi.bgapi import bgapi_address_to_hex
 from pygatt.backends.bgapi.util import extract_vid_pid
 from pygatt.backends.bgapi.error_codes import get_return_message
 from pygatt.backends.bgapi import bglib
+from pygatt.exceptions import NotConnectedError
 
 from .mocker import MockBGAPISerialDevice
 
@@ -44,6 +45,13 @@ class BGAPIBackendTests(unittest.TestCase):
         device = self._connect()
         another_device = self.backend.connect(self.address_string)
         eq_(device, another_device)
+
+    def test_serial_port_connection_failure(self):
+        self.mock_device.mocked_serial.read = mock.MagicMock()
+        self.mock_device.mocked_serial.read.side_effect = (
+            serial.serialutil.SerialException)
+        with self.assertRaises(NotConnectedError):
+            self.backend.start()
 
     def test_scan_and_get_devices_discovered(self):
         # Test scan
