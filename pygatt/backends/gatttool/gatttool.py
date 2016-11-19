@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import functools
+import itertools
 import re
 import logging
 import platform
@@ -60,33 +61,39 @@ class GATTToolReceiver(threading.Thread):
         self._parent_aliveness = parent_aliveness
         self._event_vector = {
             'notification': {
-                'pattern': r'Notification handle = .*? \r',
+                'patterns': [r'Notification handle = .*? \r'],
             },
             'indication': {
-                'pattern': r'Indication   handle = .*? \r',
+                'patterns': [r'Indication   handle = .*? \r'],
             },
             'disconnected': {
-                'pattern': r'.*Disconnected\r',
+                'patterns': [
+                    r'.*Disconnected',
+                    r'.*Invalid file descriptor',
+                ]
             },
             'char_written': {
-                'pattern': r'Characteristic value (was )?written successfully',
+                'patterns': [
+                    r'Characteristic value (was )?written successfully',
+                ]
             },
             'value': {
-                'pattern': r'value: .*? \r',
+                'patterns': [r'value: .*? \r']
             },
             'value/descriptor': {
-                'pattern': r'value/descriptor: .*? \r',
+                'patterns': [r'value/descriptor: .*? \r']
             },
             'discover': {
-                'pattern':
+                'patterns': [
                     r'handle: 0x([a-fA-F0-9]{4}), '
                     'char properties: 0x[a-fA-F0-9]{2}, '
                     'char value handle: 0x([a-fA-F0-9]{4}), '
                     'uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]'
                     '{4}-[0-9a-f]{12})\r\n',  # noqa
+                ]
             },
             'connect': {
-                'pattern': r'Connection successful.*\[LE\]>',
+                'patterns': [r'Connection successful.*\[LE\]>']
             },
         }
 
@@ -98,10 +105,11 @@ class GATTToolReceiver(threading.Thread):
             event["callback"] = None
 
     def run(self):
-        items = sorted([
-            (event["pattern"], event)
-            for event in self._event_vector.values()
-        ])
+        items = sorted(itertools.chain.from_iterable(
+            [[(pattern, event)
+              for pattern in event["patterns"]]
+             for event in self._event_vector.values()])
+        )
         patterns = [item[0] for item in items]
         events = [item[1] for item in items]
 

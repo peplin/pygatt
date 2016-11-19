@@ -26,7 +26,7 @@ class GATTToolBackendTests(unittest.TestCase):
             time.sleep(0.001)
             # This is hacky, but we sort the event list in the GATTTool receiver
             # and hard code where we expect the "Connected" event to be.
-            return 2
+            return 3
 
         self.spawn.return_value.expect.side_effect = rate_limited_expect
 
