@@ -477,7 +477,8 @@ class GATTToolBackend(BLEBackend):
         """
         with self._receiver.event("value/descriptor", timeout=timeout):
             self.sendline('char-read-hnd %s' % handle)
-        rval = self._receiver.last_value("value/descriptor", "after").split()[1:]
+        rval = self._receiver.last_value("value/descriptor", "after"
+                                         ).split()[1:]
         return bytearray([int(x, 16) for x in rval])
 
     def reset(self):
