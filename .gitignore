@@ -17,3 +17,5 @@ dist/
 pygatt/bluegiga/test.py
 .tox
 .eggs/
+env/
+env3.5/

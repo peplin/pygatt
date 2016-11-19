@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from nose.tools import eq_
+import mock
 import unittest
 from uuid import UUID
 
@@ -20,9 +21,20 @@ class BGAPIDeviceTests(unittest.TestCase):
         self.address_string = ":".join("%02x" % b for b in self.address)
 
         self.mock_device.stage_run_packets()
+
+        self.time_patcher = mock.patch('pygatt.backends.bgapi.bgapi.time')
+        self.time_patcher.start()
+
+        self.timeout_patcher = mock.patch(
+            'pygatt.backends.bgapi.bgapi._timed_out')
+        timed_out = self.timeout_patcher.start()
+        timed_out.return_value = True
+
         self.backend.start()
 
     def tearDown(self):
+        self.time_patcher.stop()
+        self.timeout_patcher.stop()
         self.mock_device.stop()
         # TODO if we call stop without staging another disconnect packet, the
         # bglib explodes because of a packet == None and you get a runaway

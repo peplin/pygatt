@@ -1,13 +1,17 @@
 from __future__ import print_function
 
 from nose.tools import eq_, ok_
+import mock
 import unittest
+
+import serial
 
 from pygatt.backends import BGAPIBackend
 from pygatt.backends.bgapi.bgapi import bgapi_address_to_hex
 from pygatt.backends.bgapi.util import extract_vid_pid
 from pygatt.backends.bgapi.error_codes import get_return_message
 from pygatt.backends.bgapi import bglib
+from pygatt.exceptions import NotConnectedError
 
 from .mocker import MockBGAPISerialDevice
 
@@ -16,15 +20,27 @@ class BGAPIBackendTests(unittest.TestCase):
     def setUp(self):
         self.mock_device = MockBGAPISerialDevice()
         self.backend = BGAPIBackend(
-            serial_port=self.mock_device.serial_port_name)
+            serial_port=self.mock_device.serial_port_name,
+            receive_queue_timeout=0.001)
 
         self.address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]
         self.address_string = ":".join("%02x" % b for b in self.address)
 
         self.mock_device.stage_run_packets()
+
+        self.time_patcher = mock.patch('pygatt.backends.bgapi.bgapi.time')
+        self.time_patcher.start()
+
+        self.timeout_patcher = mock.patch(
+            'pygatt.backends.bgapi.bgapi._timed_out')
+        timed_out = self.timeout_patcher.start()
+        timed_out.return_value = True
+
         self.backend.start()
 
     def tearDown(self):
+        self.time_patcher.stop()
+        self.timeout_patcher.stop()
         self.mock_device.stop()
         # TODO if we call stop without staging another disconnect packet, the
         # bglib explodes because of a packet == None and you get a runaway
@@ -44,6 +60,13 @@ class BGAPIBackendTests(unittest.TestCase):
         device = self._connect()
         another_device = self.backend.connect(self.address_string)
         eq_(device, another_device)
+
+    def test_serial_port_connection_failure(self):
+        self.mock_device.mocked_serial.read = mock.MagicMock()
+        self.mock_device.mocked_serial.read.side_effect = (
+            serial.serialutil.SerialException)
+        with self.assertRaises(NotConnectedError):
+            self.backend.start()
 
     def test_scan_and_get_devices_discovered(self):
         # Test scan
