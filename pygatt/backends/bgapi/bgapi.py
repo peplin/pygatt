@@ -146,10 +146,11 @@ class BGAPIBackend(BLEBackend):
         Raises a NotConnectedError if the device cannot connect after 10
         attempts, with a short pause in between each attempt.
         """
-        serial_port = self._serial_port or self._detect_device_port()
-        self._ser = None
         for _ in range(MAX_RECONNECTION_ATTEMPTS):
             try:
+                serial_port = self._serial_port or self._detect_device_port()
+                self._ser = None
+
                 log.debug("Attempting to connect to serial port after "
                           "restarting device")
                 self._ser = serial.Serial(serial_port, baudrate=115200,
@@ -157,7 +158,8 @@ class BGAPIBackend(BLEBackend):
                 # Wait until we can actually read from the device
                 self._ser.read()
                 break
-            except (serial.serialutil.SerialException, serial_exception):
+            except (BGAPIError, serial.serialutil.SerialException,
+                    serial_exception):
                 if self._ser:
                     self._ser.close()
                 self._ser = None
