@@ -48,6 +48,10 @@ UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
                              'descriptor', 'characteristic'])
 
 
+def _timed_out(start_time, timeout):
+    return time.time() - start_time > timeout
+
+
 def bgapi_address_to_hex(address):
     address = hexlify(bytearray(
         list(reversed(address)))).upper().decode('ascii')
@@ -72,7 +76,7 @@ class BGAPIBackend(BLEBackend):
     """
     A BLE backend for a BGAPI compatible USB adapter.
     """
-    def __init__(self, serial_port=None):
+    def __init__(self, serial_port=None, receive_queue_timeout=0.1):
         """
         Initialize the backend, but don't start the USB connection yet. Must
         call .start().
@@ -82,6 +86,7 @@ class BGAPIBackend(BLEBackend):
         """
         self._lib = bglib.BGLib()
         self._serial_port = serial_port
+        self._receive_queue_timeout = receive_queue_timeout
 
         self._ser = None
         self._receiver = None
@@ -535,11 +540,11 @@ class BGAPIBackend(BLEBackend):
         while True:
             packet = None
             try:
-                # TODO can we increase the timeout here?
-                packet = self._receiver_queue.get(timeout=0.1)
+                packet = self._receiver_queue.get(
+                    timeout=self._receive_queue_timeout)
             except queue.Empty:
                 if timeout is not None:
-                    if time.time() - start_time > timeout:
+                    if _timed_out(start_time, timeout):
                         exc = ExpectedResponseTimeout(
                             expected_packet_choices, timeout)
                         exc.__cause__ = None
