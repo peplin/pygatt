@@ -128,7 +128,7 @@ class BLEDevice(object):
 
         return value_handle, characteristic_config_handle
 
-    def subscribe(self, uuid, callback=None, indication=False):
+    def subscribe(self, uuid, callback=None, indication=False, args=None, kwargs=None):
         """
         Enable notifications or indications for a characteristic and register a
         callback function to be called whenever a new value arrives.
@@ -138,6 +138,9 @@ class BLEDevice(object):
                     received on this characteristic.
         indication -- use indications (where each notificaiton is ACKd). This is
                       more reliable, but slower.
+        args -- additional arguments as a tuple for the callback function.
+        kwargs -- additional keyword arguments as a dictionary for the callback
+                  function.
         """
 
         value_handle, characteristic_config_handle = (
@@ -151,7 +154,7 @@ class BLEDevice(object):
 
         with self._lock:
             if callback is not None:
-                self._callbacks[value_handle].add(callback)
+                self._callbacks[value_handle].add((callback, args, kwargs))
 
             if self._subscribed_handlers.get(value_handle, None) != properties:
                 self.char_write_handle(
@@ -222,5 +225,12 @@ class BLEDevice(object):
                  handle, hexlify(value))
         with self._lock:
             if handle in self._callbacks:
-                for callback in self._callbacks[handle]:
-                    callback(handle, value)
+                for callback, args, kwargs in self._callbacks[handle]:
+                    if args is not None and kwargs is not None:
+                        callback(handle, value, *args, **kwargs)
+                    elif args is not None:
+                        callback(handle, value, *args)
+                    elif kwargs is not None:
+                        callback(handle, value, **kwargs)
+                    else:
+                        callback(handle, value)
