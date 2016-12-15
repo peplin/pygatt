@@ -299,7 +299,7 @@ class GATTToolBackend(BLEBackend):
                     raise BLEError("Enable passwordless sudo for 'hcitool' "
                                    "before scanning")
                 match = re.match(
-                    r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?[\w]+\)?)', line)
+                    r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?.+\)?)', line)
 
                 if match is not None:
                     address = match.group(1)
