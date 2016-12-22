@@ -96,10 +96,6 @@ class BGAPIBackend(BLEBackend):
         # buffer for packets received
         self._receiver_queue = queue.Queue()
 
-        self._connected_devices = {
-            # handle: BLEDevice
-        }
-
         # State
         self._num_bonds = 0  # number of bonds stored on the adapter
         self._stored_bonds = []  # bond handles stored on the adapter
