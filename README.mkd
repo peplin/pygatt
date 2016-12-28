@@ -21,8 +21,8 @@ works in Linux.
 ## Requirements
 
 * Python 2.7
-* BlueZ 5.5 or greater (with gatttool) - required for the gatttool backend only.
-    * Tested on 5.18, 5.21 and 5.35.
+* BlueZ 5.18 or greater (with gatttool) - required for the gatttool backend only.
+    * Tested on 5.18, 5.21, 5.35 and 5.43
 
 ## Installation
 
