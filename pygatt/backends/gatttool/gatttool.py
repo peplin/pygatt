@@ -5,6 +5,7 @@ import itertools
 import re
 import logging
 import platform
+import signal
 import sys
 import time
 import threading
@@ -338,6 +339,21 @@ class GATTToolBackend(BLEBackend):
                         }
             log.info("Found %d BLE devices", len(devices))
             return [device for device in devices.values()]
+        finally:
+            # Wait for lescan to exit cleanly, otherwise it leaves the BLE
+            # adapter in a bad state and the device must be reset through BlueZ.
+            # This will not work if run_as_root was used, since this process
+            # itself doesn't have permission to terminate a process running as
+            # root (hcitool itself). We recommend using the setcap tool to allow
+            # scanning as a non-root user:
+            #
+            #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+            try:
+                scan.kill(signal.SIGINT)
+                scan.wait()
+            except OSError:
+                log.error("Unable to gracefully stop the scan - "
+                          "BLE adapter may need to be reset.")
         return []
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
