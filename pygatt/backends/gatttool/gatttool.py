@@ -287,9 +287,14 @@ class GATTToolBackend(BLEBackend):
         try:
             scan.expect('foooooo', timeout=timeout)
         except pexpect.EOF:
-            message = "Unexpected error when scanning"
-            if "No such device" in scan.before.decode('utf-8'):
+            before_eof = scan.before.decode('utf-8')
+            if "No such device" in before_eof:
                 message = "No BLE adapter found"
+            elif "Set scan parameters failed: Input/output error" in before_eof:
+                message = ("BLE adapter requires reset after a scan as root"
+                           "- call adapter.reset()")
+            else:
+                message = "Unexpected error when scanning: %s" % before_eof
             log.error(message)
             raise BLEError(message)
         except pexpect.TIMEOUT:
