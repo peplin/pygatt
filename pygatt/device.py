@@ -41,6 +41,10 @@ class BLEDevice(object):
         """
         raise NotImplementedError()
 
+    @property
+    def address(self):
+        return self._address
+
     def get_rssi(self):
         """
         Get the receiver signal strength indicator (RSSI) value from the BLE
@@ -166,7 +170,7 @@ class BLEDevice(object):
 
     def unsubscribe(self, uuid):
         """
-        Disable notification for a charecteristic and de-register the callback.
+        Disable notification for a characteristic and de-register the callback.
         """
         value_handle, characteristic_config_handle = (
             self._notification_handles(uuid)

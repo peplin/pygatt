@@ -34,6 +34,7 @@ setup(
     ],
     extras_require={
         'GATTTOOL': ["pexpect"],
+        'bluez': ['pydbus>=0.6.0']
     },
     package_dir={'pygatt': 'pygatt'},
     zip_safe=False,

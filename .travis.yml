@@ -1,11 +1,15 @@
 language: python
-sudo: false
+sudo: true
 python:
-- '3.5'
+- '3.2_with_system_site_packages'
 cache:
   directories:
   - "$HOME/.cache/pip"
   - ".tox"
+
+before_install:
+- sudo apt-get update
+- sudo apt-get install -qq python3-gi gir1.2-glib-2.0
 install:
 - pip install tox
 script: tox --recreate

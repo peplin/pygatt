@@ -5,9 +5,11 @@ This Module allows reading and writing to GATT descriptors on devices
 such as fitness trackers, sensors, and anything implementing standard
 GATT Descriptor behavior.
 
-pygatt provides a Pythonic API by wrapping two different backends:
+pygatt provides a Pythonic API by wrapping three different backends:
 
--  BlueZ (requires Linux), using the ``gatttool`` command-line utility.
+-  BlueZ (requires Linux), using BlueZ's D-Bus API.
+-  BlueZ (requires Linux), using the deprecated ``gatttool`` command-line
+   utility.
 -  Bluegiga's BGAPI, compatible with USB adapters like the BLED112.
 
 Motivation
@@ -24,12 +26,13 @@ Requirements
 ------------
 
 -  Python 2.7
--  BlueZ 5.18 or greater (with gatttool) - required for the gatttool
+-  BlueZ 5.42 or greater (with D-Bus) - required for the bluez backend only.
+-  BlueZ 5.18 or greater (with deprecated gatttool) - required for the gatttool
    backend only.
 
    -  Tested on 5.18, 5.21, 5.35 and 5.43
 
--  GATTToolBackend requires Linux (i.e. not Windows compatible)
+-  GATTToolBackend and BluezBackend require Linux (i.e. not Windows compatible)
 
 Installation
 ------------
@@ -40,7 +43,16 @@ Install ``pygatt`` with pip from PyPI:
 
     $ pip install pygatt
 
-The BlueZ backend is not supported by default as it requires
+The BluezBackend BlueZ backend is not supported by default as it requires
+``pydbus``, which can only be installed in a UNIX-based environment. If
+you wish to use that backend, install the optional dependencies with:
+
+::
+
+    $ pip install "pygatt[bluez]"
+
+
+The GATTTool BlueZ backend is not supported by default as it requires
 ``pexpect``, which can only be installed in a UNIX-based environment. If
 you wish to use that backend, install the optional dependencies with:
 
@@ -145,6 +157,7 @@ Authors
 -  Marcus Georgi
 -  Alexandre Barachant
 -  Michel Rivas Hernandez
+-  Andreas Brauchli
 
 Releasing to PyPI
 -----------------
