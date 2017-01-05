@@ -401,9 +401,9 @@ class GATTToolBackend(BLEBackend):
 
     def _disconnect(self, event):
         if self._auto_reconnect:
-            #this is called as a callback from the pexpect thread
-            #the reconnection process has to be started in parallel, otherwise
-            #the call is never finished
+            # this is called as a callback from the pexpect thread
+            # the reconnection process has to be started in parallel, otherwise
+            # the call is never finished
             log.info("Connection to %s lost. Reconnecting...", self._address)
             reconnect_thread = threading.Thread(target=self.reconnect,
                                                 args=(self._connected_device, ))
@@ -418,18 +418,20 @@ class GATTToolBackend(BLEBackend):
     def reconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         while self._auto_reconnect:
             log.info("Connecting to %s with timeout=%s", self._address,
-                        timeout)
+                     timeout)
             try:
                 cmd = "connect"
                 with self._receiver.event("connect", timeout):
                     self.sendline(cmd)
-                self._connected_device.resubscribe_all() # reenable all notifications
+                # reenable all notifications
+                self._connected_device.resubscribe_all()
                 log.info("Connection to %s reestablished.")
-                break # finished reconnecting
+                break  # finished reconnecting
             except NotificationTimeout:
                 message = ("Timed out connecting to {0} after {1} seconds. "
                            "Retrying in {2} seconds".format(
-                                self._address, timeout, DEFAULT_RECONNECT_DELAY))
+                                self._address, timeout,
+                                DEFAULT_RECONNECT_DELAY))
                 log.info(message)
                 time.sleep(DEFAULT_RECONNECT_DELAY)
 
