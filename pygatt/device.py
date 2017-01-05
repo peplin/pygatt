@@ -32,6 +32,7 @@ class BLEDevice(object):
         self._characteristics = {}
         self._callbacks = defaultdict(set)
         self._subscribed_handlers = {}
+        self._subscribed_uuids = {}
         self._lock = threading.Lock()
 
     def bond(self, permanent=False):
@@ -161,6 +162,7 @@ class BLEDevice(object):
                 )
                 log.info("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
+                self._subscribed_uuids[uuid] = indication
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
 
@@ -175,6 +177,8 @@ class BLEDevice(object):
         properties = bytearray([0x0, 0x0])
 
         with self._lock:
+            if uuid in self._subscribed_uuids:
+                del(self._subscribed_uuids[uuid])
             if value_handle in self._callbacks:
                 del(self._callbacks[value_handle])
             if value_handle in self._subscribed_handlers:
@@ -224,3 +228,28 @@ class BLEDevice(object):
             if handle in self._callbacks:
                 for callback in self._callbacks[handle]:
                     callback(handle, value)
+
+    def resubscribe_all(self):
+        """
+        Reenable all notifications and indications for uuids that were
+        previously subscribed to.
+        This has to be called after a connection loss and subsequent reconnect.
+        """
+
+        for uuid in self._subscribed_uuids:
+            value_handle, characteristic_config_handle = (
+                self._notification_handles(uuid)
+            )
+
+            properties = bytearray([
+                0x2 if self._subscribed_uuids[uuid] else 0x1,
+                0x0
+            ])
+
+            with self._lock:
+                self.char_write_handle(
+                    characteristic_config_handle,
+                    properties,
+                    wait_for_response=False
+                )
+                log.info("Resubscribed to uuid=%s", uuid)
