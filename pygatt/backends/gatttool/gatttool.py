@@ -23,6 +23,8 @@ from pygatt.backends import BLEBackend, Characteristic, BLEAddressType
 from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from .device import GATTToolBLEDevice
 
+DEFAULT_RECONNECT_DELAY = 1.0
+
 log = logging.getLogger(__name__)
 
 if hasattr(bytes, 'fromhex'):
@@ -199,6 +201,8 @@ class GATTToolBackend(BLEBackend):
         self._running = threading.Event()
         self._address = None
         self._send_lock = threading.Lock()
+        self._auto_reconnect = False
+        self._reconnecting = False
 
     def sendline(self, command):
         """
@@ -357,10 +361,11 @@ class GATTToolBackend(BLEBackend):
         return []
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
-                address_type=BLEAddressType.public):
+                address_type=BLEAddressType.public, auto_reconnect=False):
         log.info('Connecting to %s with timeout=%s', address, timeout)
         self.sendline('sec-level low')
         self._address = address
+        self._auto_reconnect = auto_reconnect
 
         try:
             cmd = 'connect {0} {1}'.format(self._address, address_type.name)
@@ -395,13 +400,44 @@ class GATTToolBackend(BLEBackend):
         log.info("Removed bonds for %s", address)
 
     def _disconnect(self, event):
-        try:
-            self.disconnect(self._connected_device)
-        except NotConnectedError:
-            pass
+        if self._auto_reconnect:
+            # this is called as a callback from the pexpect thread
+            # the reconnection process has to be started in parallel, otherwise
+            # the call is never finished
+            log.info("Connection to %s lost. Reconnecting...", self._address)
+            reconnect_thread = threading.Thread(target=self.reconnect,
+                                                args=(self._connected_device, ))
+            reconnect_thread.start()
+        else:
+            try:
+                self.disconnect(self._connected_device)
+            except NotConnectedError:
+                pass
+
+    @at_most_one_device
+    def reconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
+        while self._auto_reconnect:
+            log.info("Connecting to %s with timeout=%s", self._address,
+                     timeout)
+            try:
+                cmd = "connect"
+                with self._receiver.event("connect", timeout):
+                    self.sendline(cmd)
+                # reenable all notifications
+                self._connected_device.resubscribe_all()
+                log.info("Connection to %s reestablished.")
+                break  # finished reconnecting
+            except NotificationTimeout:
+                message = ("Timed out connecting to {0} after {1} seconds. "
+                           "Retrying in {2} seconds".format(
+                                self._address, timeout,
+                                DEFAULT_RECONNECT_DELAY))
+                log.info(message)
+                time.sleep(DEFAULT_RECONNECT_DELAY)
 
     @at_most_one_device
     def disconnect(self, *args, **kwargs):
+        self._auto_reconnect = False  # disables any running reconnection
         if not self._receiver.is_set("disconnected"):
             self.sendline('disconnect')
         self._connected_device = None
