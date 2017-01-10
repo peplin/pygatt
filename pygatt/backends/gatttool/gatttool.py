@@ -400,7 +400,8 @@ class GATTToolBackend(BLEBackend):
         log.info("Removed bonds for %s", address)
 
     def _disconnect(self, event):
-        if self._auto_reconnect:
+        if self._connected_device is not None and self._auto_reconnect:
+
             # this is called as a callback from the pexpect thread
             # the reconnection process has to be started in parallel, otherwise
             # the call is never finished
