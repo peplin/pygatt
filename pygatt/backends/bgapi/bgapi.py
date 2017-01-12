@@ -498,7 +498,7 @@ class BGAPIBackend(BLEBackend):
                         data_dict[field_name] = dev_name
                     elif (field_name ==
                           'complete_list_128-bit_service_class_uuids'):
-                        if len(field_name) % 16 == 0:  # 16 bytes
+                        if len(field_value) % 16 == 0:  # 16 bytes
                             data_dict[field_name] = []
                             for i in range(0, len(field_value) / 16):
                                 service_uuid = (
@@ -509,7 +509,7 @@ class BGAPIBackend(BLEBackend):
                         else:
                             log.warning("Expected a service class UUID of 16\
                                         bytes. Instead received %d bytes",
-                                        len(field_name))
+                                        len(field_value))
                     else:
                         data_dict[field_name] = bytearray(field_value)
         return dev_name, data_dict
