@@ -56,3 +56,9 @@ class GATTToolBLEDevice(BLEDevice):
     def discover_characteristics(self):
         self._characteristics = self._backend.discover_characteristics(self)
         return self._characteristics
+
+    def register_disconnect_callback(self, callback):
+        self._backend._receiver.register_callback("disconnected", callback)
+
+    def remove_disconnect_callback(self, callback):
+        self._backend._receiver.remove_callback("disconnected", callback)
