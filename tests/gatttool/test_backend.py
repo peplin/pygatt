@@ -49,6 +49,24 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         ok_(device is not None)
 
+    def test_disconnect_callback(self):
+        mock_callback = MagicMock()
+        address = "11:22:33:44:55:66"
+        device = self.backend.connect(address)
+        device.register_disconnect_callback(mock_callback)
+        eq_(mock_callback in
+            device._backend._receiver._event_vector[
+                "disconnected"]["callback"],
+            True)
+        device.remove_disconnect_callback(mock_callback)
+        eq_(mock_callback not in
+            device._backend._receiver._event_vector[
+                "disconnected"]["callback"],
+            True)
+        eq_(len(device._backend._receiver._event_vector[
+                "disconnected"]["callback"]) > 0,
+            True)
+
     def test_single_byte_notification(self):
         event = {
             'after': "Notification handle = 0x0024 value: 64".encode("utf8")
