@@ -430,7 +430,7 @@ class GATTToolBackend(BLEBackend):
             pass
 
     @at_most_one_device
-    def discover_characteristics(self):
+    def discover_characteristics(self, timeout=5):
         self._characteristics = {}
         self._receiver.register_callback(
             "discover",
@@ -438,7 +438,7 @@ class GATTToolBackend(BLEBackend):
         )
         self.sendline('characteristics')
 
-        max_time = time.time() + 5
+        max_time = time.time() + timeout
         while not self._characteristics and time.time() < max_time:
             time.sleep(.5)
 
