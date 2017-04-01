@@ -503,7 +503,7 @@ class BGAPIBackend(BLEBackend):
                           'complete_list_128-bit_service_class_uuids'):
                         if len(field_value) % 16 == 0:  # 16 bytes
                             data_dict[field_name] = []
-                            for i in range(0, len(field_value) / 16):
+                            for i in range(0, int(len(field_value) / 16)):
                                 service_uuid = (
                                     "0x%s" %
                                     bgapi_address_to_hex(
