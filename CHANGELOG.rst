@@ -3,6 +3,11 @@
 Release History
 ================
 
+V3.1.1
+------
+
+- Improvement: Convert documentation to RST for better PyPI integration.
+
 V3.1.0
 ------
 
