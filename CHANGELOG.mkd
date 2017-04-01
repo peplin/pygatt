@@ -1,5 +1,28 @@
 # pyGATT Changelog
 
+## V3.1.0
+
+* Fix: Support platforms without `termios` (Windows)
+* Feature: Add `char_read_handle` to GATTTool backend.
+* Improvement: Warn if `hcitool` requires a sudo authentication.
+* Improvement: Allow BGAPI device more time to reboot for more reliable
+  discovery.
+* Improvement: Interpret "invalid file descriptor" as a disconnect event.
+* Fix: Correctly handle service class UUIDs that aren't 16 bytes.
+* Improvement: Support BLE devices with any UTF8 character.
+* Improvement: Make gatttol prompt timeout configurable.
+* Improvement: Gracefully stop `lescan` to avoid leaving the adapter in a bad
+  state.
+* Improvement: Allow custom timeout for discovery on GATTTool backend.
+* Fix: Make sure responses to char reads on BGAPI backend are from the requested
+  handle.
+* Improvement: Raise and exception if trying to instantiate the GATTTool backend
+  in Windows.
+* Improvement: If no BGAPI device attached, abort immediately.
+* Fix: Use user's configured HCI device for connection and scanning in GATTTool
+  backend.
+
+
 ## V3.0.0
 
 * [API Change] The BGAPIBackend.connect method now takes the same `address_type`

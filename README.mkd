@@ -120,6 +120,13 @@ try changing the COM port of the device to a value under 10, e.g. `COM9`.
 - Steven Sloboda https://github.com/sloboste
 - Ilya Sukhanov @IlyaSukhanov
 - @dcliftreaves
+- Jonathan Dan
+- Ilann Adjedj
+- Ralph Hempel
+- Rene Jacobsen
+- Marcus Georgi
+- Alexandre Barachant
+- Michel Rivas Hernandez
 
 ## Releasing to PyPI
 
