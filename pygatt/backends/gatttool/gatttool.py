@@ -12,11 +12,6 @@ import threading
 import subprocess
 from uuid import UUID
 from contextlib import contextmanager
-try:
-    import pexpect
-except Exception as err:
-    if platform.system() != 'Windows':
-        print("WARNING:", err, file=sys.stderr)
 
 from pygatt.exceptions import NotConnectedError, BLEError, NotificationTimeout
 from pygatt.backends import BLEBackend, Characteristic, BLEAddressType
@@ -33,6 +28,16 @@ else:
     # Python 2.7
     def _hex_value_parser(x):
         return bytearray.fromhex(x)
+
+
+def is_windows():
+    return platform.system() == 'Windows'
+
+try:
+    import pexpect
+except Exception as err:
+    if not is_windows():
+        print("WARNING:", err, file=sys.stderr)
 
 
 def at_most_one_device(func):
@@ -189,6 +194,11 @@ class GATTToolBackend(BLEBackend):
         gatttool_logfile -- an optional filename to store raw gatttool
                 input and output.
         """
+
+        if is_windows():
+            raise BLEError("The GATTToolBackend requires BlueZ, "
+                           "which is not available in Windows")
+
         self._hci_device = hci_device
         self._cli_options = cli_options
         self._connected_device = None
