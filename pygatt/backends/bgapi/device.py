@@ -82,14 +82,22 @@ class BGAPIBLEDevice(BLEDevice):
                 self._handle, handle))
 
         self._backend.expect(ResponsePacketType.attclient_read_by_handle)
-        matched_packet_type, response = self._backend.expect_any(
-            [EventPacketType.attclient_attribute_value,
-             EventPacketType.attclient_procedure_completed], timeout=timeout)
-        # TODO why not just expect *only* the attribute value response, then it
-        # would time out and raise an exception if allwe got was the 'procedure
-        # completed' response?
-        if matched_packet_type != EventPacketType.attclient_attribute_value:
-            raise BGAPIError("Unable to read characteristic")
+        success = False
+        while not success:
+            matched_packet_type, response = self._backend.expect_any(
+                [EventPacketType.attclient_attribute_value,
+                 EventPacketType.attclient_procedure_completed],
+                timeout=timeout)
+            # TODO why not just expect *only* the attribute value response,
+            # then it would time out and raise an exception if allwe got was
+            # the 'procedure completed' response?
+            if matched_packet_type != EventPacketType.attclient_attribute_value:
+                raise BGAPIError("Unable to read characteristic")
+            if response['atthandle'] == handle:
+                # Otherwise we received a response from a wrong handle (e.g.
+                # from a notification) so we keep trying to wait for the
+                # correct one
+                success = True
         return bytearray(response['value'])
 
     @connection_required
