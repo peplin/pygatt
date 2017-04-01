@@ -97,6 +97,19 @@ logging.basicConfig()
 logging.getLogger('pygatt').setLevel(logging.DEBUG)
 ```
 
+### Can't find BGAPI device in Windows
+
+You may need to explicitly specify the COM port of your BGAPI-compatible device
+in windows, e.g.:
+
+```
+adapter = pygatt.BGAPIBackend(serial_port='COM9')
+```
+
+If you provide the COM port name, but still get an error such as
+`WindowsError(2, 'The system cannot find the file specified.')`,
+try changing the COM port of the device to a value under 10, e.g. `COM9`.
+
 ## Authors
 
 - Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
