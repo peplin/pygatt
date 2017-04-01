@@ -54,5 +54,6 @@ class GATTToolBLEDevice(BLEDevice):
 
     @connection_required
     def discover_characteristics(self, *args, **kwargs):
-        self._characteristics = self._backend.discover_characteristics(self, *args, **kwargs)
+        self._characteristics = self._backend.discover_characteristics(
+            self, *args, **kwargs)
         return self._characteristics
