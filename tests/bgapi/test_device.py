@@ -106,10 +106,15 @@ class BGAPIDeviceTests(unittest.TestCase):
         self.mock_device.stage_discover_characteristics_packets([
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        # Test char_write
+        # Test char_write request
         value = [0xF0, 0x0F, 0x00]
         self.mock_device.stage_char_write_packets(0, value)
-        device.char_write(UUID(uuid_char), bytearray(value))
+        device.char_write(UUID(uuid_char), bytearray(value), True)
+
+        # Test char_write command
+        value = [0xF0, 0x0F, 0x00]
+        self.mock_device.stage_char_write_command_packets(0, value)
+        device.char_write(UUID(uuid_char), bytearray(value), False)
 
     def test_bond(self):
         device = self._connect()
