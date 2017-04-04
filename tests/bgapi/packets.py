@@ -12,6 +12,12 @@ class BGAPIPacketBuilder(object):
                     return_code)
 
     @staticmethod
+    def attclient_write_command(
+            connection_handle, return_code):
+        return pack('<4BBH', 0x00, 0x03, 0x04, 0x06, connection_handle,
+                    return_code)
+
+    @staticmethod
     def attclient_find_information(
             connection_handle, return_code):
         return pack('<4BBH', 0x00, 0x03, 0x04, 0x03, connection_handle,
