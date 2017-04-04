@@ -300,7 +300,7 @@ class GATTToolBackend(BLEBackend):
         terminate cleanly, and may leave your Bluetooth adapter in a bad state.
         """
 
-        cmd = 'hcitool lescan'
+        cmd = 'hcitool -i %s lescan' % self._hci_device
         if run_as_root:
             cmd = 'sudo %s' % cmd
 
