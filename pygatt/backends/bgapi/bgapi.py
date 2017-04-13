@@ -155,12 +155,12 @@ class BGAPIBackend(BLEBackend):
                 self._ser.read()
                 break
             except (BGAPIError, serial.serialutil.SerialException,
-                    serial_exception):
+                    serial_exception) as e:
                 if self._ser:
                     self._ser.close()
                 elif attempt == 0:
                     raise NotConnectedError(
-                        "No BGAPI compatible device detected")
+                        "No BGAPI compatible device detected: %s" % e)
                 self._ser = None
                 time.sleep(0.25)
         else:
