@@ -189,6 +189,11 @@ class BGAPIBackend(BLEBackend):
         self._ser.flush()
         self._ser.close()
 
+        # Give the USB adapter some time to restart. Else the connection
+        # to the adapter may fail and cause the following _open_serial_port call
+        # to fail.
+        time.sleep(0.5)
+
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True
