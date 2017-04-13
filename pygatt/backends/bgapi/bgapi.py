@@ -147,8 +147,8 @@ class BGAPIBackend(BLEBackend):
                 serial_port = self._serial_port or self._detect_device_port()
                 self._ser = None
 
-                log.debug("Attempting to connect to serial port after "
-                          "restarting device")
+                log.debug("Attempting to connect to serial port %s after "
+                          "restarting device" % serial_port)
                 self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
                 # Wait until we can actually read from the device
