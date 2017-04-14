@@ -186,13 +186,15 @@ class GATTToolBackend(BLEBackend):
     """
 
     def __init__(self, hci_device='hci0', gatttool_logfile=None,
-                 cli_options=None):
+                 cli_options=None, search_window_size=200):
         """
         Initialize.
 
         hci_device -- the hci_device to use with GATTTool.
         gatttool_logfile -- an optional filename to store raw gatttool
                 input and output.
+        search_window_size -- integer (optional); size in bytes of the
+                search window that is used by `pexpect.expect`
         """
 
         if is_windows():
@@ -209,6 +211,7 @@ class GATTToolBackend(BLEBackend):
         self._running = threading.Event()
         self._address = None
         self._send_lock = threading.Lock()
+        self._search_window_size = search_window_size
 
     def sendline(self, command):
         """
@@ -252,7 +255,8 @@ class GATTToolBackend(BLEBackend):
         ]
         gatttool_cmd = ' '.join([arg for arg in args if arg])
         log.debug('gatttool_cmd=%s', gatttool_cmd)
-        self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile)
+        self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile,
+                                  searchwindowsize=self._search_window_size)
 
         # Wait for the interactive prompt
         self._con.expect(r'\[LE\]>', timeout=initialization_timeout)
