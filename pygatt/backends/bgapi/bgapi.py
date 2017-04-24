@@ -142,7 +142,7 @@ class BGAPIBackend(BLEBackend):
         Raises a NotConnectedError if the device cannot connect after 10
         attempts, with a short pause in between each attempt.
         """
-        for attempt in range(MAX_RECONNECTION_ATTEMPTS):
+        for _ in range(MAX_RECONNECTION_ATTEMPTS):
             try:
                 serial_port = self._serial_port or self._detect_device_port()
                 self._ser = None
@@ -158,9 +158,6 @@ class BGAPIBackend(BLEBackend):
                     serial_exception) as e:
                 if self._ser:
                     self._ser.close()
-                elif attempt == 0:
-                    raise NotConnectedError(
-                        "No BGAPI compatible device detected: %s" % e)
                 self._ser = None
                 time.sleep(0.25)
         else:
@@ -189,9 +186,7 @@ class BGAPIBackend(BLEBackend):
         self._ser.flush()
         self._ser.close()
 
-        # Give the USB adapter some time to restart. Else the connection
-        # to the adapter may fail and cause the following _open_serial_port call
-        # to fail.
+        # Give the USB adapter some time to restart.
         time.sleep(0.5)
 
         self._open_serial_port()
