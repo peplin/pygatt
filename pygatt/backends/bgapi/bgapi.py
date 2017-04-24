@@ -159,6 +159,7 @@ class BGAPIBackend(BLEBackend):
                 if self._ser:
                     self._ser.close()
                 self._ser = None
+                log.debug("Connection attempt failed: %s" % e)
                 time.sleep(0.25)
         else:
             raise NotConnectedError("Unable to reconnect with USB "
