@@ -147,8 +147,7 @@ class BGAPIBackend(BLEBackend):
                 serial_port = self._serial_port or self._detect_device_port()
                 self._ser = None
 
-                log.debug("Attempting to connect to serial port %s after "
-                          "restarting device" % serial_port)
+                log.debug("Attempting to connect to serial port %s." % serial_port)
                 self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
                 # Wait until we can actually read from the device
@@ -162,8 +161,7 @@ class BGAPIBackend(BLEBackend):
                 log.debug("Connection attempt failed: %s" % e)
                 time.sleep(0.25)
         else:
-            raise NotConnectedError("Unable to reconnect with USB "
-                                    "device after rebooting")
+            raise NotConnectedError("Unable to connect to USB device.")
 
     def start(self):
         """
@@ -183,6 +181,7 @@ class BGAPIBackend(BLEBackend):
 
         # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
+        log.debug("Rebooting USB device.")
         self.send_command(CommandBuilder.system_reset(0))
         self._ser.flush()
         self._ser.close()
