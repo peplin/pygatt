@@ -165,21 +165,24 @@ changing the COM port of the device to a value under 10, e.g. ``COM9``.
 Authors
 -------
 
--  Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
--  Greg Albrecht @ampledata https://github.com/ampledata/pygatt
--  Christopher Peplin @peplin https://github.com/peplin/pygatt
--  Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
--  Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
--  Steven Sloboda https://github.com/sloboste
--  Ilya Sukhanov @IlyaSukhanov
--  @dcliftreaves
--  Jonathan Dan
--  Ilann Adjedj
--  Ralph Hempel
--  Rene Jacobsen
--  Marcus Georgi
--  Alexandre Barachant
--  Michel Rivas Hernandez
+- Jeff Rowberg @jrowberg https://github.com/jrowberg/bglib
+- Greg Albrecht @ampledata https://github.com/ampledata/pygatt
+- Christopher Peplin @peplin https://github.com/peplin/pygatt
+- Morten Kjaergaard @mkjaergaard https://github.com/mkjaergaard/pygatt
+- Michael Saunby @msaunby https://github.com/msaunby/ble-sensor-pi
+- Steven Sloboda https://github.com/sloboste
+- Ilya Sukhanov @IlyaSukhanov
+- @dcliftreaves
+- Jonathan Dan
+- Ilann Adjedj
+- Ralph Hempel
+- Rene Jacobsen
+- Marcus Georgi
+- Alexandre Barachant
+- Michel Rivas Hernandez
+- Jean Regisser
+- David Martin
+- Pieter Hooimeijer
 
 Releasing to PyPI
 -----------------

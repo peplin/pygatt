@@ -3,6 +3,17 @@
 Release History
 ================
 
+V3.2.0
+------
+
+- Fix: Reliably auto-reconnect after restarting BGAPI device. Fixes a bug in
+  first attempt at auto-reconnection, only worked in some environments. (#144)
+- Fix: Remove spurious "no handler for logger" warnings (#143)
+- Fix: Use enum-compat instead of enum34, to fix installation in Python 3.4+
+- Feature: Limit search window size for GATTTool backend, to avoid high CPU
+  usage for long running connections. (#123)
+- Feature: Add support for write commands to BGAPIBackend (#115)
+
 V3.1.1
 ------
 
