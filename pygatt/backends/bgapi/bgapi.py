@@ -158,7 +158,7 @@ class BGAPIBackend(BLEBackend):
                     serial_exception):
                 if self._ser:
                     self._ser.close()
-                elif attempt == 0:
+                elif attempt == (MAX_RECONNECTION_ATTEMPTS - 1):
                     raise NotConnectedError(
                         "No BGAPI compatible device detected")
                 self._ser = None
