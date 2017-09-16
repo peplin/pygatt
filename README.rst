@@ -24,6 +24,11 @@ Requirements
 ------------
 
 -  Python 2.7
+
+   -  The latest version is recommended. Earlier versions (for example
+      2.7.3) will not connect to the USB adapter at all and fail during
+      ``struct.unpack`` calls.
+
 -  BlueZ 5.18 or greater (with gatttool) - required for the gatttool
    backend only.
 
