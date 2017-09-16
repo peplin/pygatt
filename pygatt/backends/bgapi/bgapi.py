@@ -120,16 +120,18 @@ class BGAPIBackend(BLEBackend):
             EventPacketType.sm_bond_status: self._ble_evt_sm_bond_status,
         }
 
-        log.info("Initialized new BGAPI backend on %s", serial_port)
+        log.info("Initialized new BGAPI backend")
 
     def _detect_device_port(self):
-        log.info("Auto-discovering serial port for BLED112")
+        log.info("Auto-detecting serial port for BLED112")
         detected_devices = find_usb_serial_devices(
             vendor_id=BLED112_VENDOR_ID,
             product_id=BLED112_PRODUCT_ID)
         if len(detected_devices) == 0:
             raise BGAPIError("Unable to auto-detect BLED112 serial port")
 
+        log.info("Found BLED112 on serial port %s",
+                 detected_devices[0].port_name)
         return detected_devices[0].port_name
 
     def _open_serial_port(self,
