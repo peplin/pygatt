@@ -142,30 +142,27 @@ class BGAPIBackend(BLEBackend):
         Raises a NotConnectedError if the device cannot connect after 10
         attempts, with a short pause in between each attempt.
         """
-        for attempt in range(MAX_RECONNECTION_ATTEMPTS):
+        for _ in range(MAX_RECONNECTION_ATTEMPTS):
             try:
                 serial_port = self._serial_port or self._detect_device_port()
                 self._ser = None
 
-                log.debug("Attempting to connect to serial port after "
-                          "restarting device")
+                log.debug("Attempting to connect to serial port %s." %
+                          serial_port)
                 self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
                 # Wait until we can actually read from the device
                 self._ser.read()
                 break
             except (BGAPIError, serial.serialutil.SerialException,
-                    serial_exception):
+                    serial_exception) as e:
                 if self._ser:
                     self._ser.close()
-                elif attempt == 0:
-                    raise NotConnectedError(
-                        "No BGAPI compatible device detected")
                 self._ser = None
+                log.debug("Connection attempt failed: %s" % e)
                 time.sleep(0.25)
         else:
-            raise NotConnectedError("Unable to reconnect with USB "
-                                    "device after rebooting")
+            raise NotConnectedError("Unable to connect to USB device.")
 
     def start(self):
         """
@@ -185,9 +182,13 @@ class BGAPIBackend(BLEBackend):
 
         # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
+        log.debug("Rebooting USB device.")
         self.send_command(CommandBuilder.system_reset(0))
         self._ser.flush()
         self._ser.close()
+
+        # Give the USB adapter some time to restart.
+        time.sleep(0.5)
 
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
