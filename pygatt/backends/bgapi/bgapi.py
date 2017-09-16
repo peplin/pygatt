@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 
 BLED112_VENDOR_ID = 0x2458
 BLED112_PRODUCT_ID = 0x0001
-MAX_RECONNECTION_ATTEMPTS = 10
+MAX_CONNECTION_ATTEMPTS = 10
 
 
 UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
@@ -132,23 +132,27 @@ class BGAPIBackend(BLEBackend):
 
         return detected_devices[0].port_name
 
-    def _open_serial_port(self):
+    def _open_serial_port(self,
+                          max_connection_attempts=MAX_CONNECTION_ATTEMPTS):
         """
         Open a connection to the named serial port, or auto-detect the first
         port matching the BLED device. This will wait until data can actually be
         read from the connection, so it will not return until the device is
         fully booted.
 
+        max_connection_attempts -- Max number of times to retry
+            detecting and connecting to a device.
+
         Raises a NotConnectedError if the device cannot connect after 10
         attempts, with a short pause in between each attempt.
         """
-        for attempt in range(MAX_RECONNECTION_ATTEMPTS):
+        for attempt in range(max_connection_attempts):
+            log.debug("Opening connection to serial port (attempt %d)",
+                      attempt + 1)
             try:
                 serial_port = self._serial_port or self._detect_device_port()
                 self._ser = None
 
-                log.debug("Attempting to connect to serial port after "
-                          "restarting device")
                 self._ser = serial.Serial(serial_port, baudrate=115200,
                                           timeout=0.25)
                 # Wait until we can actually read from the device
@@ -156,6 +160,7 @@ class BGAPIBackend(BLEBackend):
                 break
             except (BGAPIError, serial.serialutil.SerialException,
                     serial_exception):
+                log.debug("Failed to open serial port", exc_info=True)
                 if self._ser:
                     self._ser.close()
                 elif attempt == 0:
@@ -175,8 +180,11 @@ class BGAPIBackend(BLEBackend):
         if self._running and self._running.is_set():
             self.stop()
 
-        self._open_serial_port()
+        # Fail immediately if no device is attached, don't retry waiting for one
+        # to be plugged in.
+        self._open_serial_port(max_connection_attempts=1)
 
+        log.info("Resetting and reconnecting to device for a clean environment")
         # Blow everything away and start anew.
         # Only way to be sure is to burn it down and start again.
         # (Aka reset remote state machine)
@@ -215,9 +223,10 @@ class BGAPIBackend(BLEBackend):
                 device.disconnect()
             except NotConnectedError:
                 pass
-        if self._running.is_set():
-            log.info('Stopping')
-        self._running.clear()
+        if self._running:
+            if self._running.is_set():
+                log.info('Stopping')
+            self._running.clear()
 
         if self._receiver:
             self._receiver.join()

@@ -4,6 +4,8 @@ try:
 except ImportError:
     import Queue as queue
 
+from mock import MagicMock
+
 
 class SerialMock(object):
     """
@@ -23,8 +25,7 @@ class SerialMock(object):
     def close(self):
         self._isOpen = False
 
-    def write(self, input_data):
-        pass
+    write = MagicMock()
 
     def flush(self):
         pass

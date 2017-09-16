@@ -7,7 +7,8 @@ import unittest
 import serial
 
 from pygatt.backends import BGAPIBackend
-from pygatt.backends.bgapi.bgapi import bgapi_address_to_hex
+from pygatt.backends.bgapi.bgapi import (bgapi_address_to_hex,
+                                         MAX_CONNECTION_ATTEMPTS)
 from pygatt.backends.bgapi.util import extract_vid_pid
 from pygatt.backends.bgapi.error_codes import get_return_message
 from pygatt.backends.bgapi import bglib
@@ -67,6 +68,21 @@ class BGAPIBackendTests(unittest.TestCase):
             serial.serialutil.SerialException)
         with self.assertRaises(NotConnectedError):
             self.backend.start()
+
+    def test_reset_and_reconnect(self):
+        self.backend.stop()
+        self.backend = BGAPIBackend(
+            serial_port=self.mock_device.serial_port_name,
+            receive_queue_timeout=0.001)
+        self.mock_device.mocked_serial.write = mock.MagicMock()
+        self.mock_device.mocked_serial.read = mock.MagicMock()
+        self.mock_device.mocked_serial.read.side_effect = [None] + [
+            serial.serialutil.SerialException] * MAX_CONNECTION_ATTEMPTS
+        with self.assertRaises(NotConnectedError):
+            self.backend.start()
+        self.assertEquals(MAX_CONNECTION_ATTEMPTS + 1,
+                          self.mock_device.mocked_serial.read.call_count)
+        self.assertTrue(self.mock_device.mocked_serial.write.called)
 
     def test_scan_and_get_devices_discovered(self):
         # Test scan
