@@ -45,7 +45,8 @@ MAX_CONNECTION_ATTEMPTS = 10
 
 
 UUIDType = Enum('UUIDType', ['custom', 'service', 'attribute',
-                             'descriptor', 'characteristic'])
+                             'descriptor', 'characteristic',
+                             'nonstandard'])
 
 
 def _timed_out(start_time, timeout):
@@ -469,8 +470,9 @@ class BGAPIBackend(BLEBackend):
             return UUIDType.descriptor
         if uuid in constants.gatt_characteristic_type_uuid.values():
             return UUIDType.characteristic
-        log.warn("UUID %s is of unknown type", hexlify(uuid))
-        return None
+
+        log.warn("Unrecognized 4 byte UUID %s", hexlify(uuid))
+        return UUIDType.nonstandard
 
     def _scan_rsp_data(self, data):
         """
@@ -628,6 +630,8 @@ class BGAPIBackend(BLEBackend):
         and characteristic UUID ('uuid')
         """
         raw_uuid = bytearray(reversed(args['uuid']))
+
+        # Convert 4-byte UUID shorthand to a full, 16-byte UUID
         uuid_type = self._get_uuid_type(raw_uuid)
         if uuid_type != UUIDType.custom:
             uuid = uuid16_to_uuid(int(
@@ -641,11 +645,14 @@ class BGAPIBackend(BLEBackend):
                 self._current_characteristic is not None):
             self._current_characteristic.add_descriptor(uuid, args['chrhandle'])
         elif (uuid_type == UUIDType.custom or
+                uuid_type == UUIDType.nonstandard or
                 uuid_type == UUIDType.characteristic):
             if uuid_type == UUIDType.custom:
                 log.info("Found custom characteristic %s" % uuid)
             elif uuid_type == UUIDType.characteristic:
                 log.info("Found approved characteristic %s" % uuid)
+            elif uuid_type == UUIDType.nonstandard:
+                log.info("Found nonstandard 4-byte characteristic %s" % uuid)
             new_char = Characteristic(uuid, args['chrhandle'])
             self._current_characteristic = new_char
             self._characteristics[
