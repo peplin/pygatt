@@ -81,6 +81,22 @@ class BGAPIDeviceTests(unittest.TestCase):
         value = device.char_read(UUID(uuid_char))
         eq_(bytearray(expected_value), value)
 
+    def test_read_nonstandard_4byte_char(self):
+        device = self._connect()
+        uuid_char = 0x03ea
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
+        self.mock_device.stage_discover_characteristics_packets([
+            "03ea", handle_char,
+            uuid_desc, handle_desc])
+
+        expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
+        self.mock_device.stage_char_read_packets(
+            handle_char, 0x00, expected_value)
+        value = device.char_read(UUID(str(uuid16_to_uuid(uuid_char))))
+        eq_(bytearray(expected_value), value)
+
     @raises(ExpectedResponseTimeout)
     def test_read_timeout_wrong_handle(self):
         device = self._connect()
