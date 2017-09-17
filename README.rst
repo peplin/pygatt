@@ -23,11 +23,10 @@ leaves something to be desired and only works in Linux.
 Requirements
 ------------
 
--  Python 2.7
+-  Python 2.7.5 or greater, or Python 3.5 or greater
 
-   -  The latest version is recommended. Earlier versions (for example
-      2.7.3) will not connect to the USB adapter at all and fail during
-      ``struct.unpack`` calls.
+   -  Python 2.7.3's ``struct`` library has a bug that will break PyGATT - 2.7.5
+         or greater is recommended.
 
 -  BlueZ 5.18 or greater (with gatttool) - required for the gatttool
    backend only.

@@ -3,6 +3,11 @@
 Release History
 ================
 
+V3.2.1
+------
+
+- Improvement: Officially support Python 3.6.
+
 V3.2.0
 ------
 
