@@ -115,11 +115,11 @@ class BGAPIBLEDevice(BLEDevice):
                     EventPacketType.attclient_procedure_completed)
             else:
                 self._backend.send_command(
-                    CommandBuilder.attclient_write_command(
+                    CommandBuilder.attclient_attribute_write(
                         self._handle, char_handle, value_list))
+                self._backend.expect(ResponsePacketType.attclient_attribute_write)
                 packet_type, response = self._backend.expect(
-                    ResponsePacketType.attclient_write_command)
-
+                    EventPacketType.attclient_procedure_completed)
             if (response['result'] !=
                     ErrorCode.insufficient_authentication.value):
                 # Continue to retry until we are bonded
