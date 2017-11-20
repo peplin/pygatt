@@ -32,9 +32,11 @@ try:
     import termios
 except ImportError:
     # Running in Windows (not Linux/OS X/Cygwin)
-    serial_exception = RuntimeError
+    serial_exceptions = (RuntimeError, ValueError,
+                         BGAPIError, serial.serialutil.SerialException)
 else:
-    serial_exception = termios.error
+    serial_exceptions = (termios.error, IOError, OSError, TypeError,
+                         BGAPIError, serial.serialutil.SerialException)
 
 
 log = logging.getLogger(__name__)
@@ -124,16 +126,25 @@ class BGAPIBackend(BLEBackend):
         log.info("Initialized new BGAPI backend")
 
     def _detect_device_port(self):
-        log.info("Auto-detecting serial port for BLED112")
-        detected_devices = find_usb_serial_devices(
-            vendor_id=BLED112_VENDOR_ID,
-            product_id=BLED112_PRODUCT_ID)
-        if len(detected_devices) == 0:
-            raise BGAPIError("Unable to auto-detect BLED112 serial port")
+        if self._serial_port:
+            try:
+                serial.Serial(port=self._serial_port)
+                return self._serial_port
+            except serial.serialutil.SerialException:
+                raise BGAPIError(
+                    "Unable to detect BLED112 serial port: {}.".format(
+                        self._serial_port))
+        else:
+            log.info("Auto-detecting serial port for BLED112")
+            detected_devices = find_usb_serial_devices(
+                vendor_id=BLED112_VENDOR_ID,
+                product_id=BLED112_PRODUCT_ID)
+            if len(detected_devices) == 0:
+                raise BGAPIError("Unable to auto-detect BLED112 serial port")
 
-        log.info("Found BLED112 on serial port %s",
-                 detected_devices[0].port_name)
-        return detected_devices[0].port_name
+            log.info("Found BLED112 on serial port %s",
+                     detected_devices[0].port_name)
+            return detected_devices[0].port_name
 
     def _open_serial_port(self,
                           max_connection_attempts=MAX_CONNECTION_ATTEMPTS):
@@ -161,44 +172,41 @@ class BGAPIBackend(BLEBackend):
                 # Wait until we can actually read from the device
                 self._ser.read()
                 break
-            except (BGAPIError, serial.serialutil.SerialException,
-                    serial_exception):
+            except serial_exceptions:
                 log.debug("Failed to open serial port", exc_info=True)
                 if self._ser:
                     self._ser.close()
-                elif attempt == 0:
-                    raise NotConnectedError(
-                        "No BGAPI compatible device detected")
                 self._ser = None
                 time.sleep(0.25)
         else:
             raise NotConnectedError("Unable to reconnect with USB "
                                     "device after rebooting")
 
-    def start(self):
+    def start(self, reset=True):
         """
         Connect to the USB adapter, reset it's state and start a backgroud
         receiver thread.
+
+        reset - Reset the device if True.
         """
         if self._running and self._running.is_set():
             self.stop()
 
-        # Fail immediately if no device is attached, don't retry waiting for one
-        # to be plugged in.
-        self._open_serial_port(max_connection_attempts=1)
+        # Fail immediately if no device is attached
+        self._detect_device_port()
 
-        log.info("Resetting and reconnecting to device for a clean environment")
         # Blow everything away and start anew.
         # Only way to be sure is to burn it down and start again.
         # (Aka reset remote state machine)
-        # Note: Could make this a conditional based on parameter if this
-        # happens to be too slow on some systems.
 
         # The zero param just means we want to do a normal restart instead of
         # starting a firmware update restart.
-        self.send_command(CommandBuilder.system_reset(0))
-        self._ser.flush()
-        self._ser.close()
+        if reset:
+            log.info(
+                "Resetting and reconnecting to device for a clean environment")
+            self._open_serial_port()
+            self.send_command(CommandBuilder.system_reset(0))
+            self._ser.close()
 
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
