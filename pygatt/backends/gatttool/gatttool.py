@@ -56,7 +56,7 @@ def at_most_one_device(func):
 
 class GATTToolReceiver(threading.Thread):
     """
-    Observe pygatttool stdout in seperate thread and dispatch events /
+    Observe pygatttool stdout in separate thread and dispatch events /
     callbacks.
     """
 
@@ -274,7 +274,7 @@ class GATTToolBackend(BLEBackend):
 
     def stop(self):
         """
-        Disconnects any connected device, stops the backgroud receiving thread
+        Disconnects any connected device, stops the background receiving thread
         and closes the spawned gatttool process.
         disconnect.
         """
