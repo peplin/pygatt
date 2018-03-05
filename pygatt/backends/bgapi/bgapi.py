@@ -295,8 +295,8 @@ class BGAPIBackend(BLEBackend):
             self.expect(ResponsePacketType.sm_delete_bonding)
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
-             discover_mode=constants.gap_discover_mode['observation'], scan_cb = None,
-             **kwargs):
+             discover_mode=constants.gap_discover_mode['observation'],
+             scan_cb=None, **kwargs):
         """
         Perform a scan to discover BLE devices.
 
@@ -330,15 +330,15 @@ class BGAPIBackend(BLEBackend):
         
         self._evt.set()
         start_time = time.time()
-        
+
         while self._evt.is_set():
             try:
-                self.expect(EventPacketType.gap_scan_response, timeout = timeout)
+                self.expect(EventPacketType.gap_scan_response,
+                            timeout=timeout)
             except ExpectedResponseTimeout:
                 pass
             if _timed_out(start_time, timeout):
                 break
-
 
         log.info("Stopping scan")
         self.send_command(CommandBuilder.gap_end_procedure())
@@ -739,9 +739,9 @@ class BGAPIBackend(BLEBackend):
         dev.rssi = args['rssi']
         log.debug("Received a scan response from %s with rssi=%d dBM "
                   "and data=%s", address, args['rssi'], data_dict)
-        
-        if self._scan_cb != None:
-            if self._scan_cb(self._devices_discovered, address, packet_type) == True:
+
+        if self._scan_cb is not None:
+            if self._scan_cb(self._devices_discovered, address, packet_type):
                 self._evt.clear()
 
     def _ble_evt_sm_bond_status(self, args):
