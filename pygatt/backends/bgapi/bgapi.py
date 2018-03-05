@@ -306,7 +306,7 @@ class BGAPIBackend(BLEBackend):
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         discover_mode -- one of the gap_discover_mode constants.
-        scan_cb -- This callback function is called whenever a new BLE 
+        scan_cb -- This callback function is called whenever a new BLE
                    advertising packet is received.
                    The function takes three parameters:
                        devices, addr, packet_type
@@ -329,7 +329,7 @@ class BGAPIBackend(BLEBackend):
         self.expect(ResponsePacketType.gap_discover)
 
         log.info("Pausing for maximum %ds to allow scan to complete", timeout)
-        
+
         self._evt.set()
         start_time = time.time()
 
