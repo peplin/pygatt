@@ -176,9 +176,6 @@ class BGAPIBackend(BLEBackend):
         else:
             raise NotConnectedError("Unable to reconnect with USB "
                                     "device after rebooting")
-            
-        if self._ser == None:
-            raise RuntimeError ("serial connection error")
 
     def start(self):
         """
