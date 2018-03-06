@@ -117,12 +117,12 @@ class BGAPIBLEDevice(BLEDevice):
                 timeout=timeout)
 
             if (matched_packet_type ==
-                   EventPacketType.attclient_attribute_value):
+                    EventPacketType.attclient_attribute_value):
                 if response['atthandle'] == handle:
                     # Concatenate the data
                     resp += response["value"]
             elif (matched_packet_type ==
-                     EventPacketType.attclient_procedure_completed):
+                    EventPacketType.attclient_procedure_completed):
                 if response['chrhandle'] == handle:
                     success = True
         return bytearray(resp)
