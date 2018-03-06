@@ -104,7 +104,7 @@ class BGAPIBLEDevice(BLEDevice):
     def char_read_long_handle(self, handle, timeout=None):
         log.info("Reading long characteristic at handle %d", handle)
         self._backend.send_command(
-            CommandBuilder.attclient_read_long_by_handle(
+            CommandBuilder.attclient_read_long(
                 self._handle, handle))
 
         self._backend.expect(ResponsePacketType.attclient_read_long)
