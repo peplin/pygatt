@@ -101,7 +101,7 @@ class BGAPIBLEDevice(BLEDevice):
         return bytearray(response['value'])
 
     @connection_required
-    def char_write_handle(self, char_handle, value, wait_for_response=False):
+    def char_write_handle(self, char_handle, value, wait_for_response=True):
 
         while True:
             value_list = [b for b in value]
