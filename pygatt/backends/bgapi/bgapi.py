@@ -166,7 +166,7 @@ class BGAPIBackend(BLEBackend):
                 log.debug("Failed to open serial port", exc_info=True)
                 if self._ser:
                     self._ser.close()
-                elif attempt >= max_connection_attempts:
+                elif attempt >= max_connection_attempts-1:
                     raise NotConnectedError(
                         "No BGAPI compatible device detected")
                 self._ser = None
