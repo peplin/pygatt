@@ -394,11 +394,11 @@ class GATTToolBackend(BLEBackend):
         """Use the 'bluetoothctl' program to erase a stored BLE bond.
         """
         con = pexpect.spawn('sudo bluetoothctl')
-        con.expect("bluetooth", timeout=1)
 
-        log.info("Clearing bond for %s", address)
-        con.sendline("remove " + address.upper())
         try:
+            con.expect("bluetooth", timeout=1)
+            log.info("Clearing bond for %s", address)
+            con.sendline("remove " + address.upper())
             con.expect(
                 ["Device has been removed", "# "],
                 timeout=.5
@@ -406,6 +406,8 @@ class GATTToolBackend(BLEBackend):
         except pexpect.TIMEOUT:
             log.error("Unable to remove bonds for %s: %s",
                       address, con.before)
+        finally:
+            con.close(True)
         log.info("Removed bonds for %s", address)
 
     def _disconnect(self, event):
