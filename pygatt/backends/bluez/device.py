@@ -187,10 +187,10 @@ class BluezBLEDevice(BLEDevice):
         self._connected = False
         log.info("Disconnected from %s", self.address)
 
-    def discover_characteristics(self, bledevice,
+    def discover_characteristics(self,
                                  timeout=DEFAULT_CONNECT_TIMEOUT_S):
         dbus_obj = self._dbus.object_by_path(self._dbus_path,
-                                            interface=self.DEVICE_INTERFACE)
+                                            interface=self._dbus.DEVICE_INTERFACE)
 
         log.debug("Service discovery not finished before timeout")
         while not dbus_obj.ServicesResolved:
