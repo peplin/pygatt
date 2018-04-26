@@ -33,6 +33,7 @@ class BluezBLEDevice(BLEDevice):
         self._subscribed_characteristics = {}
 
     def subscribe(self, uuid, callback=None, indication=False):
+        uuid = str(uuid)
         if uuid in self._subscribed_characteristics:
             self._subscribed_characteristics[uuid].add(callback)
             return
@@ -51,6 +52,7 @@ class BluezBLEDevice(BLEDevice):
             el_gatt_o.StartNotify()
 
     def unsubscribe(self, uuid):
+        uuid = str(uuid)
         if uuid not in self._subscribed_characteristics:
             return
 
@@ -98,6 +100,7 @@ class BluezBLEDevice(BLEDevice):
         :return: bytearray of result.
         :rtype: bytearray
         """
+        uuid = str(uuid)
         log.debug("Char read from %s", uuid)
         objects = self._dbus.get_managed_objects()
         for path, ifaces in objects.items():
@@ -113,6 +116,7 @@ class BluezBLEDevice(BLEDevice):
 
     @connection_required
     def char_write(self, uuid, value, wait_for_response=False):
+        uuid = str(uuid)
         objs = self._dbus.objects_by_property({'UUID': uuid},
                                                       base_path='/')
         for o in objs:
