@@ -101,7 +101,7 @@ class BluezBLEDevice(BLEDevice):
         """
         log.debug("Char read from %s", uuid)
         objects = self._dbus.get_managed_objects()
-        for path, ifaces in objects.iteritems():
+        for path, ifaces in objects.items():
             iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
             if iface is None or iface['UUID'] != uuid:
                 if iface is not None: print(iface['UUID'])
