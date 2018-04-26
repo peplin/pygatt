@@ -93,7 +93,6 @@ class BluezBLEDevice(BLEDevice):
     def char_read(self, uuid, *args, **kwargs):
         """
         Reads a Characteristic by uuid.
-        :param bledevice: BluezBLEDevice instance
         :param uuid: UUID of Characteristic to read.
         :type uuid: str
         :return: bytearray of result.
