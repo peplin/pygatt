@@ -113,6 +113,7 @@ class BGAPIBLEDevice(BLEDevice):
                     ResponsePacketType.attclient_attribute_write)
                 packet_type, response = self._backend.expect(
                     EventPacketType.attclient_procedure_completed)
+                return (packet_type, response)
             else:
                 self._backend.send_command(
                     CommandBuilder.attclient_write_command(
