@@ -189,6 +189,7 @@ class BluezBLEDevice(BLEDevice):
                                  timeout=timeout)
         bus_obj.Disconnect()
         self._connected = False
+        self._adapter.RemoveDevice(self._dbus_path)
         log.info("Disconnected from %s", self.address)
 
     def discover_characteristics(self,
