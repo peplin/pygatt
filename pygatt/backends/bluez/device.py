@@ -216,6 +216,16 @@ class BluezBLEDevice(BLEDevice):
                                  timeout=timeout)
         bus_obj.Disconnect()
         self._connected = False
+
+        self.adapter.FindDevice(self.address)
+        dev_path = None
+        try:
+            dev_path = self.adapter.FindDevice(addr)
+        except:
+            pass
+        if not dev_path is None:
+            self._adapter.RemoveDevice(dev_path)
+
         self._adapter.RemoveDevice(self._get_device_path())
         self._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
         log.info("Disconnected from %s", self.address)
