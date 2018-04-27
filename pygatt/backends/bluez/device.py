@@ -153,6 +153,7 @@ class BluezBLEDevice(BLEDevice):
                 bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
                                          self._dbus_path,
                                          timeout=timeout)
+                bus_obj.Trusted = True
                 bus_obj.Connect()
                 break
 
