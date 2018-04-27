@@ -40,8 +40,14 @@ class BluezBLEDevice(BLEDevice):
             self._subscribed_characteristics[uuid].add(callback)
             return
 
+        # we need to filter items by the actual DEVICE we are trying to talk to
+        # ex. We have two HR monitors on the same HCI device. How do we make
+        # sure we are talking to the correct one?
+        base_search_path = self._get_device_path()
+
         objs = self._dbus.objects_by_property({'UUID': uuid},
-                interface=self._dbus.GATT_CHAR_INTERFACE)
+                interface=self._dbus.GATT_CHAR_INTERFACE,
+                base_path=base_search_path)
         log.debug("Subscribing to %s (%d objs)", uuid, len(objs))
 
         for o in objs:
@@ -92,6 +98,11 @@ class BluezBLEDevice(BLEDevice):
     def _create_handle(self, service, uuid):
         return str(service)+'__'+str(uuid)
 
+    def _get_device_path(self):
+        service_addr = self.address.replace(':', '_')
+        base_search_path = self._dbus._hci_path + '/dev_' + service_addr
+        return base_search_path
+
     def get_handle(self, char_uuid):
         char_uuid = str(char_uuid)
         return self._uuid_to_handle[char_uuid]
@@ -115,7 +126,8 @@ class BluezBLEDevice(BLEDevice):
         """
         uuid = str(uuid)
         log.debug("Char read from %s", uuid)
-        objects = self._dbus.get_managed_objects()
+        base_search_path = self._get_device_path()
+        objects = self._dbus.get_managed_objects(search_path=base_search_path)
         for path, ifaces in objects.items():
             iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
             if iface is None or iface['UUID'] != uuid:
@@ -130,8 +142,9 @@ class BluezBLEDevice(BLEDevice):
     @connection_required
     def char_write(self, uuid, value, wait_for_response=False):
         uuid = str(uuid)
+        base_search_path = self._get_device_path()
         objs = self._dbus.objects_by_property({'UUID': uuid},
-                                                      base_path='/')
+                                              base_path=base_search_path)
         for o in objs:
             log.debug("Writing to %s", o.Service)
             el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]

@@ -27,8 +27,9 @@ class DBusHelper(object):
     DEVICE_INTERFACE = SERVICE_NAME + '.Device1'
     GATT_CHAR_INTERFACE = SERVICE_NAME + '.GattCharacteristic1'
 
-    def __init__(self, dbus):
+    def __init__(self, dbus, hci_path='/org/bluez/hci0'):
         self._bus = dbus
+        self._hci_path = hci_path
 
     def get(self, *args, **kwargs):
         return self._bus.get(*args, **kwargs)
@@ -47,7 +48,7 @@ class DBusHelper(object):
             return obj[interface]
         return obj
 
-    def objects_by_property(self, props, interface, base_path='/'):
+    def objects_by_property(self, props, interface, base_path=None):
         """
         Retrieve dbus objects by specific properties
 
@@ -58,10 +59,12 @@ class DBusHelper(object):
         interface -- interface that must be implemented by the object
         base_path -- where to look for the dbus object. Default root (/)
         """
+        # Scope it so that we only get objects under our hci device
+        if not base_path is None:
+            base_path = self._hci_path
+
         matches = []
-        for path, ifaces in self.get_managed_objects().items():
-            if not path.startswith(base_path):
-                continue
+        for path, ifaces in self.get_managed_objects(search_path=base_path).items():
             if interface not in ifaces:
                 continue
             i = ifaces.get(interface)
@@ -74,8 +77,10 @@ class DBusHelper(object):
                 matches.append(self.object_by_path(path))
         return matches
 
-    def get_managed_objects(self):
-        obj_manager = self.object_by_path('/',
+    def get_managed_objects(self, search_path=None):
+        if not search_path is None :
+            search_path = self._hci_path
+        obj_manager = self.object_by_path(search_path,
                 interface=self.DBUS_OBJECT_MANAGER_INTERFACE)
         return obj_manager.GetManagedObjects()
 
@@ -106,7 +111,12 @@ class BluezBackend(BLEBackend):
             self._main_loop = GLib.MainLoop()
             self._main_loop_thread = Thread(target=self._main_loop.run)
         self._subscriptions = []
-        self._bus = DBusHelper(SystemBus())
+
+        hci_path = '/org/bluez/hci0'
+        if not hci_device is None :
+            hci_path = '/org/bluez/' + hci_device
+
+        self._bus = DBusHelper(SystemBus(), hci_path)
         try:
             self._adapter = self.find_adapter(hci_device)
         except BLEError as e:
@@ -123,7 +133,7 @@ class BluezBackend(BLEBackend):
         self._connected_devices = {}
 
     def find_adapter(self, pattern=None):
-        return self.find_adapter_in_objects(self._bus.get_managed_objects(),
+        return self.find_adapter_in_objects(self._bus.get_managed_objects('/'),
                                             pattern)
 
     def find_adapter_in_objects(self, objects, pattern=None):
