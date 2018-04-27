@@ -64,7 +64,7 @@ class DBusHelper(object):
             base_path = self._hci_path
 
         matches = []
-        for path, ifaces in self.get_managed_objects(search_path=base_path).items():
+        for path, ifaces in self.get_managed_objects(base_path).items():
             if interface not in ifaces:
                 continue
             i = ifaces.get(interface)
@@ -80,9 +80,12 @@ class DBusHelper(object):
     def get_managed_objects(self, search_path=None):
         if search_path is None :
             search_path = self._hci_path
-        obj_manager = self.object_by_path(search_path,
+        obj_manager = self.object_by_path('/',
                 interface=self.DBUS_OBJECT_MANAGER_INTERFACE)
-        return obj_manager.GetManagedObjects()
+        return ((path, ifaces)
+                for (path, ifaces)
+                in obj_manager.GetManagedObjects()
+                if path.startswith(base_path))
 
 
 class BluezBackend(BLEBackend):
