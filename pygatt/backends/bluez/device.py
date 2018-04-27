@@ -195,7 +195,7 @@ class BluezBLEDevice(BLEDevice):
                      "discovery continues in the background")
 
     def disconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
-        char_keys = copy.copy(self._subscribed_characteristics.keys())
+        char_keys = copy.copy([self._subscribed_characteristics.keys()])
         for o in char_keys:
             self.unsubscribe(o)
 
