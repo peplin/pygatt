@@ -106,7 +106,7 @@ class BluezBLEDevice(BLEDevice):
         for path, ifaces in objects.items():
             iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
             if iface is None or iface['UUID'] != uuid:
-                if iface is not None: print(iface['UUID'])
+                if iface is not None: log.debug(iface['UUID'])
                 continue
             dbus_obj = self._dbus.object_by_path(path,
                     interface=self._dbus.GATT_CHAR_INTERFACE)
