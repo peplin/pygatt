@@ -31,6 +31,7 @@ class BluezBLEDevice(BLEDevice):
         self._dbus = dbus_helper
         self._connected = False
         self._subscribed_characteristics = {}
+        self._uuid_to_handle = {}
 
     def subscribe(self, uuid, callback=None, indication=False):
         uuid = str(uuid)
@@ -49,6 +50,7 @@ class BluezBLEDevice(BLEDevice):
                                       service=o.Service, uuid=uuid))
             el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
             self._subscribed_characteristics[uuid] = set((callback,))
+            self._uuid_to_handle[uuid] = self._create_handle(o.Service, uuid)
             el_gatt_o.StartNotify()
 
     def unsubscribe(self, uuid):
@@ -69,7 +71,10 @@ class BluezBLEDevice(BLEDevice):
         log.debug("Property changed on service: %s, uuid %s", service, uuid)
         if uuid is not None and uuid in self._subscribed_characteristics:
             for cb in self._subscribed_characteristics[uuid]:
-                cb(interface, changed, invalidated, service=service, uuid=uuid)
+                #cb(interface, changed, invalidated, service=service, uuid=uuid)
+                if 'Value' in changed :
+                    cb(self._create_handle(service, uuid),
+                       bytes(changed['Value']))
         elif uuid is not None:
             log.error("No subscription for UUID {}".format(uuid))
 
@@ -79,9 +84,16 @@ class BluezBLEDevice(BLEDevice):
         uuid_notification = '-'.join(uuid_parts)
         return uuid, uuid_notification
 
+    # Our handle is a unique string for each device that can be used to find
+    # our way back to our calling object. Including the 'self' pointer and
+    # managing this on the class side would be preferred but this is to retain
+    # backwards compatibility
+    def _create_handle(self, service, uuid):
+        return str(service)+'__'+str(uuid)
+
     def get_handle(self, char_uuid):
-        log.warning('get_handle not implemented - returning given uuid')
-        return char_uuid
+        char_uuid = str(char_uuid)
+        return self._uuid_to_handle[char_uuid]
 
     @connection_required
     def bond(self, *args, **kwargs):
