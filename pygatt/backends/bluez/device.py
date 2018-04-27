@@ -1,6 +1,7 @@
 import functools
 import logging
 import time
+import copy
 
 from gi.repository import GLib
 from pygatt import BLEDevice
@@ -194,7 +195,8 @@ class BluezBLEDevice(BLEDevice):
                      "discovery continues in the background")
 
     def disconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
-        for o in self._subscribed_characteristics.keys():
+        char_keys = copy.copy(self._subscribed_characteristics.keys())
+        for o in char_keys:
             self.unsubscribe(o)
 
         bus_obj = self._dbus.get(self._dbus.SERVICE_NAME, self._dbus_path,
