@@ -64,7 +64,7 @@ class DBusHelper(object):
             base_path = self._hci_path
 
         matches = []
-        for path, ifaces in self.get_managed_objects(base_path).items():
+        for path, ifaces in self.get_managed_objects(base_path):
             if interface not in ifaces:
                 continue
             i = ifaces.get(interface)
@@ -84,7 +84,7 @@ class DBusHelper(object):
                 interface=self.DBUS_OBJECT_MANAGER_INTERFACE)
         return ((path, ifaces)
                 for (path, ifaces)
-                in obj_manager.GetManagedObjects()
+                in obj_manager.GetManagedObjects().items()
                 if path.startswith(base_path))
 
 
@@ -140,7 +140,7 @@ class BluezBackend(BLEBackend):
                                             pattern)
 
     def find_adapter_in_objects(self, objects, pattern=None):
-        for path, ifaces in objects.items():
+        for path, ifaces in objects:
             adapter = ifaces.get(DBusHelper.ADAPTER_INTERFACE)
             if adapter is None:
                 continue
@@ -177,7 +177,7 @@ class BluezBackend(BLEBackend):
     def add_prediscovered_devices(self):
         """ "Discover" devices cached by bluez """
         objects = self._bus.get_managed_objects()
-        for path, ifaces in objects.items():
+        for path, ifaces in objects:
             dev = ifaces.get(DBusHelper.DEVICE_INTERFACE)
             if dev is None:
                 continue
