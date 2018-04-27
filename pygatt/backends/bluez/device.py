@@ -52,14 +52,15 @@ class BluezBLEDevice(BLEDevice):
 
         for o in objs:
             log.debug(".. on service: %s", o[self._dbus.GATT_CHAR_INTERFACE].Service)
-            o[self._dbus.DBUS_PROPERTIES_INTERFACE].PropertiesChanged.connect(
-                    functools.partial(self.properties_changed,
-                                      service=o.Service, uuid=uuid))
-            el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
-            self._subscribed_characteristics[uuid] = set((callback,))
-            self._uuid_to_handle[uuid] = self._create_handle(o.Service, uuid)
+            
             try :
                 el_gatt_o.StartNotify()
+                o[self._dbus.DBUS_PROPERTIES_INTERFACE].PropertiesChanged.connect(
+                        functools.partial(self.properties_changed,
+                                          service=o.Service, uuid=uuid))
+                el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
+                self._subscribed_characteristics[uuid] = set((callback,))
+                self._uuid_to_handle[uuid] = self._create_handle(o.Service, uuid)
             except GLib.Error as gerr:
                 # when you reconnect to a device it always complains about this
                 pass
