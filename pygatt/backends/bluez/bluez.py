@@ -60,7 +60,7 @@ class DBusHelper(object):
         base_path -- where to look for the dbus object. Default root (/)
         """
         # Scope it so that we only get objects under our hci device
-        if not base_path is None:
+        if base_path is None:
             base_path = self._hci_path
 
         matches = []
@@ -78,7 +78,7 @@ class DBusHelper(object):
         return matches
 
     def get_managed_objects(self, search_path=None):
-        if not search_path is None :
+        if search_path is None :
             search_path = self._hci_path
         obj_manager = self.object_by_path(search_path,
                 interface=self.DBUS_OBJECT_MANAGER_INTERFACE)
