@@ -85,7 +85,7 @@ class DBusHelper(object):
         return ((path, ifaces)
                 for (path, ifaces)
                 in obj_manager.GetManagedObjects().items()
-                if path.startswith(base_path))
+                if path.startswith(search_path))
 
 
 class BluezBackend(BLEBackend):
