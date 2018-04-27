@@ -58,7 +58,11 @@ class BluezBLEDevice(BLEDevice):
             el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
             self._subscribed_characteristics[uuid] = set((callback,))
             self._uuid_to_handle[uuid] = self._create_handle(o.Service, uuid)
-            el_gatt_o.StartNotify()
+            try :
+                el_gatt_o.StartNotify()
+            except GLib.Error as gerr:
+                # when you reconnect to a device it always complains about this
+                pass
 
     def unsubscribe(self, uuid):
         uuid = str(uuid)
