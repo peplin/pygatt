@@ -133,7 +133,7 @@ class BluezBackend(BLEBackend):
 
         self._scan_filter = scan_filter
         self._discovered_devices = {}
-        self._connected_devices = {}
+        self._connected_devices = set()
 
     def find_adapter(self, pattern=None):
         return self.find_adapter_in_objects(self._bus.get_managed_objects('/'),
