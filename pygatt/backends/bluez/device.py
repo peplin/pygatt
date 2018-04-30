@@ -120,9 +120,13 @@ class BluezBLEDevice(BLEDevice):
                 bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
                                  self._dbus_path,
                                  timeout=timeout)
-                if is_connect :
+                if is_connect == True :
                     bus_obj.Trusted = True
                     bus_obj.Connect()
+                    while bus_obj.Connected == False :
+                        if time.time() + sleep >= timeout_time:
+                            raise NotConnectedError(
+                                    "Connection to {} timed out".format(self.address))
                 else :
                     bus_obj.Disconnect()
 
@@ -233,7 +237,7 @@ class BluezBLEDevice(BLEDevice):
 
         try :
             bus_obj = self._get_device_bus_object(timeout, is_connect=False)
-        except Exception as e :
+        except KeyError as e :
             print(e)
             print("Disconnecting caused an error but we keep moving forward.")
 
