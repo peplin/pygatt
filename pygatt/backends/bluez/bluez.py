@@ -312,6 +312,7 @@ class BluezBackend(BLEBackend):
             errstr = "Device with address {} not found".format(address)
             raise NotConnectedError(errstr)
 
-        bledevice = BluezBLEDevice(address, path, self._bus)
+        bledevice = BluezBLEDevice(address, path, self._bus, self)
         bledevice.connect(timeout=timeout)
+        self._connected_devices.add(bledevice)
         return bledevice
