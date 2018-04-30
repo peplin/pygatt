@@ -110,6 +110,37 @@ class BluezBLEDevice(BLEDevice):
         char_uuid = str(char_uuid)
         return self._uuid_to_handle[char_uuid]
 
+    def _get_device_bus_object(self, timeout):
+        bus_obj = None
+        timeout_time = time.time() + timeout
+        while True:
+            try:
+                # we don't use object_by_path here because it doesn't support
+                # timeout
+                bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
+                                 self._dbus_path,
+                                 timeout=timeout)
+                break
+
+            except GLib.Error as e:
+                # TODO remove print
+                print((e.code, e.message))
+                log.error("Error connecting to %s: %d %s",
+                          self.address, e.code, e.message)
+                sleep = 0.1
+                if e.code == 24:  # Timeout was reached
+                    sleep = 2
+                elif e.code == 36:  # Operation already in progress,
+                                    # Software caused connection abort
+                    pass
+
+                if time.time() + sleep >= timeout_time:
+                    raise NotConnectedError(
+                            "Connection to {} timed out".format(self.address))
+
+                time.sleep(sleep)
+        return bus_obj
+
     @connection_required
     def bond(self, *args, **kwargs):
         raise NotImplementedError()
@@ -176,33 +207,11 @@ class BluezBLEDevice(BLEDevice):
             return
 
         log.info("Connecting to %s", self.address)
-        timeout_time = time.time() + timeout
-        while True:
-            try:
-                bus_obj = self._dbus.object_by_path(
-                                         self._dbus_path,
-                                         timeout=timeout)
-                bus_obj.Trusted = True
-                bus_obj.Connect()
-                break
 
-            except GLib.Error as e:
-                # TODO remove print
-                print((e.code, e.message))
-                log.error("Error connecting to %s: %d %s",
-                          self.address, e.code, e.message)
-                sleep = 0.1
-                if e.code == 24:  # Timeout was reached
-                    sleep = 2
-                elif e.code == 36:  # Operation already in progress,
-                                    # Software caused connection abort
-                    pass
+        bus_obj = self._get_device_bus_object(timeout)
 
-                if time.time() + sleep >= timeout_time:
-                    raise NotConnectedError(
-                            "Connection to {} timed out".format(self.address))
-
-                time.sleep(sleep)
+        bus_obj.Trusted = True
+        bus_obj.Connect()
 
         self._connected = True
 
@@ -215,9 +224,7 @@ class BluezBLEDevice(BLEDevice):
         for o in char_keys:
             self.unsubscribe(o)
 
-        bus_obj = self._dbus.object_by_path(
-                                 self._dbus_path,
-                                 timeout=timeout)
+        bus_obj = self._get_device_bus_object(timeout)
         bus_obj.Disconnect()
         self._connected = False
 
