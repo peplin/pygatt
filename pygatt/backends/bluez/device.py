@@ -179,7 +179,7 @@ class BluezBLEDevice(BLEDevice):
         timeout_time = time.time() + timeout
         while True:
             try:
-                bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
+                bus_obj = self._dbus.object_by_path(
                                          self._dbus_path,
                                          timeout=timeout)
                 bus_obj.Trusted = True
@@ -215,21 +215,14 @@ class BluezBLEDevice(BLEDevice):
         for o in char_keys:
             self.unsubscribe(o)
 
-        bus_obj = self._dbus.get(self._dbus.SERVICE_NAME, self._dbus_path,
+        bus_obj = self._dbus.object_by_path(
+                                 self._dbus_path,
                                  timeout=timeout)
         bus_obj.Disconnect()
         self._connected = False
 
-        dev_path = None
-        try:
-            dev_path = self._backend._adapter.FindDevice(self.address)
-        except GLib.Error as gerr:
-            pass
-        if not dev_path is None:
-            self._backend._adapter.RemoveDevice(dev_path)
-
         self._backend._adapter.RemoveDevice(self._get_device_path())
-        self._backend._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
+        #self._backend._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
         log.info("Disconnected from %s", self.address)
 
     def discover_characteristics(self,

@@ -301,18 +301,19 @@ class BluezBackend(BLEBackend):
 
         log.info("... new connection")
         device_found = False
-        path = None
+        out_path = None
         dev = None
         for path, dev in self._discovered_devices.items():
             if dev['Address'] == address:
                 device_found = True
+                out_path = path
                 break
 
         if not device_found:
             errstr = "Device with address {} not found".format(address)
             raise NotConnectedError(errstr)
 
-        bledevice = BluezBLEDevice(address, path, self._bus, self)
+        bledevice = BluezBLEDevice(address, out_path, self._bus, self)
         bledevice.connect(timeout=timeout)
         self._connected_devices.add(bledevice)
         return bledevice
