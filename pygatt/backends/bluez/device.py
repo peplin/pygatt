@@ -231,7 +231,11 @@ class BluezBLEDevice(BLEDevice):
         for o in char_keys:
             self.unsubscribe(o)
 
-        bus_obj = self._get_device_bus_object(timeout, is_connect=False)
+        try :
+            bus_obj = self._get_device_bus_object(timeout, is_connect=False)
+        except Exception as e :
+            print(e)
+            print("Disconnecting caused an error but we keep moving forward.")
 
         self._connected = False
 
