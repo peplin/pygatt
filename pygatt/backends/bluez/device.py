@@ -110,7 +110,7 @@ class BluezBLEDevice(BLEDevice):
         char_uuid = str(char_uuid)
         return self._uuid_to_handle[char_uuid]
 
-    def _get_device_bus_object(self, timeout):
+    def _get_device_bus_object(self, timeout, is_connect):
         bus_obj = None
         timeout_time = time.time() + timeout
         while True:
@@ -120,12 +120,22 @@ class BluezBLEDevice(BLEDevice):
                 bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
                                  self._dbus_path,
                                  timeout=timeout)
+                if is_connect :
+                    bus_obj.Trusted = True
+                    bus_obj.Connect()
+                else :
+                    bus_obj.Disconnect()
+
                 break
 
             except GLib.Error as e:
                 # TODO remove print
                 print((e.code, e.message))
-                log.error("Error connecting to %s: %d %s",
+                if is_connect :
+                    log.error("Error connecting to %s: %d %s",
+                          self.address, e.code, e.message)
+                else :
+                    log.error("Error disconnecting from %s: %d %s",
                           self.address, e.code, e.message)
                 sleep = 0.1
                 if e.code == 24:  # Timeout was reached
@@ -208,10 +218,7 @@ class BluezBLEDevice(BLEDevice):
 
         log.info("Connecting to %s", self.address)
 
-        bus_obj = self._get_device_bus_object(timeout)
-
-        bus_obj.Trusted = True
-        bus_obj.Connect()
+        bus_obj = self._get_device_bus_object(timeout, is_connect=True)
 
         self._connected = True
 
@@ -224,8 +231,8 @@ class BluezBLEDevice(BLEDevice):
         for o in char_keys:
             self.unsubscribe(o)
 
-        bus_obj = self._get_device_bus_object(timeout)
-        bus_obj.Disconnect()
+        bus_obj = self._get_device_bus_object(timeout, is_connect=False)
+
         self._connected = False
 
         self._backend._adapter.RemoveDevice(self._get_device_path())
