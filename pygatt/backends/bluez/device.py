@@ -26,13 +26,16 @@ def connection_required(func):
 class BluezBLEDevice(BLEDevice):
     """A BLE device connection initiated by the Bluez (DBUS) backend.
     """
-    def __init__(self, address, dbus_path, dbus_helper):
+    def __init__(self, address, dbus_path, dbus_helper, _backend):
         super(BluezBLEDevice, self).__init__(address)
         self._dbus_path = dbus_path
         self._dbus = dbus_helper
         self._connected = False
         self._subscribed_characteristics = {}
         self._uuid_to_handle = {}
+        # This might seem odd but we need to know which bluetooth device
+        # created us to allow orselves to be removed by the correct adapter.
+        self._backend = _backend
 
     def subscribe(self, uuid, callback=None, indication=False):
         uuid = str(uuid)
@@ -217,17 +220,16 @@ class BluezBLEDevice(BLEDevice):
         bus_obj.Disconnect()
         self._connected = False
 
-        self.adapter.FindDevice(self.address)
         dev_path = None
         try:
-            dev_path = self.adapter.FindDevice(addr)
-        except:
+            dev_path = self._backend._adapter.FindDevice(self.address)
+        except GLib.Error as gerr:
             pass
         if not dev_path is None:
-            self._adapter.RemoveDevice(dev_path)
+            self._backend._adapter.RemoveDevice(dev_path)
 
-        self._adapter.RemoveDevice(self._get_device_path())
-        self._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
+        self._backend._adapter.RemoveDevice(self._get_device_path())
+        self._backend._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
         log.info("Disconnected from %s", self.address)
 
     def discover_characteristics(self,
