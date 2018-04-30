@@ -243,8 +243,7 @@ class BluezBLEDevice(BLEDevice):
 
         self._connected = False
 
-        self._backend._adapter.RemoveDevice(self._get_device_path())
-        #self._backend._adapter.RemoveDevice(self._dbus.object_by_path(self._get_device_path()))
+        #self._backend._adapter.RemoveDevice(self._get_device_path())
         log.info("Disconnected from %s", self.address)
 
     def discover_characteristics(self,
