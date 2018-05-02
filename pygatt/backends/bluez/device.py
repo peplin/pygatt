@@ -10,6 +10,15 @@ from pygatt.exceptions import NotConnectedError
 
 log = logging.getLogger(__name__)
 
+g_prop_changed = {}
+
+def handle_prop(*args, dev_n_uuid=None) :
+    if dev_n_uuid in g_prop_changed :
+        for func in g_prop_changed[dev_n_uuid] :
+            func(*args)
+    else :
+        print('ERROR: property callback on non-subscribed prop')
+        print('prop: ' + str(dev_n_uuid))
 
 def connection_required(func):
     """Raise an exception before calling the actual function if the device is
@@ -38,7 +47,8 @@ class BluezBLEDevice(BLEDevice):
         self._backend = _backend
 
     def subscribe(self, uuid, callback=None, indication=False):
-        uuid = str(uuid)
+        global g_prop_changed
+        uuid = str(uuid).lower()
         if uuid in self._subscribed_characteristics:
             self._subscribed_characteristics[uuid].add(callback)
             return
@@ -55,26 +65,28 @@ class BluezBLEDevice(BLEDevice):
 
         for o in objs:
             log.debug(".. on service: %s", o[self._dbus.GATT_CHAR_INTERFACE].Service)
-            o[self._dbus.DBUS_PROPERTIES_INTERFACE].PropertiesChanged.connect(
-                    functools.partial(self.properties_changed,
-                                      service=o.Service, uuid=uuid))
-            el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
+            part_func = functools.partial(self.properties_changed,
+                                      service=o.Service, uuid=uuid)
+            dev_n_uuid = self._create_handle(o.Service, uuid)
             self._subscribed_characteristics[uuid] = set((callback,))
-            self._uuid_to_handle[uuid] = self._create_handle(o.Service, uuid)
-            el_gatt_o.StartNotify()
+            self._uuid_to_handle[uuid] = dev_n_uuid
+            if dev_n_uuid in g_prop_changed :
+                g_prop_changed[dev_n_uuid].append(part_func)
+            else :
+                g_prop_changed[dev_n_uuid] = []
+                g_prop_changed[dev_n_uuid].append(part_func)
+                prop_changed = o[self._dbus.DBUS_PROPERTIES_INTERFACE].PropertiesChanged
+                part_global_func = functools.partial(handle_prop, dev_n_uuid=dev_n_uuid)
+                prop_changed.connect(part_global_func)
+                el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
+                el_gatt_o.StartNotify()
 
     def unsubscribe(self, uuid):
         uuid = str(uuid)
         if uuid not in self._subscribed_characteristics:
             return
 
-        objs = self._dbus.objects_by_property({'UUID': uuid},
-                interface=self._dbus.GATT_CHAR_INTERFACE)
-        for o in objs:
-            el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
-            if el_gatt_o.Notifying:
-                el_gatt_o.StopNotify()
-            del(self._subscribed_characteristics[uuid])
+        del(self._subscribed_characteristics[uuid])
 
     def properties_changed(self, interface, changed, invalidated,
                            service=None, uuid=None):
@@ -107,7 +119,11 @@ class BluezBLEDevice(BLEDevice):
         return base_search_path
 
     def get_handle(self, char_uuid):
-        char_uuid = str(char_uuid)
+        char_uuid = str(char_uuid).lower()
+        if not char_uuid in self._uuid_to_handle:
+            raise NotConnectedError(
+                                    "handle not found in get_handle {}".format(char_uuid))
+
         return self._uuid_to_handle[char_uuid]
 
     def _get_device_bus_object(self, timeout, is_connect):
@@ -172,7 +188,7 @@ class BluezBLEDevice(BLEDevice):
         :return: bytearray of result.
         :rtype: bytearray
         """
-        uuid = str(uuid)
+        uuid = str(uuid).lower()
         log.debug("Char read from %s", uuid)
         base_search_path = self._get_device_path()
         objects = self._dbus.get_managed_objects(search_path=base_search_path)
@@ -231,6 +247,10 @@ class BluezBLEDevice(BLEDevice):
                      "discovery continues in the background")
 
     def disconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
+        # remove all callback_connections
+        for uuid, dev_n_uuid in self._uuid_to_handle.items() :
+            g_prop_changed[dev_n_uuid] = []
+
         char_keys = copy.copy([self._subscribed_characteristics.keys()])
         for o in char_keys:
             self.unsubscribe(o)
