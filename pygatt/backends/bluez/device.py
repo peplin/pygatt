@@ -39,6 +39,7 @@ class BluezBLEDevice(BLEDevice):
         super(BluezBLEDevice, self).__init__(address)
         self._dbus_path = dbus_path
         self._dbus = dbus_helper
+        self._dbus_obj_cache = {}
         self._connected = False
         self._subscribed_characteristics = {}
         self._uuid_to_handle = {}
@@ -190,29 +191,55 @@ class BluezBLEDevice(BLEDevice):
         """
         uuid = str(uuid).lower()
         log.debug("Char read from %s", uuid)
-        base_search_path = self._get_device_path()
-        objects = self._dbus.get_managed_objects(search_path=base_search_path)
-        for path, ifaces in objects:
-            iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
-            if iface is None or iface['UUID'] != uuid:
-                if iface is not None: log.debug(iface['UUID'])
-                continue
-            dbus_obj = self._dbus.object_by_path(path,
-                    interface=self._dbus.GATT_CHAR_INTERFACE)
-            v = dbus_obj.ReadValue({})
-            return bytearray(v)
-        raise Exception("UUID {} not found".format(uuid))
+        try :
+            if uuid in self._dbus_obj_cache :
+                dbus_obj = self._dbus_obj_cache[uuid]
+                v = dbus_obj.ReadValue({})
+                return bytearray(v)
+
+            base_search_path = self._get_device_path()
+            objects = self._dbus.get_managed_objects(search_path=base_search_path)
+            for path, ifaces in objects:
+                iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
+                if iface is None or iface['UUID'] != uuid:
+                    if iface is not None: log.debug(iface['UUID'])
+                    continue
+                dbus_obj = self._dbus.object_by_path(path,
+                        interface=self._dbus.GATT_CHAR_INTERFACE)
+                self._dbus_obj_cache[uuid] = dbus_obj
+
+                v = dbus_obj.ReadValue({})
+                return bytearray(v)
+            raise NotConnectedError("UUID {} not found".format(uuid))
+        except GLib.GError as e:
+            raise NotConnectedError(
+                                    "char_write threw error {}".format(uuid))
+
 
     @connection_required
     def char_write(self, uuid, value, wait_for_response=False):
-        uuid = str(uuid)
-        base_search_path = self._get_device_path()
-        objs = self._dbus.objects_by_property({'UUID': uuid},
-                                              base_path=base_search_path)
-        for o in objs:
-            log.debug("Writing to %s", o.Service)
-            el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
-            el_gatt_o.WriteValue(value, {})
+        uuid = str(uuid).lower()
+        log.debug("Char write from %s", uuid)
+        try :
+            if uuid in self._dbus_obj_cache :
+                dbus_obj = self._dbus_obj_cache[uuid]
+                dbus_obj.WriteValue(value, {})
+                return
+            base_search_path = self._get_device_path()
+            objects = self._dbus.get_managed_objects(search_path=base_search_path)
+            for path, ifaces in objects:
+                iface = ifaces.get(self._dbus.GATT_CHAR_INTERFACE)
+                if iface is None or iface['UUID'] != uuid:
+                    if iface is not None: log.debug(iface['UUID'])
+                    continue
+                dbus_obj = self._dbus.object_by_path(path,
+                        interface=self._dbus.GATT_CHAR_INTERFACE)
+                dbus_obj.WriteValue(value, {})
+                return 
+            raise NotConnectedError("UUID {} not found".format(uuid))
+        except GLib.GError as e:
+            raise NotConnectedError(
+                                    "char_write threw error {}".format(uuid))
 
     @connection_required
     def char_write_handle(self, handle, *args, **kwargs):
