@@ -7,6 +7,7 @@ from functools import partial
 from gi.repository import GLib
 from pydbus import SystemBus
 from threading import Thread
+from itertools import chain
 
 from pygatt.exceptions import NotConnectedError, BLEError
 from pygatt.backends import BLEBackend
@@ -194,7 +195,7 @@ class BluezBackend(BLEBackend):
 
         if path in self._discovered_devices:
             self._discovered_devices[path] = {
-                    self._discovered_devices[path].items() + properties.items()
+                    chain(self._discovered_devices[path].items(), properties.items())
             }
         else:
             self._discovered_devices[path] = properties
@@ -210,7 +211,7 @@ class BluezBackend(BLEBackend):
 
         if path in self._discovered_devices:
             self._discovered_devices[path] = {
-                    self._discovered_devices[path].items() + changed.items()
+                    chain(self._discovered_devices[path].items(), changed.items())
             }
         else:
             self._discovered_devices[path] = changed
