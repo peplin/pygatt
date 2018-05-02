@@ -233,14 +233,16 @@ class BluezBLEDevice(BLEDevice):
 
         timeout -- Timeout in seconds to attempt a connection
         """
-        if self._connected:
-            return
+        #if self._connected:
+        #    return
 
         log.info("Connecting to %s", self.address)
 
         bus_obj = self._get_device_bus_object(timeout, is_connect=True)
-
-        self._connected = True
+        if not bus_obj is None and bus_obj.Connected == True:
+            self._connected = True
+        else :
+            raise NotConnectedError() 
 
         if not self.services_resolved:
             log.info("Services not (all) resolved yet, " +
