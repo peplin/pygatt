@@ -272,8 +272,10 @@ class BluezBLEDevice(BLEDevice):
                                             interface=self._dbus.DEVICE_INTERFACE)
 
         log.debug("Service discovery not finished before timeout")
+        timeout_time = time.time() + timeout
+
         while not dbus_obj.ServicesResolved:
-            if time.time() >= timeout:
+            if time.time() >= timeout_time:
                 break
             time.sleep(0.1)
 
