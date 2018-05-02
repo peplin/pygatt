@@ -214,7 +214,10 @@ class BluezBackend(BLEBackend):
                     chain(self._discovered_devices[path].items(), changed.items())
             }
         else:
-            self._discovered_devices[path] = changed
+            # We expect every object in our dictionary to have an 'Address'
+            # this was added due to a real exception that was thrown.
+            if 'Address' in changed :
+                self._discovered_devices[path] = changed
 
         if 'Address' in self._discovered_devices[path]:
             address = self._discovered_devices[path]['Address']
