@@ -306,7 +306,6 @@ class BluezBackend(BLEBackend):
         log.info("... new connection")
         # Bluz requires a scan to have seen a device before it ends up
         # in the dbus device tree.
-        self.scan(timeout=10)
         device_found = False
         out_path = None
         dev = None
