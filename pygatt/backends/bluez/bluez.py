@@ -129,8 +129,10 @@ class BluezBackend(BLEBackend):
                         hci_device))
             raise e
         if not self._adapter.Powered:
-            raise BLEError("Bluetooth adapter `{}' not powered".format(
-                    hci_device))
+            self._adapter.Powered = True
+            if not self._adapter.Powered:
+                raise BLEError("Bluetooth adapter `{}' not powered".format(
+                        hci_device))
 
         self._scan_filter = scan_filter
         self._discovered_devices = {}
