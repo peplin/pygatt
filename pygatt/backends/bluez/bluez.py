@@ -310,10 +310,14 @@ class BluezBackend(BLEBackend):
         out_path = None
         dev = None
         for path, dev in self._discovered_devices.items():
-            if dev['Address'] == address:
-                device_found = True
-                out_path = path
-                break
+            try :
+                if dev['Address'] == address:
+                    device_found = True
+                    out_path = path
+                    break
+            # Handle this error: TypeError: 'set' object is not subscriptable
+            except TypeError :
+                pass
 
         if not device_found:
             errstr = "Device with address {} not found".format(address)
