@@ -264,6 +264,7 @@ class BluezBLEDevice(BLEDevice):
         #    return
 
         log.info("Connecting to %s", self.address)
+        print("Connecting to ", self.address)
 
         bus_obj = self._get_device_bus_object(timeout, is_connect=True)
         if not bus_obj is None and bus_obj.Connected == True:
@@ -294,6 +295,7 @@ class BluezBLEDevice(BLEDevice):
 
         #self._backend._adapter.RemoveDevice(self._get_device_path())
         log.info("Disconnected from %s", self.address)
+        print("Disconnected from ", self.address)
 
     def discover_characteristics(self,
                                  timeout=DEFAULT_CONNECT_TIMEOUT_S):
