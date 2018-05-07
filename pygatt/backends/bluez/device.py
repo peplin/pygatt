@@ -272,8 +272,16 @@ class BluezBLEDevice(BLEDevice):
         else :
             raise NotConnectedError() 
 
-        if not self.services_resolved:
+        resolve_timeout = 5
+        timeout_time = time.time() + resolve_timeout
+        while not self.services_resolved and time.time() >= timeout_time :
+            time.sleep(0.1)
+            pass
+
+        if not self.services_resolved :
             log.info("Services not (all) resolved yet, " +
+                     "discovery continues in the background")
+            print("Services not (all) resolved yet, " +
                      "discovery continues in the background")
 
     def disconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
