@@ -308,7 +308,7 @@ class BluezBackend(BLEBackend):
                         usage
         """
         for bledev in self._connected_devices:
-            if bledev.address == address:
+            if bledev.address == address and bledev.connected == True:
                 log.error("Connecting to already connected device: %s", address)
                 print(("Connecting to already connected device: ", address))
                 # for now we will just create an identical device.
