@@ -213,7 +213,7 @@ class BluezBLEDevice(BLEDevice):
             raise NotConnectedError("UUID {} not found".format(uuid))
         except GLib.GError as e:
             raise NotConnectedError(
-                                    "char_write threw error {}".format(uuid))
+                                    "char_read threw error {}".format(uuid))
 
 
     @connection_required
@@ -274,8 +274,10 @@ class BluezBLEDevice(BLEDevice):
 
         resolve_timeout = 5
         timeout_time = time.time() + resolve_timeout
-        while not self.services_resolved and time.time() >= timeout_time :
+        while not self.services_resolved :
             time.sleep(0.1)
+            if time.time() >= timeout_time:
+                break
             pass
 
         if not self.services_resolved :
