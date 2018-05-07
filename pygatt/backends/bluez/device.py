@@ -148,6 +148,10 @@ class BluezBLEDevice(BLEDevice):
                 else :
                     print("In disconnect")
                     bus_obj.Disconnect()
+                    while bus_obj.Connected == True :
+                        if time.time() + sleep >= timeout_time:
+                            raise NotConnectedError(
+                                    "Connection to {} timed out".format(self.address))
 
                 break
 
@@ -274,7 +278,7 @@ class BluezBLEDevice(BLEDevice):
         else :
             raise NotConnectedError() 
 
-        resolve_timeout = 10
+        resolve_timeout = 30
         timeout_time = time.time() + resolve_timeout
         while not self.services_resolved :
             time.sleep(0.1)
