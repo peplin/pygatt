@@ -308,7 +308,10 @@ class BluezBackend(BLEBackend):
         """
         for bledev in self._connected_devices:
             if bledev.address == address:
-                return bledev
+                log.error("Connecting to already connected device: %s", address)
+                print(("Connecting to already connected device: ", address))
+                # for now we will just create an identical device.
+                #return bledev
 
         log.info("... new connection")
         # Bluz requires a scan to have seen a device before it ends up
@@ -325,6 +328,22 @@ class BluezBackend(BLEBackend):
             # Handle this error: TypeError: 'set' object is not subscriptable
             except TypeError :
                 pass
+
+        # If we can't find our device it is possible we have just
+        # never looked for it. Force a scan now to find it.
+        if not device_found:
+            print('Managed device not found. Triggering scan.')
+            self.scan()
+            # try to find the device again
+            for path, dev in self._discovered_devices.items():
+                try :
+                    if dev['Address'] == address:
+                        device_found = True
+                        out_path = path
+                        break
+                # Handle this error: TypeError: 'set' object is not subscriptable
+                except TypeError :
+                    pass
 
         if not device_found:
             errstr = "Device with address {} not found".format(address)
