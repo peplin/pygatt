@@ -274,7 +274,7 @@ class BluezBLEDevice(BLEDevice):
         else :
             raise NotConnectedError() 
 
-        resolve_timeout = 5
+        resolve_timeout = 10
         timeout_time = time.time() + resolve_timeout
         while not self.services_resolved :
             time.sleep(0.1)
