@@ -282,7 +282,7 @@ class BluezBackend(BLEBackend):
         """
         log.info("Starting BLE scan")
         temp_scan_filter = scan_filter or self._scan_filter
-        if temp_scan_filter = None :
+        if temp_scan_filter == None :
             temp_scan_filter = {}
         # only do a bluetooth low enery scan
         temp_scan_filter['Transport'] = 'le'
