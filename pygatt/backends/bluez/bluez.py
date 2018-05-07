@@ -281,11 +281,12 @@ class BluezBackend(BLEBackend):
                        defined on instance initialization.
         """
         log.info("Starting BLE scan")
+        print("Starting BLE scan")
         temp_scan_filter = scan_filter or self._scan_filter
         if temp_scan_filter == None :
             temp_scan_filter = {}
         # only do a bluetooth low enery scan
-        temp_scan_filter['Transport'] = 'le'
+        temp_scan_filter['Transport'] = GLib.Variant('s','le')
         self._adapter.SetDiscoveryFilter(temp_scan_filter)
         self._adapter.StartDiscovery()
         # update is async and triggers the dbus path subscriptions, so
