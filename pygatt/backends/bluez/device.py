@@ -134,16 +134,13 @@ class BluezBLEDevice(BLEDevice):
             try:
                 # we don't use object_by_path here because it doesn't support
                 # timeout
-                dbus_obj = self._dbus.object_by_path(self._dbus_path,
-                        interface=self._dbus.SERVICE_NAME)
-
                 bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
                                  self._dbus_path,
                                  timeout=timeout)
                 if is_connect == True :
                     print("In is_connect")
-                    if bus_obj.Connected == True :
-                        import code; code.interact(local=locals())
+                    # if bus_obj.Connected == True :
+                    #     import code; code.interact(local=locals())
                     bus_obj.Trusted = True
                     bus_obj.Connect()
                     while bus_obj.Connected == False :
