@@ -295,10 +295,11 @@ class BluezBLEDevice(BLEDevice):
                 break
 
         if not self.services_resolved :
-            log.info("Services not (all) resolved yet, " +
-                     "discovery continues in the background")
             print("Services not (all) resolved yet, " +
                      "discovery continues in the background")
+            raise NotConnectedError("Services couldn't be resolved")
+
+
 
     def disconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         # remove all callback_connections
