@@ -73,6 +73,9 @@ class BluezBLEDevice(BLEDevice):
             self._uuid_to_handle[uuid] = dev_n_uuid
             if dev_n_uuid in g_prop_changed :
                 g_prop_changed[dev_n_uuid].append(part_func)
+                el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
+                if not el_gatt_o.Notifying
+                    el_gatt_o.StartNotify()
             else :
                 g_prop_changed[dev_n_uuid] = []
                 g_prop_changed[dev_n_uuid].append(part_func)
@@ -139,8 +142,10 @@ class BluezBLEDevice(BLEDevice):
                                  timeout=timeout)
                 if is_connect == True :
                     print("In is_connect")
-                    # if bus_obj.Connected == True :
-                    #     import code; code.interact(local=locals())
+                    if bus_obj.Connected == True :
+                        print('Connecting while Connected?')
+                        raise NotConnectedError('Connecting while Connected?')
+                        #import code; code.interact(local=locals())
                     bus_obj.Trusted = True
                     bus_obj.Connect()
                     while bus_obj.Connected == False :
