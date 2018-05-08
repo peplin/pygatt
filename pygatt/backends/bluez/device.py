@@ -134,11 +134,16 @@ class BluezBLEDevice(BLEDevice):
             try:
                 # we don't use object_by_path here because it doesn't support
                 # timeout
+                dbus_obj = self._dbus.object_by_path(self._dbus_path,
+                        interface=self._dbus.SERVICE_NAME)
+
                 bus_obj = self._dbus.get(self._dbus.SERVICE_NAME,
                                  self._dbus_path,
                                  timeout=timeout)
                 if is_connect == True :
                     print("In is_connect")
+                    if bus_obj.Connected == True :
+                        import code; code.interact(local=locals())
                     bus_obj.Trusted = True
                     bus_obj.Connect()
                     while bus_obj.Connected == False :
@@ -280,8 +285,15 @@ class BluezBLEDevice(BLEDevice):
 
         resolve_timeout = 30
         timeout_time = time.time() + resolve_timeout
-        while not self.services_resolved :
+        last_print_time = time.time() + 1
+        dbus_dev_obj = self._dbus.object_by_path(self._dbus_path,
+                interface=self._dbus.DEVICE_INTERFACE)
+
+        while not bool(dbus_dev_obj.ServicesResolved) :
             time.sleep(0.1)
+            if time.time() >= last_print_time:
+                last_print_time = time.time() + 1
+                print('ServicesResolved Run')
             if time.time() >= timeout_time:
                 break
 
