@@ -74,7 +74,7 @@ class BluezBLEDevice(BLEDevice):
             if dev_n_uuid in g_prop_changed :
                 g_prop_changed[dev_n_uuid].append(part_func)
                 el_gatt_o = o[self._dbus.GATT_CHAR_INTERFACE]
-                if not el_gatt_o.Notifying
+                if not el_gatt_o.Notifying == True :
                     el_gatt_o.StartNotify()
             else :
                 g_prop_changed[dev_n_uuid] = []
