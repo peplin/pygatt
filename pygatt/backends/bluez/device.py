@@ -169,7 +169,7 @@ class BluezBLEDevice(BLEDevice):
                     if bus_obj.Connected == True :
                         print('Connecting while Connected?')
                         self._troublesome_device_check()
-                        #raise NotConnectedError('Connecting while Connected?')
+                        raise NotConnectedError('Connecting while Connected?')
                         #import code; code.interact(local=locals())
                     bus_obj.Trusted = True
                     bus_obj.Connect()
