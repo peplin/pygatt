@@ -176,6 +176,18 @@ class BluezBLEDevice(BLEDevice):
                     sleep = 2
                 elif e.code == 36:  # Operation already in progress,
                                     # Software caused connection abort
+                    # If we get into this mode where the software thinks that
+                    # a connect operation is still going on then we normally
+                    # aren't able to get out of it. The dongle blinks like it is
+                    # connected but the Connect function will just keep throwing
+                    # this error. (Disconnecting and doing a number of
+                    # other remedies didn't seem to work either)
+                    #
+                    # Interesting analysis of this error:
+                    # https://www.spinics.net/lists/linux-bluetooth/msg65856.html
+                    # Pull quote: "in bt_io_connect callback so it is very likely this is from the kernel"
+                    if e.message.startswith( 'Software caused connection') :
+                        import sys; sys.exit(36)
                     pass
 
                 if time.time() + sleep >= timeout_time:
