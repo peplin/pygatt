@@ -47,7 +47,7 @@ class BluezBLEDevice(BLEDevice):
         # created us to allow orselves to be removed by the correct adapter.
         self._backend = _backend
         self._is_troublesome = is_troublesome
-        self._last_time_connected = time.time()
+        self._last_time_connected = None
 
     def subscribe(self, uuid, callback=None, indication=False):
         global g_prop_changed
@@ -192,8 +192,12 @@ class BluezBLEDevice(BLEDevice):
                     if self._is_troublesome == True and is_connect == True:
                         # After much hand wringing I have found that time is the only way to know
                         # that there is a problem.
-                        if time.time() > (self._last_time_connected + (2*60)):
+                        if self._last_time_connected != None and time.time() > (self._last_time_connected + (2*60)):
                             import sys; sys.exit(36)
+                        else :
+                            print("Not restarted")
+                            print(time.time())
+                            print((self._last_time_connected + (2*60)))
                     pass
 
                 if time.time() + sleep >= timeout_time:
