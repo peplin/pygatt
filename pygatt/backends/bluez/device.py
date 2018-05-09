@@ -197,7 +197,8 @@ class BluezBLEDevice(BLEDevice):
                         else :
                             print("Not restarted")
                             print(time.time())
-                            print((self._last_time_connected + (2*60)))
+                            if self._last_time_connected != None :
+                                print((self._last_time_connected + (2*60)))
                     pass
 
                 if time.time() + sleep >= timeout_time:
