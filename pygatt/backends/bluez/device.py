@@ -132,6 +132,28 @@ class BluezBLEDevice(BLEDevice):
 
         return self._uuid_to_handle[char_uuid]
 
+    def _troublesome_device_check(self):
+        # If we get into this mode where the software thinks that
+        # a connect operation is still going on then we normally
+        # aren't able to get out of it. The dongle blinks like it is
+        # connected but the Connect function will just keep throwing
+        # this 36 error. (Disconnecting and doing a number of
+        # other remedies didn't seem to work either)
+        #
+        # Interesting analysis of this error:
+        # https://www.spinics.net/lists/linux-bluetooth/msg65856.html
+        # Pull quote: "in bt_io_connect callback so it is very likely this is from the kernel"
+        if self._is_troublesome == True :
+            # After much hand wringing I have found that time is the only way to know
+            # that there is a problem.
+            if self._last_time_connected != None and time.time() > (self._last_time_connected + (2*60)):
+                import sys; sys.exit(36)
+            else :
+                print("Not restarted")
+                print(time.time())
+                if self._last_time_connected != None :
+                    print((self._last_time_connected + (2*60)))
+
     def _get_device_bus_object(self, timeout, is_connect):
         bus_obj = None
         timeout_time = time.time() + timeout
@@ -146,7 +168,8 @@ class BluezBLEDevice(BLEDevice):
                     print("In is_connect")
                     if bus_obj.Connected == True :
                         print('Connecting while Connected?')
-                        raise NotConnectedError('Connecting while Connected?')
+                        self._troublesome_device_check()
+                        #raise NotConnectedError('Connecting while Connected?')
                         #import code; code.interact(local=locals())
                     bus_obj.Trusted = True
                     bus_obj.Connect()
@@ -179,26 +202,8 @@ class BluezBLEDevice(BLEDevice):
                     sleep = 2
                 elif e.code == 36:  # Operation already in progress,
                                     # Software caused connection abort
-                    # If we get into this mode where the software thinks that
-                    # a connect operation is still going on then we normally
-                    # aren't able to get out of it. The dongle blinks like it is
-                    # connected but the Connect function will just keep throwing
-                    # this 36 error. (Disconnecting and doing a number of
-                    # other remedies didn't seem to work either)
-                    #
-                    # Interesting analysis of this error:
-                    # https://www.spinics.net/lists/linux-bluetooth/msg65856.html
-                    # Pull quote: "in bt_io_connect callback so it is very likely this is from the kernel"
-                    if self._is_troublesome == True and is_connect == True:
-                        # After much hand wringing I have found that time is the only way to know
-                        # that there is a problem.
-                        if self._last_time_connected != None and time.time() > (self._last_time_connected + (2*60)):
-                            import sys; sys.exit(36)
-                        else :
-                            print("Not restarted")
-                            print(time.time())
-                            if self._last_time_connected != None :
-                                print((self._last_time_connected + (2*60)))
+                    if is_connect == True:
+                        self._troublesome_device_check()
                     pass
 
                 if time.time() + sleep >= timeout_time:
