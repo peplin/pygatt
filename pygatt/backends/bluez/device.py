@@ -192,7 +192,7 @@ class BluezBLEDevice(BLEDevice):
                     if self._is_troublesome == True and is_connect == True:
                         # After much hand wringing I have found that time is the only way to know
                         # that there is a problem.
-                        if self._last_time_connected != None && time.time() > (self._last_time_connected + (0*60)):
+                        if self._last_time_connected != None and time.time() > (self._last_time_connected + (0*60)):
                             import sys; sys.exit(36)
                     pass
 
