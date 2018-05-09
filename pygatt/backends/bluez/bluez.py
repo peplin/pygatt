@@ -298,7 +298,7 @@ class BluezBackend(BLEBackend):
         return self._discovered_devices.values()
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
-                address_type='public'):
+                address_type='public', is_troublesome=False):
         """ Connect to a BLE device
 
         address -- (string) the bluetooth address of the device e.g.
@@ -350,7 +350,7 @@ class BluezBackend(BLEBackend):
             errstr = "Device with address {} not found".format(address)
             raise NotConnectedError(errstr)
 
-        bledevice = BluezBLEDevice(address, out_path, self._bus, self)
+        bledevice = BluezBLEDevice(address, out_path, self._bus, self, is_troublesome)
         bledevice.connect(timeout=timeout)
         self._connected_devices.add(bledevice)
         return bledevice

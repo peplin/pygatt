@@ -35,7 +35,7 @@ def connection_required(func):
 class BluezBLEDevice(BLEDevice):
     """A BLE device connection initiated by the Bluez (DBUS) backend.
     """
-    def __init__(self, address, dbus_path, dbus_helper, _backend):
+    def __init__(self, address, dbus_path, dbus_helper, _backend, is_troublesome=False):
         super(BluezBLEDevice, self).__init__(address)
         self._dbus_path = dbus_path
         self._dbus = dbus_helper
@@ -46,6 +46,8 @@ class BluezBLEDevice(BLEDevice):
         # This might seem odd but we need to know which bluetooth device
         # created us to allow orselves to be removed by the correct adapter.
         self._backend = _backend
+        self._is_troublesome = is_troublesome
+        self._last_time_connected = None
 
     def subscribe(self, uuid, callback=None, indication=False):
         global g_prop_changed
@@ -152,6 +154,7 @@ class BluezBLEDevice(BLEDevice):
                         if time.time() + sleep >= timeout_time:
                             raise NotConnectedError(
                                     "Connection to {} timed out".format(self.address))
+                    self._last_time_connected = time.time()
                 else :
                     print("In disconnect")
                     bus_obj.Disconnect()
@@ -180,14 +183,17 @@ class BluezBLEDevice(BLEDevice):
                     # a connect operation is still going on then we normally
                     # aren't able to get out of it. The dongle blinks like it is
                     # connected but the Connect function will just keep throwing
-                    # this error. (Disconnecting and doing a number of
+                    # this 36 error. (Disconnecting and doing a number of
                     # other remedies didn't seem to work either)
                     #
                     # Interesting analysis of this error:
                     # https://www.spinics.net/lists/linux-bluetooth/msg65856.html
                     # Pull quote: "in bt_io_connect callback so it is very likely this is from the kernel"
-                    if e.message.startswith( 'Software caused connection') :
-                        import sys; sys.exit(36)
+                    if self._is_troublesome == True and is_connect == True:
+                        # After much hand wringing I have found that time is the only way to know
+                        # that there is a problem.
+                        if self._last_time_connected != None && time.time() > (self._last_time_connected + (0*60)):
+                            import sys; sys.exit(36)
                     pass
 
                 if time.time() + sleep >= timeout_time:
