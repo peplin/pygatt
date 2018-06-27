@@ -40,6 +40,7 @@ def g_bluez_proc(self):
         try:
             args = request['args']
             kwargs = request['kwargs']
+            func_name = request['func_name']
 
             if func_name == 'kill_self' :
                 # This returns from the entire process
@@ -47,7 +48,7 @@ def g_bluez_proc(self):
                 return 0
 
             if request['obj_id'] == 0 :
-                if request['func_name']  != '__init__' :
+                if func_name != '__init__' :
                     raise Exception("Invalid object id argument")
                 else :
                     bleBackend = BluezBackend(**kwargs)
@@ -56,7 +57,6 @@ def g_bluez_proc(self):
                     obj_counter += 1
             else :
                 obj = obj_id_to_obj[request['obj_id']]
-                func_name = request['func_name']
 
                 if func_name == 'start' :
                     obj.start()
