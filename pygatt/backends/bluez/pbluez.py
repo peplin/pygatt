@@ -41,8 +41,13 @@ def g_bluez_proc(self):
             args = request['args']
             kwargs = request['kwargs']
 
+            if func_name == 'kill_self' :
+                # This returns from the entire process
+                print('Killing bluez process!!!')
+                return 0
+
             if request['obj_id'] == 0 :
-                if 'func_name' != '__init__' :
+                if request['func_name']  != '__init__' :
                     raise Exception("Invalid object id argument")
                 else :
                     bleBackend = BluezBackend(**kwargs)
@@ -57,6 +62,8 @@ def g_bluez_proc(self):
                     obj.start()
                 elif func_name == 'stop' :
                     obj.stop()
+                    # This returns from the entire process
+                    return 0
                 elif func_name == 'scan' :
                     response['return_val'] = obj.scan(**kwargs)
                 elif func_name == 'connect' :
@@ -81,10 +88,9 @@ def g_bluez_proc(self):
                     response['return_val'] = obj.discover_characteristics(**kwargs)
                 elif func_name == 'd_get_rssi' :
                     response['return_val'] = obj.get_rssi()
-                elif func_name == 'kill_self' :
-                    # This returns from the entire process
-                    return 0
+
         except Exception as e:
+            print(e)
             response['exception'] = e
 
         self.q_sync.put(response)
@@ -147,7 +153,7 @@ class ProcBluezBackend(object):
         try :
             self._do_function_call(self._obj_id, 'stop', (), {})
             log.info("Stopped")
-            self.q_req.put('kill_self')
+            self._do_function_call(0, 'kill_self', (), {})
             self.proc.join()
         except Exception:
             log.error("Process wont stop")
