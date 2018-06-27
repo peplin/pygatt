@@ -84,7 +84,7 @@ def g_bluez_proc(self):
                 elif func_name == 'kill_self' :
                     # This returns from the entire process
                     return 0
-        except Exception e:
+        except Exception as e:
             response['exception'] = e
 
         self.q_sync.put(response)
@@ -127,7 +127,7 @@ class ProcBluezBackend(object):
         # it doesn't have shared state after this.
         self.proc = Process(target=g_bluez_proc, args=(self,))
         self.proc.start()
-        self._obj_id = self._do_function_call(self._obj_id, '__init__', (), **kwargs)
+        self._obj_id = self._do_function_call(self._obj_id, '__init__', (), kwargs)
 
     def consume_async_queue():
         qsize = self.q_async.qsize()
@@ -155,11 +155,11 @@ class ProcBluezBackend(object):
 
     def scan(self, **kwargs):
         log.info("Scanning...")
-        return self._do_function_call(self._obj_id, 'scan', (), **kwargs)
+        return self._do_function_call(self._obj_id, 'scan', (), kwargs)
 
     def connect(self, *args, **kwargs):
         # TODO Create a Proc BluezDevice
-        bluezdev_id = self._do_function_call(self._obj_id, 'connect', *args,, **kwargs)
+        bluezdev_id = self._do_function_call(self._obj_id, 'connect', args, kwargs)
 
         bledevice = BluezBLEDevice(bluezdev_id, self)
         self.bluezdev_dict[bluezdev_id] = bledevice

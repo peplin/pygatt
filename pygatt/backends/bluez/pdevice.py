@@ -23,28 +23,28 @@ class ProcBluezBLEDevice(object):
 
     def subscribe(self, *args, **kwargs):
         uuid = args[0]
-        self._bluez_dev._do_function_call(self._obj_id, 'd_subscribe', *args, **kwargs)
+        self._bluez_dev._do_function_call(self._obj_id, 'd_subscribe', args, kwargs)
         handle = self.get_handle(uuid)
         self._callbacks[handle] = kwargs['callback']
 
     # TODO cache handles
     def get_handle(self, *args):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_get_handle', *args, {})
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_get_handle', args, {})
 
     def char_read(self, *args, **kwargs):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_char_read', *args, **kwargs)
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_char_read', args, kwargs)
 
     def char_write(self, *args, **kwargs):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_char_write', *args, **kwargs)
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_char_write', args, kwargs)
 
     def connect(self, **kwargs):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_connect', (), **kwargs)
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_connect', (), kwargs)
 
     def disconnect(self, **kwargs):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_disconnect', (), **kwargs)
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_disconnect', (), kwargs)
 
     def discover_characteristics(self, **kwargs):
-        return self._bluez_dev._do_function_call(self._obj_id, 'd_discover_characteristics', (), **kwargs)
+        return self._bluez_dev._do_function_call(self._obj_id, 'd_discover_characteristics', (), kwargs)
 
     def get_rssi(self):
         return self._bluez_dev._do_function_call(self._obj_id, 'd_get_rssi', (), {})
