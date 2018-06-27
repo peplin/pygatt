@@ -103,6 +103,7 @@ class BluezBLEDevice(BLEDevice):
                 if 'Value' in changed :
                     cb(self._create_handle(service, uuid),
                        bytes(changed['Value']))
+                del(changed)
         elif uuid is not None:
             log.error("No subscription for UUID {}".format(uuid))
 
@@ -117,11 +118,12 @@ class BluezBLEDevice(BLEDevice):
     # managing this on the class side would be preferred but this is to retain
     # backwards compatibility
     def _create_handle(self, service, uuid):
-        return str(service)+'__'+str(uuid)
+        return "%s__%s" % (str(service), str(uuid))
 
     def _get_device_path(self):
         service_addr = self.address.replace(':', '_')
-        base_search_path = self._dbus._hci_path + '/dev_' + service_addr
+        base_search_path = "%s%s%s" % (self._dbus._hci_path, '/dev_', service_addr)
+
         return base_search_path
 
     def get_handle(self, char_uuid):
