@@ -89,6 +89,22 @@ class DBusHelper(object):
                 if path.startswith(search_path))
 
 
+class GlibThread (Thread):
+   def __init__(self):
+      Thread.__init__(self)
+      self._main_loop = GLib.MainLoop()
+   def run(self):
+      log.debug("Starting Glib Thread")
+      try :
+          self._main_loop.run()
+      except KeyboardInterrupt :
+          pass
+      except Exception as e:
+         log.error("Glib Thread exiting with error")
+         log.error(str(e))
+      log.debug("Exiting Glib Thread")
+
+
 class BluezBackend(BLEBackend):
     """
     Backend to pygatt that uses BlueZ's dbus interface on the system bus.
@@ -112,8 +128,8 @@ class BluezBackend(BLEBackend):
             self._main_loop = main_loop
             self._main_loop_thread = None
         else:
-            self._main_loop = GLib.MainLoop()
-            self._main_loop_thread = Thread(target=self._main_loop.run)
+            self._main_loop_thread = GlibThread()
+            self._main_loop = self._main_loop_thread._main_loop
         self._subscriptions = []
 
         hci_path = '/org/bluez/hci0'
