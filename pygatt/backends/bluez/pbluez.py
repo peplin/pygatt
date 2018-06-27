@@ -101,7 +101,7 @@ class ProcBluezBackend(object):
     benefits )
     """
 
-    def _do_function_call(obj_id, func_name, args, kwargs ) :
+    def _do_function_call(self, obj_id, func_name, args, kwargs ) :
         self.q_req.put({'obj_id':obj_id,
                         'func_name':func_name,
                         'args':args,
