@@ -96,14 +96,14 @@ class BluezBLEDevice(BLEDevice):
 
     def properties_changed(self, interface, changed, invalidated,
                            service=None, uuid=None):
-        log.debug("Property changed on service: %s, uuid %s", service, uuid)
+        #log.debug("Property changed on service: %s, uuid %s", service, uuid)
         if uuid is not None and uuid in self._subscribed_characteristics:
             for cb in self._subscribed_characteristics[uuid]:
                 #cb(interface, changed, invalidated, service=service, uuid=uuid)
                 if 'Value' in changed :
                     cb(self._create_handle(service, uuid),
                        bytes(changed['Value']))
-                del(changed)
+            del(changed)
         elif uuid is not None:
             log.error("No subscription for UUID {}".format(uuid))
 
@@ -279,7 +279,7 @@ class BluezBLEDevice(BLEDevice):
                 dbus_obj = self._dbus.object_by_path(path,
                         interface=self._dbus.GATT_CHAR_INTERFACE)
                 dbus_obj.WriteValue(value, {})
-                return 
+                return
             raise NotConnectedError("UUID {} not found".format(uuid))
         except GLib.GError as e:
             raise NotConnectedError(
@@ -314,7 +314,7 @@ class BluezBLEDevice(BLEDevice):
         if not bus_obj is None and bus_obj.Connected == True:
             self._connected = True
         else :
-            raise NotConnectedError() 
+            raise NotConnectedError()
 
         resolve_timeout = 30
         timeout_time = time.time() + resolve_timeout

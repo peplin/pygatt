@@ -18,11 +18,17 @@ class ProcBluezBLEDevice(object):
         self._bluez_dev = bluez_dev
         self._callbacks = {}
 
-    def do_callback(handle, data):
+    def do_callback(self, handle, data):
         self._callbacks[handle](handle, data)
 
     def subscribe(self, *args, **kwargs):
-        callback = kwargs['callback']
+        # Sometimes the callback is a named argument sometimes not.
+        # I don't know why.
+        callback = None
+        if 'callback' in kwargs:
+            callback = kwargs['callback']
+        else :
+            callback = args[1]
         uuid = args[0]
         self._bluez_dev._do_function_call(self._obj_id, 'd_subscribe', args[:1], kwargs)
         handle = self.get_handle(uuid)

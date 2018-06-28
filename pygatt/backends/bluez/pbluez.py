@@ -63,8 +63,6 @@ def g_bluez_proc(self):
                     obj.start()
                 elif func_name == 'stop' :
                     obj.stop()
-                    # This returns from the entire process
-                    return 0
                 elif func_name == 'scan' :
                     response['return_val'] = obj.scan(**kwargs)
                 elif func_name == 'connect' :
@@ -92,8 +90,7 @@ def g_bluez_proc(self):
                     out_dict = {}
                     for (key, value) in answer.items() :
                         out_dict[str(key)] = str(value)
-                    return out_dict
-                    response['return_val']
+                    response['return_val'] = out_dict
                 elif func_name == 'd_get_rssi' :
                     response['return_val'] = obj.get_rssi()
 
@@ -143,9 +140,9 @@ class ProcBluezBackend(object):
         self.proc.start()
         self._obj_id = self._do_function_call(self._obj_id, '__init__', (), kwargs)
 
-    def consume_async_queue():
+    def consume_async_queue(self):
         qsize = self.q_async.qsize()
-        for i in qsize :
+        for i in range(qsize) :
             async_dict = self.q_async.get()
             obj_id = async_dict['obj_id']
             handle = async_dict['handle']
