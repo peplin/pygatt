@@ -13,6 +13,7 @@ from pygatt.backends import BLEBackend
 from pygatt.backends.backend import DEFAULT_CONNECT_TIMEOUT_S
 from pygatt.backends.bluez.device import BluezBLEDevice
 from pygatt.backends.bluez.bluez import BluezBackend
+from pygatt.backends.bluez.pdevice import ProcBluezBLEDevice
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +86,14 @@ def g_bluez_proc(self):
                 elif func_name == 'd_disconnect' :
                     response['return_val'] = obj.disconnect( **kwargs)
                 elif func_name == 'd_discover_characteristics' :
-                    response['return_val'] = obj.discover_characteristics(**kwargs)
+                    answer = obj.discover_characteristics(**kwargs)
+                    # we can't send object references over the
+                    # process connection
+                    out_dict = {}
+                    for (key, value) in answer.items() :
+                        out_dict[str(key)] = str(value)
+                    return out_dict
+                    response['return_val']
                 elif func_name == 'd_get_rssi' :
                     response['return_val'] = obj.get_rssi()
 
@@ -167,6 +175,6 @@ class ProcBluezBackend(object):
         # TODO Create a Proc BluezDevice
         bluezdev_id = self._do_function_call(self._obj_id, 'connect', args, kwargs)
 
-        bledevice = BluezBLEDevice(bluezdev_id, self)
+        bledevice = ProcBluezBLEDevice(bluezdev_id, self)
         self.bluezdev_dict[bluezdev_id] = bledevice
         return bledevice

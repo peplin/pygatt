@@ -1,5 +1,5 @@
 # import functools
-# import logging
+import logging
 # import time
 # import copy
 #
@@ -14,7 +14,7 @@ class ProcBluezBLEDevice(object):
     """ A Wrapper object for all requests to go to a seperate process.
     """
     def __init__(self, id_num, bluez_dev):
-        self._obj_id
+        self._obj_id = id_num
         self._bluez_dev = bluez_dev
         self._callbacks = {}
 
@@ -22,10 +22,11 @@ class ProcBluezBLEDevice(object):
         self._callbacks[handle](handle, data)
 
     def subscribe(self, *args, **kwargs):
+        callback = kwargs['callback']
         uuid = args[0]
-        self._bluez_dev._do_function_call(self._obj_id, 'd_subscribe', args, kwargs)
+        self._bluez_dev._do_function_call(self._obj_id, 'd_subscribe', args[:1], kwargs)
         handle = self.get_handle(uuid)
-        self._callbacks[handle] = kwargs['callback']
+        self._callbacks[handle] = callback
 
     # TODO cache handles
     def get_handle(self, *args):
