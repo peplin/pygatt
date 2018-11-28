@@ -471,14 +471,13 @@ class GATTToolBackend(BLEBackend):
             log.warn("Blank message received in notification, ignored")
             return
 
-        split_msg = msg.strip().split(None, 5)
-        if len(split_msg) < 6:
+        match_obj = re.match(r'Notification handle = (0x[0-9a-f]+) value:(.*)', msg)
+        if match_obj is None:
             log.warn("Unable to parse notification string, ignoring: %s", msg)
             return
 
-        hex_handle, _, hex_values = split_msg[3:]
-        handle = int(hex_handle, 16)
-        values = _hex_value_parser(hex_values)
+        handle = int(match_obj.group(1), 16)
+        values = _hex_value_parser(match_obj.group(2).strip())
         if self._connected_device is not None:
             self._connected_device.receive_notification(handle, values)
 
