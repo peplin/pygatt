@@ -281,8 +281,6 @@ class BLEDevice(object):
                 for callback in self._callbacks[handle]:
                     callback(handle, value)
 
-
-
     def exchange_mtu(self, mtu):
 
         """

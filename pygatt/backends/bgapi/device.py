@@ -121,7 +121,7 @@ class BGAPIBLEDevice(BLEDevice):
             all_data = len(chunk) != max_payload
 
             log.info("char_read_long chunk length= %d", len(chunk))
- 
+
         log.info("char_read_long length= %d", len(value))
 
         return value
