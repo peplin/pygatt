@@ -91,7 +91,8 @@ class BGAPIBLEDevice(BLEDevice):
             # TODO why not just expect *only* the attribute value response,
             # then it would time out and raise an exception if allwe got was
             # the 'procedure completed' response?
-            if matched_packet_type != EventPacketType.attclient_attribute_value:
+            if matched_packet_type != \
+                EventPacketType.attclient_attribute_value:
                 raise BGAPIError("Unable to read characteristic")
             if response['atthandle'] == handle:
                 # Otherwise we received a response from a wrong handle (e.g.
@@ -103,7 +104,7 @@ class BGAPIBLEDevice(BLEDevice):
     @connection_required
     def char_read_long(self, uuid, timeout=None):
         
-        max_payload=22
+        max_payload = 22
         
         all_data = False
         
@@ -111,7 +112,8 @@ class BGAPIBLEDevice(BLEDevice):
                 
         while not all_data:
             
-            chunk = self.char_read_long_handle(self.get_handle(uuid), timeout=timeout)
+            chunk = self.char_read_long_handle(
+                        self.get_handle(uuid), timeout=timeout)
             
             # time.sleep(0.01)
             value += chunk
@@ -123,10 +125,6 @@ class BGAPIBLEDevice(BLEDevice):
         log.info("char_read_long length= %d", len(value))
         
         return value
-
-#        if len(value) = 
-#        for handle in uuid:
-#            return self.char_read_long_handle(self.get_handle(handle), timeout=timeout)
 
     @connection_required
     def char_read_long_handle(self, handle, timeout=None):
@@ -145,7 +143,8 @@ class BGAPIBLEDevice(BLEDevice):
             # TODO why not just expect *only* the attribute value response,
             # then it would time out and raise an exception if allwe got was
             # the 'procedure completed' response?
-            if matched_packet_type != EventPacketType.attclient_attribute_value:
+            if matched_packet_type != \
+                EventPacketType.attclient_attribute_value:
                 raise BGAPIError("Unable to read characteristic")
             if response['atthandle'] == handle:
                 # Otherwise we received a response from a wrong handle (e.g.
@@ -155,7 +154,10 @@ class BGAPIBLEDevice(BLEDevice):
         return bytearray(response['value'])
 
     @connection_required
-    def char_write_handle(self, char_handle, value, wait_for_response=False):
+    def char_write_handle(self, 
+                          char_handle,
+                          value,
+                          wait_for_response=False):
 
         while True:
             value_list = [b for b in value]
@@ -180,44 +182,49 @@ class BGAPIBLEDevice(BLEDevice):
                 break
 
 
-    #ASC - adapted from https://raw.githubusercontent.com/mjbrown/bgapi/master/bgapi/module.py - reliable_write_by_handle
+    # ASC - adapted from 
+    # https://raw.githubusercontent.com/mjbrown/bgapi/master/bgapi/module.py
+    # - reliable_write_by_handle
     @connection_required
-    def char_write_long_handle(self, char_handle, value, wait_for_response=False):
+    def char_write_long_handle(self,
+                               char_handle,
+                               value,
+                               wait_for_response=False):
         
-        maxv=18
+        maxv = 18
         
         for i in range(int(((len(value)-1) / maxv)+1)):
             
             chunk = value[maxv*i:min(maxv*(i+1), len(value))]
             value_list = [b for b in chunk]
-            #print("value_list = ", value_list)
+            # print("value_list = ", value_list)
             self._backend.send_command(
                     CommandBuilder.attclient_prepare_write(
                         self._handle, char_handle, maxv*i, value_list))
             
-            packet_type, response = self._backend.expect(ResponsePacketType.attclient_prepare_write)
-            #print("Packet type = ", packet_type)
-            #print("Response = ", response)
+            packet_type, response = self._backend.expect(
+                                    ResponsePacketType.attclient_prepare_write)
+            # print("Packet type = ", packet_type)
+            # print("Response = ", response)
             
             packet_type, response = self._backend.expect(
                 EventPacketType.attclient_procedure_completed)
-            #print("Packet type = ", packet_type)
-            #print("Response = ", response)
+            # print("Packet type = ", packet_type)
+            # print("Response = ", response)
             time.sleep(0.1)
- #                   packet_type, response = self._backend.expect(
- #                       EventPacketType.attclient_procedure_completed)
             
-        #print("Execute Write")
+        # print("Execute Write")
         time.sleep(0.1)
-        #print(CommandBuilder.attclient_execute_write(self._handle, 1))
+        # print(CommandBuilder.attclient_execute_write(self._handle, 1))
         self._backend.send_command(
-            CommandBuilder.attclient_execute_write(self._handle, 1)) # 1 = commit, 0 = cancel
-            #expect here?
+            CommandBuilder.attclient_execute_write(
+                self._handle, 1)) # 1 = commit, 0 = cancel
+            # expect here?
         self._backend.expect(ResponsePacketType.attclient_execute_write)
         packet_type, response = self._backend.expect(
                 EventPacketType.attclient_procedure_completed)
-        #print("Packet type = ", packet_type)
-        #print("Response = ", response)
+        # print("Packet type = ", packet_type)
+        # print("Response = ", response)
         time.sleep(0.1)
 
     @connection_required
