@@ -20,14 +20,9 @@ from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
 
-if hasattr(bytes, 'fromhex'):
-    # Python 3.
-    def _hex_value_parser(x):
-        return bytearray.fromhex(x.decode('utf8'))
-else:
-    # Python 2.7
-    def _hex_value_parser(x):
-        return bytearray.fromhex(x)
+
+def _hex_value_parser(x):
+    return bytearray.fromhex(x)
 
 
 def is_windows():
@@ -56,7 +51,7 @@ def at_most_one_device(func):
 
 class GATTToolReceiver(threading.Thread):
     """
-    Observe pygatttool stdout in seperate thread and dispatch events /
+    Observe pygatttool stdout in separate thread and dispatch events /
     callbacks.
     """
 
@@ -186,7 +181,7 @@ class GATTToolBackend(BLEBackend):
     """
 
     def __init__(self, hci_device='hci0', gatttool_logfile=None,
-                 cli_options=None, search_window_size=200):
+                 cli_options=None, search_window_size=None, max_read=None):
         """
         Initialize.
 
@@ -194,7 +189,10 @@ class GATTToolBackend(BLEBackend):
         gatttool_logfile -- an optional filename to store raw gatttool
                 input and output.
         search_window_size -- integer (optional); size in bytes of the
-                search window that is used by `pexpect.expect`
+                search window that is used by `pexpect.expect`. This value
+                should not exceed max_read
+        max_read -- integer; number of bytes to read into gatt buffer at
+                a time. Defaults to ~2000
         """
 
         if is_windows():
@@ -212,6 +210,8 @@ class GATTToolBackend(BLEBackend):
         self._address = None
         self._send_lock = threading.Lock()
         self._search_window_size = search_window_size
+        self._scan = None
+        self._max_read = max_read
 
     def sendline(self, command):
         """
@@ -255,8 +255,17 @@ class GATTToolBackend(BLEBackend):
         ]
         gatttool_cmd = ' '.join([arg for arg in args if arg])
         log.debug('gatttool_cmd=%s', gatttool_cmd)
-        self._con = pexpect.spawn(gatttool_cmd, logfile=self._gatttool_logfile,
-                                  searchwindowsize=self._search_window_size)
+        if self._max_read:
+            self._con = pexpect.spawn(
+                gatttool_cmd, logfile=self._gatttool_logfile,
+                searchwindowsize=self._search_window_size,
+                maxread=self._max_read
+            )
+        else:
+            self._con = pexpect.spawn(
+                gatttool_cmd, logfile=self._gatttool_logfile,
+                searchwindowsize=self._search_window_size,
+            )
 
         # Wait for the interactive prompt
         self._con.expect(r'\[LE\]>', timeout=initialization_timeout)
@@ -274,7 +283,7 @@ class GATTToolBackend(BLEBackend):
 
     def stop(self):
         """
-        Disconnects any connected device, stops the backgroud receiving thread
+        Disconnects any connected device, stops the background receiving thread
         and closes the spawned gatttool process.
         disconnect.
         """
@@ -309,7 +318,7 @@ class GATTToolBackend(BLEBackend):
             cmd = 'sudo %s' % cmd
 
         log.info("Starting BLE scan")
-        scan = pexpect.spawn(cmd)
+        self._scan = scan = pexpect.spawn(cmd)
         # "lescan" doesn't exit, so we're forcing a timeout here:
         try:
             scan.expect('foooooo', timeout=timeout)
@@ -354,21 +363,26 @@ class GATTToolBackend(BLEBackend):
             log.info("Found %d BLE devices", len(devices))
             return [device for device in devices.values()]
         finally:
-            # Wait for lescan to exit cleanly, otherwise it leaves the BLE
-            # adapter in a bad state and the device must be reset through BlueZ.
-            # This will not work if run_as_root was used, since this process
-            # itself doesn't have permission to terminate a process running as
-            # root (hcitool itself). We recommend using the setcap tool to allow
-            # scanning as a non-root user:
-            #
-            #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
-            try:
-                scan.kill(signal.SIGINT)
-                scan.wait()
-            except OSError:
-                log.error("Unable to gracefully stop the scan - "
-                          "BLE adapter may need to be reset.")
+            self.kill()
         return []
+
+    def kill(self):
+        if self._scan is None:
+            return
+        # Wait for lescan to exit cleanly, otherwise it leaves the BLE
+        # adapter in a bad state and the device must be reset through BlueZ.
+        # This will not work if run_as_root was used, since this process
+        # itself doesn't have permission to terminate a process running as
+        # root (hcitool itself). We recommend using the setcap tool to allow
+        # scanning as a non-root user:
+        #
+        #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+        try:
+            self._scan.kill(signal.SIGINT)
+            self._scan.wait()
+        except OSError:
+            log.error("Unable to gracefully stop the scan - "
+                      "BLE adapter may need to be reset.")
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
                 address_type=BLEAddressType.public):
@@ -394,11 +408,11 @@ class GATTToolBackend(BLEBackend):
         """Use the 'bluetoothctl' program to erase a stored BLE bond.
         """
         con = pexpect.spawn('sudo bluetoothctl')
-        con.expect("bluetooth", timeout=1)
 
-        log.info("Clearing bond for %s", address)
-        con.sendline("remove " + address.upper())
         try:
+            con.expect("bluetooth", timeout=1)
+            log.info("Clearing bond for %s", address)
+            con.sendline("remove " + address.upper())
             con.expect(
                 ["Device has been removed", "# "],
                 timeout=.5
@@ -406,6 +420,8 @@ class GATTToolBackend(BLEBackend):
         except pexpect.TIMEOUT:
             log.error("Unable to remove bonds for %s: %s",
                       address, con.before)
+        finally:
+            con.close(True)
         log.info("Removed bonds for %s", address)
 
     def _disconnect(self, event):
@@ -471,14 +487,14 @@ class GATTToolBackend(BLEBackend):
             log.warn("Blank message received in notification, ignored")
             return
 
-        split_msg = msg.strip().split(None, 5)
-        if len(split_msg) < 6:
+        match_obj = re.match(r'Notification handle = (0x[0-9a-f]+) value:(.*)',
+                             msg.decode('utf-8'))
+        if match_obj is None:
             log.warn("Unable to parse notification string, ignoring: %s", msg)
             return
 
-        hex_handle, _, hex_values = split_msg[3:]
-        handle = int(hex_handle, 16)
-        values = _hex_value_parser(hex_values)
+        handle = int(match_obj.group(1), 16)
+        values = _hex_value_parser(match_obj.group(2).strip())
         if self._connected_device is not None:
             self._connected_device.receive_notification(handle, values)
 
