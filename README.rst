@@ -17,7 +17,7 @@ Despite the popularity of BLE, we have yet to find a good programming
 interface for it on desktop computers. Since most peripherals are
 designed to work with smartphones, this space is neglected. One
 interactive interface, BlueZ's ``gatttool``, is functional but difficult
-to use programatically. BlueZ itself obviously works, but the interface
+to use programmatically. BlueZ itself obviously works, but the interface
 leaves something to be desired and only works in Linux.
 
 Requirements
@@ -71,7 +71,7 @@ to a device and get an instance of ``BLEDevice.``
 
     import pygatt
 
-    # The BGAPI backend will attemt to auto-discover the serial device name of the
+    # The BGAPI backend will attempt to auto-discover the serial device name of the
     # attached BGAPI-compatible USB adapter.
     adapter = pygatt.BGAPIBackend()
 
