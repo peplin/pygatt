@@ -1,12 +1,13 @@
 from __future__ import print_function
 
-from nose.tools import eq_
+from nose.tools import eq_, raises
 import mock
 import unittest
 from uuid import UUID
 
 from pygatt.util import uuid16_to_uuid
 from pygatt.backends import BGAPIBackend
+from pygatt.backends.bgapi.exceptions import ExpectedResponseTimeout
 
 from .mocker import MockBGAPISerialDevice
 
@@ -67,9 +68,50 @@ class BGAPIDeviceTests(unittest.TestCase):
         # Test char_read
         expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
         self.mock_device.stage_char_read_packets(
-            0, 0x00, expected_value)
+            handle_char, 0x00, expected_value)
         value = device.char_read(UUID(uuid_char))
         eq_(bytearray(expected_value), value)
+
+        # Test ignore of packet with wrong handle
+        expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
+        self.mock_device.stage_char_read_packets(
+            0, 0x00, expected_value)
+        self.mock_device.stage_char_read_packets(
+            handle_char, 0x00, expected_value)
+        value = device.char_read(UUID(uuid_char))
+        eq_(bytearray(expected_value), value)
+
+    def test_read_nonstandard_4byte_char(self):
+        device = self._connect()
+        uuid_char = 0x03ea
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
+        self.mock_device.stage_discover_characteristics_packets([
+            "03ea", handle_char,
+            uuid_desc, handle_desc])
+
+        expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
+        self.mock_device.stage_char_read_packets(
+            handle_char, 0x00, expected_value)
+        value = device.char_read(UUID(str(uuid16_to_uuid(uuid_char))))
+        eq_(bytearray(expected_value), value)
+
+    @raises(ExpectedResponseTimeout)
+    def test_read_timeout_wrong_handle(self):
+        device = self._connect()
+        uuid_char = '01234567-0123-0123-0123-0123456789AB'
+        handle_char = 0x1234
+        uuid_desc = '2902'
+        handle_desc = 0x5678
+        self.mock_device.stage_discover_characteristics_packets([
+            uuid_char, handle_char,
+            uuid_desc, handle_desc])
+        # Test char_read
+        expected_value = [0xBE, 0xEF, 0x15, 0xF0, 0x0D]
+        self.mock_device.stage_char_read_packets(
+            0, 0x00, expected_value)
+        device.char_read(UUID(uuid_char))
 
     def test_char_write(self):
         device = self._connect()
@@ -80,10 +122,15 @@ class BGAPIDeviceTests(unittest.TestCase):
         self.mock_device.stage_discover_characteristics_packets([
             uuid_char, handle_char,
             uuid_desc, handle_desc])
-        # Test char_write
+        # Test char_write request
         value = [0xF0, 0x0F, 0x00]
         self.mock_device.stage_char_write_packets(0, value)
-        device.char_write(UUID(uuid_char), bytearray(value))
+        device.char_write(UUID(uuid_char), bytearray(value), True)
+
+        # Test char_write command
+        value = [0xF0, 0x0F, 0x00]
+        self.mock_device.stage_char_write_command_packets(0, value)
+        device.char_write(UUID(uuid_char), bytearray(value), False)
 
     def test_bond(self):
         device = self._connect()

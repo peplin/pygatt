@@ -53,6 +53,11 @@ class GATTToolBLEDevice(BLEDevice):
         self._connected = False
 
     @connection_required
-    def discover_characteristics(self):
-        self._characteristics = self._backend.discover_characteristics(self)
+    def discover_characteristics(self, *args, **kwargs):
+        self._characteristics = self._backend.discover_characteristics(
+            self, *args, **kwargs)
         return self._characteristics
+
+    @connection_required
+    def exchange_mtu(self, mtu, *args, **kwargs):
+        return self._backend.exchange_mtu(self, mtu)

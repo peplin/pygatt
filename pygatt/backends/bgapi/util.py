@@ -70,7 +70,7 @@ def find_usb_serial_devices(vendor_id=None, product_id=None):
     """
     devices = []
     raw_devices = list(serial.tools.list_ports.comports())
-    log.info("Found %d serial USB devices", len(raw_devices))
+    log.debug("Found %d serial USB devices", len(raw_devices))
     for device in raw_devices:
         log.debug("Checking serial USB device: %s", device)
         dev = USBSerialDeviceInfo()

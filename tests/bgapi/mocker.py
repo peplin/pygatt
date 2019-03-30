@@ -196,6 +196,13 @@ class MockBGAPISerialDevice(object):
             BGAPIPacketBuilder.attclient_procedure_completed(
                 connection_handle, 0x0000, handle))
 
+    def stage_char_write_command_packets(
+            self, handle, value, connection_handle=0x00):
+        # Stage ble_rsp_attclient_attribute_write (success)
+        self.mocked_serial.stage_output(
+            BGAPIPacketBuilder.attclient_write_command(
+                connection_handle, 0x0000))
+
     def stage_indication_packets(
             self, handle, packet_values, connection_handle=0x00):
         # Stage ble_evt_attclient_attribute_value
