@@ -96,6 +96,11 @@ class GATTToolReceiver(threading.Thread):
             'connect': {
                 'patterns': [r'Connection successful.*\[LE\]>']
             },
+            'mtu': {
+                'patterns': [
+                    r'MTU was exchanged successfully: (\d+)'
+                ]
+            }
         }
 
         for event in self._event_vector.values():
@@ -554,6 +559,24 @@ class GATTToolBackend(BLEBackend):
         rval = self._receiver.last_value("value/descriptor", "after"
                                          ).split()[1:]
         return bytearray([int(x, 16) for x in rval])
+
+    @at_most_one_device
+    def exchange_mtu(self, mtu, timeout=1):
+        cmd = 'mtu {}'.format(mtu)
+
+        log.debug('Requesting MTU: {}'.format(mtu))
+
+        with self._receiver.event('mtu', timeout=timeout):
+            self.sendline(cmd)
+        try:
+            rval = self._receiver.last_value("mtu", "after").split()[-1]
+        except ValueError:
+            log.error('MTU exchange failed: "{}"'.format(rval))
+            raise
+
+        log.debug('MTU exhange successful: {}'.format(rval))
+
+        return rval
 
     def reset(self):
         subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()

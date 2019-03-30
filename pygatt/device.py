@@ -224,3 +224,11 @@ class BLEDevice(object):
             if handle in self._callbacks:
                 for callback in self._callbacks[handle]:
                     callback(handle, value)
+
+    def exchange_mtu(self, mtu):
+        """
+        ATT exchange Maximum Transmission Unit.
+        :param mtu: New MTU-value
+        :return: New MTU, as recognized by server.
+        """
+        raise NotImplementedError()
