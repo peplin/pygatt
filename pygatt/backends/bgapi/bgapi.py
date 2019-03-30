@@ -639,7 +639,9 @@ class BGAPIBackend(BLEBackend):
         """
         log.info("Running receiver")
         while self._running.is_set():
-            packet = self._lib.parse_byte(self._ser.read())
+            with self._lock:
+                packet = self._lib.parse_byte(self._ser.read())
+
             if packet is not None:
                 try:
                     packet_type, args = self._lib.decode_packet(packet)
