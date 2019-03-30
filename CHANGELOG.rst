@@ -3,6 +3,15 @@
 Release History
 ================
 
+V4.0.1
+------
+
+* Improvement: Wait longer for characteristics discovery with BGAPI backend (#201)
+* Fix: Protect against invalid BGAPI packets
+* Fix: Fix parsing fields from BGAPI connection status
+* Fix: Robust to non-UTF8 characters in hcitool scan results
+* Fix: Log correct connection flags from BGAPI response
+
 V4.0.0
 ------
 
