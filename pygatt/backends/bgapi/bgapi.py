@@ -203,7 +203,6 @@ class BGAPIBackend(BLEBackend):
         self.send_command(CommandBuilder.system_reset(0))
         self._ser.flush()
         self._ser.close()
-
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
         self._receiver.daemon = True

@@ -101,6 +101,11 @@ class BGAPIBLEDevice(BLEDevice):
         return bytearray(response['value'])
 
     @connection_required
+    def char_read_long(self, uuid, timeout=None):
+        return self.char_read_long_handle(self.get_handle(uuid),
+                                          timeout=timeout)
+
+    @connection_required
     def char_read_long_handle(self, handle, timeout=None):
         log.info("Reading long characteristic at handle %d", handle)
         self._backend.send_command(
@@ -109,27 +114,26 @@ class BGAPIBLEDevice(BLEDevice):
 
         self._backend.expect(ResponsePacketType.attclient_read_long)
         success = False
-        resp = b""
+        response = b""
         while not success:
-            matched_packet_type, response = self._backend.expect_any(
+            matched_packet_type, chunk = self._backend.expect_any(
                 [EventPacketType.attclient_attribute_value,
                  EventPacketType.attclient_procedure_completed],
                 timeout=timeout)
 
             if (matched_packet_type ==
                     EventPacketType.attclient_attribute_value):
-                if response['atthandle'] == handle:
+                if chunk['atthandle'] == handle:
                     # Concatenate the data
-                    resp += response["value"]
+                    response += chunk["value"]
             elif (matched_packet_type ==
                     EventPacketType.attclient_procedure_completed):
-                if response['chrhandle'] == handle:
+                if chunk['chrhandle'] == handle:
                     success = True
-        return bytearray(resp)
+        return bytearray(response)
 
     @connection_required
     def char_write_handle(self, char_handle, value, wait_for_response=False):
-
         while True:
             value_list = [b for b in value]
             if wait_for_response:
@@ -151,6 +155,41 @@ class BGAPIBLEDevice(BLEDevice):
                     ErrorCode.insufficient_authentication.value):
                 # Continue to retry until we are bonded
                 break
+
+    # ASC - adapted from
+    # https://raw.githubusercontent.com/mjbrown/bgapi/master/bgapi/module.py
+    # - reliable_write_by_handle
+    @connection_required
+    def char_write_long_handle(self,
+                               char_handle,
+                               value,
+                               wait_for_response=False):
+
+        maxv = 18
+
+        for i in range(int(((len(value)-1) / maxv)+1)):
+
+            chunk = value[maxv*i:min(maxv*(i+1), len(value))]
+            value_list = [b for b in chunk]
+            self._backend.send_command(
+                CommandBuilder.attclient_prepare_write(
+                    self._handle, char_handle, maxv*i, value_list))
+
+            packet_type, response = self._backend.expect(
+                ResponsePacketType.attclient_prepare_write)
+
+            packet_type, response = self._backend.expect(
+                EventPacketType.attclient_procedure_completed)
+            time.sleep(0.1)
+
+        time.sleep(0.1)
+        self._backend.send_command(
+            CommandBuilder.attclient_execute_write(
+                self._handle, 1))  # 1 = commit, 0 = cancel
+        self._backend.expect(ResponsePacketType.attclient_execute_write)
+        packet_type, response = self._backend.expect(
+            EventPacketType.attclient_procedure_completed)
+        time.sleep(0.1)
 
     @connection_required
     def disconnect(self):
