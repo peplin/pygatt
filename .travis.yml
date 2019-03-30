@@ -1,16 +1,12 @@
+dist: xenial
 language: python
 sudo: false
 python:
   - '2.7'
-  - '3.4'
-  - '3.5'
-  - '3.6'
-cache:
-  directories:
-  - "$HOME/.cache/pip"
-  - ".tox"
+  - '3.7'
+cache: pip
 install: pip install tox-travis
-script: tox --recreate
+script: tox
 deploy:
   provider: pypi
   user: peplin
