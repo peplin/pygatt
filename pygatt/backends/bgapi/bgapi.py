@@ -110,6 +110,8 @@ class BGAPIBackend(BLEBackend):
         self._current_characteristic = None  # used in char/descriptor discovery
         self._packet_handlers = {
             ResponsePacketType.sm_get_bonds: self._ble_rsp_sm_get_bonds,
+            ResponsePacketType.system_address_get: (
+                self._ble_rsp_system_address_get),
             EventPacketType.attclient_attribute_value: (
                 self._ble_evt_attclient_attribute_value),
             EventPacketType.attclient_find_information_found: (
@@ -219,6 +221,10 @@ class BGAPIBackend(BLEBackend):
         except BGAPIError:
             # Ignore any errors if there was no GAP procedure running
             pass
+
+    def get_mac(self):
+        self.send_command(CommandBuilder.system_address_get())
+        self.expect(ResponsePacketType.system_address_get)
 
     def stop(self):
         for device in self._connections.values():
@@ -756,3 +762,13 @@ class BGAPIBackend(BLEBackend):
         """
         self._num_bonds = args['bonds']
         log.debug("num bonds = %d", args['bonds'])
+
+    def _ble_rsp_system_address_get(self, args):
+        """
+        Handles the response for the system mac address. Stores the
+        result as a member.
+
+        args -- dictionary containing the mac address ('address'),
+        """
+        self.address = args['address']
+        log.debug("Adapter address = {0}".format(args['address']))
