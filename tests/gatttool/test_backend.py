@@ -49,6 +49,35 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         ok_(device is not None)
 
+    def test_disconnect_callback(self):
+        # Just keep saying we got the "Disconnected" response
+        def rate_limited_expect_d(*args, **kwargs):
+                time.sleep(0.001)
+                # hard code the "Disconnected" event
+                return 1
+
+        mock_callback = MagicMock()
+        address = "11:22:33:44:55:66"
+        device = self.backend.connect(address)
+        device.register_disconnect_callback(mock_callback)
+        eq_(mock_callback in
+            device._backend._receiver._event_vector[
+                "disconnected"]["callback"],
+            True)
+
+        self.spawn.return_value.expect.side_effect = rate_limited_expect_d
+        time.sleep(0.1)
+        ok_(mock_callback.called)
+
+        device.remove_disconnect_callback(mock_callback)
+        eq_(mock_callback not in
+            device._backend._receiver._event_vector[
+                "disconnected"]["callback"],
+            True)
+        eq_(len(device._backend._receiver._event_vector[
+                "disconnected"]["callback"]) > 0,
+            True)
+
     def test_auto_reconnect_call(self):
         # Just keep saying we got the "Disconnected" response
         def rate_limited_expect_d(*args, **kwargs):

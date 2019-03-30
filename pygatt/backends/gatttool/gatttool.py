@@ -110,7 +110,7 @@ class GATTToolReceiver(threading.Thread):
             event["before"] = None
             event["after"] = None
             event["match"] = None
-            event["callback"] = None
+            event["callback"] = []
 
     def run(self):
         items = sorted(itertools.chain.from_iterable(
@@ -135,8 +135,8 @@ class GATTToolReceiver(threading.Thread):
             event["after"] = self._connection.after
             event["match"] = self._connection.match
             event["event"].set()
-            if event["callback"]:
-                event["callback"](event)
+            for clb in event["callback"]:
+                clb(event)
         log.info("Listener thread finished")
 
     def clear(self, event):
@@ -160,7 +160,15 @@ class GATTToolReceiver(threading.Thread):
         Call the callback function when event happens. Event wrapper
         is passed as argument.
         """
-        self._event_vector[event]["callback"] = callback
+        self._event_vector[event]["callback"].append(callback)
+
+    def remove_callback(self, event, callback):
+        """
+        Remove a registered callback, so it is no longer called when an
+        event happens.
+        """
+        if callback in self._event_vector[event]["callback"]:
+            self._event_vector[event]["callback"].remove(callback)
 
     def last_value(self, event, value_type):
         """

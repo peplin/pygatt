@@ -61,3 +61,9 @@ class GATTToolBLEDevice(BLEDevice):
     @connection_required
     def exchange_mtu(self, mtu, *args, **kwargs):
         return self._backend.exchange_mtu(self, mtu)
+
+    def register_disconnect_callback(self, callback):
+        self._backend._receiver.register_callback("disconnected", callback)
+
+    def remove_disconnect_callback(self, callback):
+        self._backend._receiver.remove_callback("disconnected", callback)
