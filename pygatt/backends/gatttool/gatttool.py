@@ -20,14 +20,9 @@ from .device import GATTToolBLEDevice
 
 log = logging.getLogger(__name__)
 
-if hasattr(bytes, 'fromhex'):
-    # Python 3.
-    def _hex_value_parser(x):
-        return bytearray.fromhex(x.decode('utf8'))
-else:
-    # Python 2.7
-    def _hex_value_parser(x):
-        return bytearray.fromhex(x)
+
+def _hex_value_parser(x):
+    return bytearray.fromhex(x)
 
 
 def is_windows():
@@ -490,7 +485,8 @@ class GATTToolBackend(BLEBackend):
             log.warn("Blank message received in notification, ignored")
             return
 
-        match_obj = re.match(r'Notification handle = (0x[0-9a-f]+) value:(.*)', msg)
+        match_obj = re.match(r'Notification handle = (0x[0-9a-f]+) value:(.*)',
+                             msg.decode('utf-8'))
         if match_obj is None:
             log.warn("Unable to parse notification string, ignoring: %s", msg)
             return
