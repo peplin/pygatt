@@ -171,33 +171,24 @@ class BGAPIBLEDevice(BLEDevice):
 
             chunk = value[maxv*i:min(maxv*(i+1), len(value))]
             value_list = [b for b in chunk]
-            # print("value_list = ", value_list)
             self._backend.send_command(
-                    CommandBuilder.attclient_prepare_write(
-                        self._handle, char_handle, maxv*i, value_list))
+                CommandBuilder.attclient_prepare_write(
+                    self._handle, char_handle, maxv*i, value_list))
 
             packet_type, response = self._backend.expect(
-                                    ResponsePacketType.attclient_prepare_write)
-            # print("Packet type = ", packet_type)
-            # print("Response = ", response)
+                ResponsePacketType.attclient_prepare_write)
 
             packet_type, response = self._backend.expect(
                 EventPacketType.attclient_procedure_completed)
-            # print("Packet type = ", packet_type)
-            # print("Response = ", response)
             time.sleep(0.1)
 
-        # print("Execute Write")
         time.sleep(0.1)
-        # print(CommandBuilder.attclient_execute_write(self._handle, 1))
         self._backend.send_command(
             CommandBuilder.attclient_execute_write(
                 self._handle, 1))  # 1 = commit, 0 = cancel
         self._backend.expect(ResponsePacketType.attclient_execute_write)
         packet_type, response = self._backend.expect(
-                EventPacketType.attclient_procedure_completed)
-        # print("Packet type = ", packet_type)
-        # print("Response = ", response)
+            EventPacketType.attclient_procedure_completed)
         time.sleep(0.1)
 
     @connection_required

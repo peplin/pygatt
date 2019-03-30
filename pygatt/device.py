@@ -92,7 +92,7 @@ class BLEDevice(object):
 
     def char_read_long_handle(self, handle):
         """
-        Reads a Characteristic longer than one MTU by handle.
+        Reads a Characteristic longer than one read by handle.
 
         handle -- handle of Characteristic to read.
 
