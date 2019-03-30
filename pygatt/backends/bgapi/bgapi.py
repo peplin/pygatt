@@ -110,6 +110,8 @@ class BGAPIBackend(BLEBackend):
         self._current_characteristic = None  # used in char/descriptor discovery
         self._packet_handlers = {
             ResponsePacketType.sm_get_bonds: self._ble_rsp_sm_get_bonds,
+            ResponsePacketType.system_address_get: (
+                self._ble_rsp_system_address_get),
             EventPacketType.attclient_attribute_value: (
                 self._ble_evt_attclient_attribute_value),
             EventPacketType.attclient_find_information_found: (
@@ -177,7 +179,7 @@ class BGAPIBackend(BLEBackend):
 
     def start(self):
         """
-        Connect to the USB adapter, reset it's state and start a backgroud
+        Connect to the USB adapter, reset its state and start a background
         receiver thread.
         """
         if self._running and self._running.is_set():
@@ -219,6 +221,10 @@ class BGAPIBackend(BLEBackend):
         except BGAPIError:
             # Ignore any errors if there was no GAP procedure running
             pass
+
+    def get_mac(self):
+        self.send_command(CommandBuilder.system_address_get())
+        self.expect(ResponsePacketType.system_address_get)
 
     def stop(self):
         for device in self._connections.values():
@@ -299,8 +305,8 @@ class BGAPIBackend(BLEBackend):
         Perform a scan to discover BLE devices.
 
         timeout -- the number of seconds this scan should last.
-        scan_interval -- the number of miliseconds until scanning is restarted.
-        scan_window -- the number of miliseconds the scanner will listen on one
+        scan_interval -- the number of milliseconds until scanning is restarted.
+        scan_window -- the number of milliseconds the scanner will listen on one
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         discover_mode -- one of the gap_discover_mode constants.
@@ -348,7 +354,7 @@ class BGAPIBackend(BLEBackend):
                 interval_min=60, interval_max=76, supervision_timeout=100,
                 latency=0):
         """
-        Connnect directly to a device given the ble address then discovers and
+        Connect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
 
         Requires that the adapter is not connected to a device already.
@@ -756,3 +762,13 @@ class BGAPIBackend(BLEBackend):
         """
         self._num_bonds = args['bonds']
         log.debug("num bonds = %d", args['bonds'])
+
+    def _ble_rsp_system_address_get(self, args):
+        """
+        Handles the response for the system mac address. Stores the
+        result as a member.
+
+        args -- dictionary containing the mac address ('address'),
+        """
+        self.address = args['address']
+        log.debug("Adapter address = {0}".format(args['address']))
