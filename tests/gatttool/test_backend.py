@@ -77,7 +77,7 @@ class GATTToolBackendTests(unittest.TestCase):
         eq_(len(device._backend._receiver._event_vector[
                 "disconnected"]["callback"]) > 0,
             True)
-        
+
     def test_auto_reconnect_call(self):
         # Just keep saying we got the "Disconnected" response
         def rate_limited_expect_d(*args, **kwargs):
@@ -169,9 +169,19 @@ class GATTToolBackendTests(unittest.TestCase):
         eq_(bytearray([0x64, 0x46, 0x72]),
             device.receive_notification.call_args[0][1])
 
-    def test_malformed_notification(self):
+    def test_empty_notification(self):
         event = {
             'after': "Notification handle = 0x0024 value: ".encode("utf8")
+        }
+        address = "11:22:33:44:55:66"
+        device = self.backend.connect(address)
+        device.receive_notification = MagicMock()
+        device._backend._handle_notification_string(event)
+        ok_(device.receive_notification.called)
+
+    def test_malformed_notification(self):
+        event = {
+            'after': "Notification handle = 0x0024vlue: ".encode("utf8")
         }
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
