@@ -104,13 +104,15 @@ class BLEDevice(object):
         """
         raise NotImplementedError()
 
-    def char_write(self, uuid, value, wait_for_response=False):
+    def char_write(self, uuid, value, wait_for_response=True):
         """
         Writes a value to a given characteristic UUID.
 
         uuid -- the UUID of the characteristic to write to.
         value -- a bytearray to write to the characteristic.
-        wait_for_response -- wait for response after writing.
+        wait_for_response -- wait for response after writing. A GATT "command"
+            is used when not waiting for a response. The remote host will not
+            acknowledge the write.
 
         Example:
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
@@ -119,7 +121,7 @@ class BLEDevice(object):
         return self.char_write_handle(self.get_handle(uuid), value,
                                       wait_for_response=wait_for_response)
 
-    def char_write_handle(self, handle, value, wait_for_response=False):
+    def char_write_handle(self, handle, value, wait_for_response=True):
         """
         Writes a value to a given characteristic handle. This can be used to
         write to the characteristic config handle for a primary characteristic.
@@ -129,8 +131,7 @@ class BLEDevice(object):
         wait_for_response -- wait for response after writing.
 
         Example:
-            my_ble_device.char_write(42,
-                                     bytearray([0x00, 0xFF]))
+            my_ble_device.char_write_handle(42, bytearray([0x00, 0xFF]))
         """
         raise NotImplementedError()
 

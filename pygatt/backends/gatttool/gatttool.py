@@ -549,13 +549,16 @@ class GATTToolBackend(BLEBackend):
             self._connected_device.receive_notification(handle, values)
 
     @at_most_one_device
-    def char_write_handle(self, handle, value, wait_for_response=False,
+    def char_write_handle(self, handle, value, wait_for_response=True,
                           timeout=1):
         """
         Writes a value to a given characteristic handle.
+
         :param handle:
         :param value:
-        :param wait_for_response:
+        :param wait_for_response: If true, performs an attribute write. If
+            false, sends a command and expects no acknowledgement from the
+            device.
         """
         cmd = 'char-write-{0} 0x{1:02x} {2}'.format(
             'req' if wait_for_response else 'cmd',
