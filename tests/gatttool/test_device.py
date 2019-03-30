@@ -57,6 +57,15 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
         ok_(self.backend.disconnect.called)
         eq_(self.device, self.backend.disconnect.call_args[0][0])
 
+    def test_additional_disconnect_callback(self):
+        mock_callback = MagicMock()
+        self.device.register_disconnect_callback(mock_callback)
+        self.backend._receiver.register_callback.assert_called_with(
+            "disconnected", mock_callback)
+        self.device.remove_disconnect_callback(mock_callback)
+        self.backend._receiver.remove_callback.assert_called_with(
+            "disconnected", mock_callback)
+
     @raises(NotConnectedError)
     def test_write_after_disconnect(self):
         self.device.disconnect()
