@@ -19,7 +19,7 @@ return_codes = {
     0x0186: "Not connected",
     0x0187: "Overflow/underflow",
     0x0188: "User attribute",
-    0x0189: "Invalid liscense key",
+    0x0189: "Invalid license key",
     0x018A: "Command too long",
     0x018B: "Out of bounds",
     # Bluetooth errors
@@ -32,7 +32,7 @@ return_codes = {
     0x0212: "Invalid command parameters",
     0x0213: "Remote user terminated connection",
     0x0216: "Connection terminated by local host",
-    0x0222: "Link layer reponse timeout",
+    0x0222: "Link layer response timeout",
     0x0228: "Link layer instance passed",
     0x023A: "Controller busy",
     0x023B: "Unacceptable connection interval",
