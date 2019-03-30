@@ -9,7 +9,7 @@
 import pygatt
 
 
-def data_handler_cb(handle: int, value: bytearray):
+def data_handler_cb(handle, value):
     """
         Indication and notification come asynchronously, we use this function to
         handle them either one at the time as they come.
