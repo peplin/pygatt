@@ -144,7 +144,10 @@ class BGAPIBLEDevice(BLEDevice):
                 self._backend.expect(
                     ResponsePacketType.attclient_attribute_write)
                 packet_type, response = self._backend.expect(
-                    EventPacketType.attclient_procedure_completed)
+                    EventPacketType.attclient_procedure_completed,
+                    # According to the BLE spec, the device has 30 seconds to
+                    # repsonse to the attribute write.
+                    timeout=30)
 
             # A "command" write is unacknowledged - don't wait for a response.
             else:

@@ -550,7 +550,7 @@ class GATTToolBackend(BLEBackend):
 
     @at_most_one_device
     def char_write_handle(self, handle, value, wait_for_response=True,
-                          timeout=1):
+                          timeout=30):
         """
         Writes a value to a given characteristic handle.
 
