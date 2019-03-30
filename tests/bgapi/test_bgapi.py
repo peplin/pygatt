@@ -163,3 +163,7 @@ class DecodePacketTests(unittest.TestCase):
         packet_type, packet = self.lib.decode_packet(data)
         eq_(bglib.EventPacketType.gap_scan_response, packet_type)
         eq_(bytearray([21, 19, 11, 210, 2, 97]), packet['sender'])
+
+    def test_decode_invalid(self):
+        with self.assertRaises(bglib.UnknownMessageType):
+            self.lib.decode_packet(range(42, 100))

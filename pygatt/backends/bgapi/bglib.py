@@ -40,6 +40,10 @@ from enum import Enum
 log = logging.getLogger(__name__)
 
 
+class UnknownMessageType(Exception):
+    pass
+
+
 ResponsePacketType = Enum('ResponsePacketType', [
     'system_reset',
     'system_hello',
@@ -370,8 +374,9 @@ class BGLib(object):
         packet_type = RESPONSE_PACKET_MAPPING.get(
             (packet_class, packet_command))
         if packet_type is None:
-            # TODO unrecognized packet, log something?
-            return
+            raise UnknownMessageType(
+                "Packet class %d and command %d is not recognized" %
+                (packet_class, packet_command))
 
         response = {}
         if packet_type == ResponsePacketType.system_address_get:
@@ -605,8 +610,9 @@ class BGLib(object):
                              payload_length):
         packet_type = EVENT_PACKET_MAPPING.get((packet_class, packet_command))
         if packet_type is None:
-            # TODO unrecognized packet, log something?
-            return
+            raise UnknownMessageType(
+                "Packet class %d and command %d is not recognized" %
+                (packet_class, packet_command))
 
         response = {}
         if packet_type == EventPacketType.system_boot:
@@ -847,6 +853,8 @@ class BGLib(object):
 
         packet -- a list of bytes in the packet to decode.
 
+        Raises an UnknownMessageType if the message could not be decoded.
+
         Returns a tuple of (PacketType, dict response data)
 
           BGAPI packet structure (as of 2012-11-07):
@@ -870,3 +878,7 @@ class BGLib(object):
         elif message_type == 0x80:
             return self._decode_event_packet(
                 packet_class, packet_command, payload, payload_length)
+
+        raise UnknownMessageType(
+            "The message type '%d' is not recognized as the request or "
+            "response type, and cannot be decoded" % message_type)
