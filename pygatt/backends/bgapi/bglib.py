@@ -675,9 +675,9 @@ class BGLib(object):
             address = data[2:8]
             response = {
                 'connection_handle': data[0], 'flags': data[1],
-                'address': address, 'address_type': data[3],
-                'conn_interval': data[4], 'timeout': data[5],
-                'latency': data[6], 'bonding': data[7]
+                'address': address, 'address_type': data[8],
+                'conn_interval': data[9], 'timeout': data[10],
+                'latency': data[11], 'bonding': data[12]
             }
         elif packet_type == EventPacketType.connection_version_ind:
             connection, vers_nr, comp_id, sub_vers_nr = unpack(
