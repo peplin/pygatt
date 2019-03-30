@@ -93,6 +93,8 @@ class BGAPIBackend(BLEBackend):
         self._receiver = None
         self._running = None
         self._lock = threading.Lock()
+        self._evt = threading.Event()
+        self._scan_cb = None
 
         # buffer for packets received
         self._receiver_queue = queue.Queue()
@@ -110,6 +112,8 @@ class BGAPIBackend(BLEBackend):
         self._current_characteristic = None  # used in char/descriptor discovery
         self._packet_handlers = {
             ResponsePacketType.sm_get_bonds: self._ble_rsp_sm_get_bonds,
+            ResponsePacketType.system_address_get: (
+                self._ble_rsp_system_address_get),
             EventPacketType.attclient_attribute_value: (
                 self._ble_evt_attclient_attribute_value),
             EventPacketType.attclient_find_information_found: (
@@ -166,7 +170,7 @@ class BGAPIBackend(BLEBackend):
                 log.debug("Failed to open serial port", exc_info=True)
                 if self._ser:
                     self._ser.close()
-                elif attempt >= max_connection_attempts-1:
+                elif attempt == (max_connection_attempts - 1):
                     raise NotConnectedError(
                         "No BGAPI compatible device detected")
                 self._ser = None
@@ -177,7 +181,7 @@ class BGAPIBackend(BLEBackend):
 
     def start(self):
         """
-        Connect to the USB adapter, reset it's state and start a backgroud
+        Connect to the USB adapter, reset its state and start a background
         receiver thread.
         """
         if self._running and self._running.is_set():
@@ -219,6 +223,10 @@ class BGAPIBackend(BLEBackend):
         except BGAPIError:
             # Ignore any errors if there was no GAP procedure running
             pass
+
+    def get_mac(self):
+        self.send_command(CommandBuilder.system_address_get())
+        self.expect(ResponsePacketType.system_address_get)
 
     def stop(self):
         for device in self._connections.values():
@@ -294,17 +302,23 @@ class BGAPIBackend(BLEBackend):
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
              discover_mode=constants.gap_discover_mode['observation'],
-             **kwargs):
+             scan_cb=None, **kwargs):
         """
         Perform a scan to discover BLE devices.
 
         timeout -- the number of seconds this scan should last.
-        scan_interval -- the number of miliseconds until scanning is restarted.
-        scan_window -- the number of miliseconds the scanner will listen on one
+        scan_interval -- the number of milliseconds until scanning is restarted.
+        scan_window -- the number of milliseconds the scanner will listen on one
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         discover_mode -- one of the gap_discover_mode constants.
+        scan_cb -- This callback function is called whenever a new BLE
+                   advertising packet is received.
+                   The function takes three parameters:
+                       devices, addr, packet_type
+                   If the function returns True, the scan is aborted
         """
+        self._scan_cb = scan_cb
         parameters = 1 if active else 0
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
@@ -320,8 +334,19 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.gap_discover)
 
-        log.info("Pausing for %ds to allow scan to complete", timeout)
-        time.sleep(timeout)
+        log.info("Pausing for maximum %ds to allow scan to complete", timeout)
+
+        self._evt.set()
+        start_time = time.time()
+
+        while self._evt.is_set():
+            try:
+                self.expect(EventPacketType.gap_scan_response,
+                            timeout=timeout)
+            except ExpectedResponseTimeout:
+                pass
+            if _timed_out(start_time, timeout):
+                break
 
         log.info("Stopping scan")
         self.send_command(CommandBuilder.gap_end_procedure())
@@ -348,7 +373,7 @@ class BGAPIBackend(BLEBackend):
                 interval_min=60, interval_max=76, supervision_timeout=100,
                 latency=0):
         """
-        Connnect directly to a device given the ble address then discovers and
+        Connect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
 
         Requires that the adapter is not connected to a device already.
@@ -723,6 +748,10 @@ class BGAPIBackend(BLEBackend):
         log.debug("Received a scan response from %s with rssi=%d dBM "
                   "and data=%s", address, args['rssi'], data_dict)
 
+        if self._scan_cb is not None:
+            if self._scan_cb(self._devices_discovered, address, packet_type):
+                self._evt.clear()
+
     def _ble_evt_sm_bond_status(self, args):
         """
         Handles the event for reporting a stored bond.
@@ -756,3 +785,13 @@ class BGAPIBackend(BLEBackend):
         """
         self._num_bonds = args['bonds']
         log.debug("num bonds = %d", args['bonds'])
+
+    def _ble_rsp_system_address_get(self, args):
+        """
+        Handles the response for the system mac address. Stores the
+        result as a member.
+
+        args -- dictionary containing the mac address ('address'),
+        """
+        self.address = args['address']
+        log.debug("Adapter address = {0}".format(args['address']))
