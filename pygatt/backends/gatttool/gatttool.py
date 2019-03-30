@@ -340,7 +340,7 @@ class GATTToolBackend(BLEBackend):
         try:
             scan.expect('foooooo', timeout=timeout)
         except pexpect.EOF:
-            before_eof = scan.before.decode('utf-8')
+            before_eof = scan.before.decode('utf-8', 'replace')
             if "No such device" in before_eof:
                 message = "No BLE adapter found"
             elif "Set scan parameters failed: Input/output error" in before_eof:
@@ -352,7 +352,7 @@ class GATTToolBackend(BLEBackend):
             raise BLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
-            for line in scan.before.decode('utf-8').split('\r\n'):
+            for line in scan.before.decode('utf-8', 'replace').split('\r\n'):
                 if 'sudo' in line:
                     raise BLEError("Enable passwordless sudo for 'hcitool' "
                                    "before scanning")
