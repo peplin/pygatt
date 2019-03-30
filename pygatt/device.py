@@ -90,16 +90,16 @@ class BLEDevice(object):
         """
         raise NotImplementedError()
 
-    def char_read_long_handle(self, uuid):
+    def char_read_long_handle(self, handle):
         """
-        Reads a Characteristic by handle.
+        Reads a Characteristic longer than one MTU by handle.
 
         handle -- handle of Characteristic to read.
 
         Returns a bytearray containing the characteristic value on success.
 
         Example:
-            my_ble_device.char_read_handle(5)
+            my_ble_device.char_read_long_handle(5)
         """
         raise NotImplementedError()
 
@@ -282,15 +282,9 @@ class BLEDevice(object):
                     callback(handle, value)
 
     def exchange_mtu(self, mtu):
-
         """
-
         ATT exchange Maximum Transmission Unit.
-
         :param mtu: New MTU-value
-
         :return: New MTU, as recognized by server.
-
         """
-
         raise NotImplementedError()

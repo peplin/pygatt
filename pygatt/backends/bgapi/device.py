@@ -91,8 +91,7 @@ class BGAPIBLEDevice(BLEDevice):
             # TODO why not just expect *only* the attribute value response,
             # then it would time out and raise an exception if allwe got was
             # the 'procedure completed' response?
-            if matched_packet_type != \
-                    EventPacketType.attclient_attribute_value:
+            if matched_packet_type != EventPacketType.attclient_attribute_value:
                 raise BGAPIError("Unable to read characteristic")
             if response['atthandle'] == handle:
                 # Otherwise we received a response from a wrong handle (e.g.
@@ -103,62 +102,38 @@ class BGAPIBLEDevice(BLEDevice):
 
     @connection_required
     def char_read_long(self, uuid, timeout=None):
-
-        max_payload = 22
-
-        all_data = False
-
-        value = bytearray()
-
-        while not all_data:
-
-            chunk = self.char_read_long_handle(
-                        self.get_handle(uuid), timeout=timeout)
-
-            # time.sleep(0.01)
-            value += chunk
-
-            all_data = len(chunk) != max_payload
-
-            log.info("char_read_long chunk length= %d", len(chunk))
-
-        log.info("char_read_long length= %d", len(value))
-
-        return value
+        return self.char_read_long_handle(self.get_handle(uuid),
+                                          timeout=timeout)
 
     @connection_required
     def char_read_long_handle(self, handle, timeout=None):
-        log.info("Reading characteristic at handle %d", handle)
+        log.info("Reading long characteristic at handle %d", handle)
         self._backend.send_command(
             CommandBuilder.attclient_read_long(
                 self._handle, handle))
 
         self._backend.expect(ResponsePacketType.attclient_read_long)
         success = False
+        response = b""
         while not success:
-            matched_packet_type, response = self._backend.expect_any(
+            matched_packet_type, chunk = self._backend.expect_any(
                 [EventPacketType.attclient_attribute_value,
                  EventPacketType.attclient_procedure_completed],
                 timeout=timeout)
-            # TODO why not just expect *only* the attribute value response,
-            # then it would time out and raise an exception if allwe got was
-            # the 'procedure completed' response?
-            if matched_packet_type != \
-                    EventPacketType.attclient_attribute_value:
-                raise BGAPIError("Unable to read characteristic")
-            if response['atthandle'] == handle:
-                # Otherwise we received a response from a wrong handle (e.g.
-                # from a notification) so we keep trying to wait for the
-                # correct one
-                success = True
-        return bytearray(response['value'])
+
+            if (matched_packet_type ==
+                    EventPacketType.attclient_attribute_value):
+                if chunk['atthandle'] == handle:
+                    # Concatenate the data
+                    response += chunk["value"]
+            elif (matched_packet_type ==
+                    EventPacketType.attclient_procedure_completed):
+                if chunk['chrhandle'] == handle:
+                    success = True
+        return bytearray(response)
 
     @connection_required
-    def char_write_handle(self,
-                          char_handle,
-                          value,
-                          wait_for_response=False):
-
+    def char_write_handle(self, char_handle, value, wait_for_response=False):
         while True:
             value_list = [b for b in value]
             if wait_for_response:
