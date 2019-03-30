@@ -212,6 +212,7 @@ class GATTToolBackend(BLEBackend):
         self._address = None
         self._send_lock = threading.Lock()
         self._search_window_size = search_window_size
+        self._scan = None
 
     def sendline(self, command):
         """
@@ -309,7 +310,7 @@ class GATTToolBackend(BLEBackend):
             cmd = 'sudo %s' % cmd
 
         log.info("Starting BLE scan")
-        scan = pexpect.spawn(cmd)
+        self._scan = scan = pexpect.spawn(cmd)
         # "lescan" doesn't exit, so we're forcing a timeout here:
         try:
             scan.expect('foooooo', timeout=timeout)
@@ -354,21 +355,26 @@ class GATTToolBackend(BLEBackend):
             log.info("Found %d BLE devices", len(devices))
             return [device for device in devices.values()]
         finally:
-            # Wait for lescan to exit cleanly, otherwise it leaves the BLE
-            # adapter in a bad state and the device must be reset through BlueZ.
-            # This will not work if run_as_root was used, since this process
-            # itself doesn't have permission to terminate a process running as
-            # root (hcitool itself). We recommend using the setcap tool to allow
-            # scanning as a non-root user:
-            #
-            #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
-            try:
-                scan.kill(signal.SIGINT)
-                scan.wait()
-            except OSError:
-                log.error("Unable to gracefully stop the scan - "
-                          "BLE adapter may need to be reset.")
+            self.kill()
         return []
+
+    def kill(self):
+        if self._scan is None:
+            return
+        # Wait for lescan to exit cleanly, otherwise it leaves the BLE
+        # adapter in a bad state and the device must be reset through BlueZ.
+        # This will not work if run_as_root was used, since this process
+        # itself doesn't have permission to terminate a process running as
+        # root (hcitool itself). We recommend using the setcap tool to allow
+        # scanning as a non-root user:
+        #
+        #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+        try:
+            self._scan.kill(signal.SIGINT)
+            self._scan.wait()
+        except OSError:
+            log.error("Unable to gracefully stop the scan - "
+                      "BLE adapter may need to be reset.")
 
     def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
                 address_type=BLEAddressType.public):
