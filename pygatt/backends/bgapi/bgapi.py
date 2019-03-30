@@ -465,8 +465,11 @@ class BGAPIBackend(BLEBackend):
                 connection_handle, att_handle_start, att_handle_end))
 
         self.expect(ResponsePacketType.attclient_find_information)
-        self.expect(EventPacketType.attclient_procedure_completed,
-                    timeout=10)
+        try:
+            self.expect(EventPacketType.attclient_procedure_completed,
+                        timeout=30)
+        except ExpectedResponseTimeout:
+            log.warn("Continuing even though discovery hasn't finished")
 
         for char_uuid_str, char_obj in (
                 self._characteristics[connection_handle].items()):
