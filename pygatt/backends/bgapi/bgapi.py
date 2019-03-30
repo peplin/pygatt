@@ -179,7 +179,7 @@ class BGAPIBackend(BLEBackend):
 
     def start(self):
         """
-        Connect to the USB adapter, reset it's state and start a backgroud
+        Connect to the USB adapter, reset its state and start a background
         receiver thread.
         """
         if self._running and self._running.is_set():
@@ -305,8 +305,8 @@ class BGAPIBackend(BLEBackend):
         Perform a scan to discover BLE devices.
 
         timeout -- the number of seconds this scan should last.
-        scan_interval -- the number of miliseconds until scanning is restarted.
-        scan_window -- the number of miliseconds the scanner will listen on one
+        scan_interval -- the number of milliseconds until scanning is restarted.
+        scan_window -- the number of milliseconds the scanner will listen on one
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         discover_mode -- one of the gap_discover_mode constants.
@@ -354,7 +354,7 @@ class BGAPIBackend(BLEBackend):
                 interval_min=60, interval_max=76, supervision_timeout=100,
                 latency=0):
         """
-        Connnect directly to a device given the ble address then discovers and
+        Connect directly to a device given the ble address then discovers and
         stores the characteristic and characteristic descriptor handles.
 
         Requires that the adapter is not connected to a device already.
