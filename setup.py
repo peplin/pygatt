@@ -1,5 +1,5 @@
 __title__ = 'pygatt'
-__version__ = '3.2.0'
+__version__ = '4.0.0'
 __license__ = 'Apache License, Version 2.0 and MIT License'
 __copyright__ = 'Copyright 2015 Stratos Inc. and Orion Labs'
 
