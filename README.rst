@@ -58,6 +58,18 @@ Install the latest development version of ``pygatt`` with pip:
 
     $ pip install git+https://github.com/peplin/pygatt
 
+Documentation
+----------
+
+The documentation for pygatt consists of:
+
+- This README
+- The code in the ``samples`` directory
+- The Python docstrings in the code itself.
+
+The ``BLEDevice`` and ``BLEBackend`` base classes are the primary interfaces for
+users of the library.
+
 Example Use
 -----------
 
@@ -182,6 +194,15 @@ Authors
 - Jean Regisser
 - David Martin
 - Pieter Hooimeijer
+- Thomas Li Fredriksen
+- Markus Proeller
+- lachtanek
+- Andrea Merello
+- Richard Mitchell
+- Daniel Santos
+- Andrew Connell
+- Jakub Hrabec
+- John Schoenberger
 
 Releasing to PyPI
 -----------------
