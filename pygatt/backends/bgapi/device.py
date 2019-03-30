@@ -133,9 +133,10 @@ class BGAPIBLEDevice(BLEDevice):
         return bytearray(response)
 
     @connection_required
-    def char_write_handle(self, char_handle, value, wait_for_response=False):
+    def char_write_handle(self, char_handle, value, wait_for_response=True):
         while True:
             value_list = [b for b in value]
+            # An "attribute write" is always acknowledged by the remote host.
             if wait_for_response:
                 self._backend.send_command(
                     CommandBuilder.attclient_attribute_write(
@@ -144,6 +145,8 @@ class BGAPIBLEDevice(BLEDevice):
                     ResponsePacketType.attclient_attribute_write)
                 packet_type, response = self._backend.expect(
                     EventPacketType.attclient_procedure_completed)
+
+            # A "command" write is unacknowledged - don't wait for a response.
             else:
                 self._backend.send_command(
                     CommandBuilder.attclient_write_command(
