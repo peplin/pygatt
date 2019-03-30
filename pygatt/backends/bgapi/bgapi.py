@@ -616,7 +616,12 @@ class BGAPIBackend(BLEBackend):
             if packet is None:
                 raise ExpectedResponseTimeout(expected_packet_choices, timeout)
 
-            packet_type, response = self._lib.decode_packet(packet)
+            try:
+                packet_type, response = self._lib.decode_packet(packet)
+            except bglib.UnknownMessageType:
+                log.warn("Ignoring message decode failure", exc_info=True)
+                continue
+
             return_code = response.get('result', 0)
             log.debug("Received a %s packet: %s",
                       packet_type, get_return_message(return_code))
@@ -636,7 +641,11 @@ class BGAPIBackend(BLEBackend):
         while self._running.is_set():
             packet = self._lib.parse_byte(self._ser.read())
             if packet is not None:
-                packet_type, args = self._lib.decode_packet(packet)
+                try:
+                    packet_type, args = self._lib.decode_packet(packet)
+                except bglib.UnknownMessageType:
+                    log.warn("Ignoring message decode failure", exc_info=True)
+                    continue
                 if packet_type == EventPacketType.attclient_attribute_value:
                     device = self._connections[args['connection_handle']]
                     device.receive_notification(args['atthandle'],
