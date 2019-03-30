@@ -182,6 +182,15 @@ Authors
 - Jean Regisser
 - David Martin
 - Pieter Hooimeijer
+- Thomas Li Fredriksen
+- Markus Proeller
+- lachtanek
+- Andrea Merello
+- Richard Mitchell
+- Daniel Santos
+- Andrew Connell
+- Jakub Hrabec
+- John Schoenberger
 
 Releasing to PyPI
 -----------------

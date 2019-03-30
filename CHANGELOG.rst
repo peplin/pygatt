@@ -3,6 +3,29 @@
 Release History
 ================
 
+V4.0.0
+------
+
+* Feature: Add ``char_read_long`` for reading characteristics longer than a
+  single packet (#206, #177)
+* Feature: Add command to change MTU (GATTTool only) (#182)
+* Feature: Allow registering callbacks for device discovery events. (#176)
+* Feature: Support fetching BLE device MAC address (#150)
+* Improvement: Add better serial port error handling for BGAPI. (#162)
+* Improvement: Expand and allow overriding pexpect search buffer for gatttool
+  output to support devices with many characteristics without negatively
+  impacting performance (#209)
+* Improvement: Wait before re-opening BGAPI serial port to improve detection on
+  Windows. (#162)
+* Improvement: Add support for Python 3.7
+* Fix: Use ATT write (not command) by default for char_write
+* Fix: Wait longer for ATT write according to BlueGiga spec
+* Fix: Fix BGAPI device detection (#154)
+* Fix: Stop leaking file descriptors when erasing BLE bonds with GATTTool
+  backend (#188)
+* Fix: Typos (#173)
+* Drop official support for Python 3.4, 3.5 and 3.6.
+
 V3.2.1
 ------
 
