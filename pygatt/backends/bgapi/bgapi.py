@@ -93,6 +93,8 @@ class BGAPIBackend(BLEBackend):
         self._receiver = None
         self._running = None
         self._lock = threading.Lock()
+        self._evt = threading.Event()
+        self._scan_cb = None
 
         # buffer for packets received
         self._receiver_queue = queue.Queue()
@@ -300,7 +302,7 @@ class BGAPIBackend(BLEBackend):
 
     def scan(self, timeout=10, scan_interval=75, scan_window=50, active=True,
              discover_mode=constants.gap_discover_mode['observation'],
-             **kwargs):
+             scan_cb=None, **kwargs):
         """
         Perform a scan to discover BLE devices.
 
@@ -310,7 +312,13 @@ class BGAPIBackend(BLEBackend):
                      frequency for advertisement packets.
         active -- True --> ask sender for scan response data. False --> don't.
         discover_mode -- one of the gap_discover_mode constants.
+        scan_cb -- This callback function is called whenever a new BLE
+                   advertising packet is received.
+                   The function takes three parameters:
+                       devices, addr, packet_type
+                   If the function returns True, the scan is aborted
         """
+        self._scan_cb = scan_cb
         parameters = 1 if active else 0
         # NOTE: the documentation seems to say that the times are in units of
         # 625us but the ranges it gives correspond to units of 1ms....
@@ -326,8 +334,19 @@ class BGAPIBackend(BLEBackend):
 
         self.expect(ResponsePacketType.gap_discover)
 
-        log.info("Pausing for %ds to allow scan to complete", timeout)
-        time.sleep(timeout)
+        log.info("Pausing for maximum %ds to allow scan to complete", timeout)
+
+        self._evt.set()
+        start_time = time.time()
+
+        while self._evt.is_set():
+            try:
+                self.expect(EventPacketType.gap_scan_response,
+                            timeout=timeout)
+            except ExpectedResponseTimeout:
+                pass
+            if _timed_out(start_time, timeout):
+                break
 
         log.info("Stopping scan")
         self.send_command(CommandBuilder.gap_end_procedure())
@@ -728,6 +747,10 @@ class BGAPIBackend(BLEBackend):
         dev.rssi = args['rssi']
         log.debug("Received a scan response from %s with rssi=%d dBM "
                   "and data=%s", address, args['rssi'], data_dict)
+
+        if self._scan_cb is not None:
+            if self._scan_cb(self._devices_discovered, address, packet_type):
+                self._evt.clear()
 
     def _ble_evt_sm_bond_status(self, args):
         """
