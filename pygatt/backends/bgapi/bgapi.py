@@ -728,7 +728,7 @@ class BGAPIBackend(BLEBackend):
                  "connection interval=%fms, timeout=%d, "
                  "latency=%d intervals, bonding=0x%x",
                  connection_handle,
-                 args['address'],
+                 args['flags'],
                  hexlify(bytearray(args['address'])),
                  args['conn_interval'] * 1.25,
                  args['timeout'] * 10,
