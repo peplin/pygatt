@@ -537,7 +537,7 @@ class GATTToolBackend(BLEBackend):
             log.warn("Blank message received in notification, ignored")
             return
 
-        match_obj = re.match(r'Notification handle = (0x[0-9a-f]+) value:(.*)',
+        match_obj = re.match(r'.* handle = (0x[0-9a-f]+) value:(.*)',
                              msg.decode('utf-8'))
         if match_obj is None:
             log.warn("Unable to parse notification string, ignoring: %s", msg)
