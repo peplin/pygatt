@@ -78,6 +78,7 @@ class GATTToolReceiver(threading.Thread):
             'char_written': {
                 'patterns': [
                     r'Characteristic value (was )?written successfully',
+                    r'Characteristic Write Request failed: A timeout occured',
                 ]
             },
             'value': {
