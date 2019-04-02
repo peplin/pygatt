@@ -188,3 +188,15 @@ class GATTToolBackendTests(unittest.TestCase):
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
         ok_(not device.receive_notification.called)
+
+    def test_indication(self):
+        event = {
+            'after': "Indication   handle = 0x0024 value: 64".encode("utf8")
+        }
+        address = "11:22:33:44:55:66"
+        device = self.backend.connect(address)
+        device.receive_notification = MagicMock()
+        device._backend._handle_notification_string(event)
+        ok_(device.receive_notification.called)
+        eq_(0x24, device.receive_notification.call_args[0][0])
+        eq_(bytearray([0x64]), device.receive_notification.call_args[0][1])
