@@ -203,6 +203,7 @@ Authors
 - Andrew Connell
 - Jakub Hrabec
 - John Schoenberger
+- Georgi Boiko
 
 Releasing to PyPI
 -----------------

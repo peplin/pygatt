@@ -3,6 +3,14 @@
 Release History
 ================
 
+V4.0.2
+------
+
+* Fix: Regression with receiving indications with GATTTOOL backend
+* Fix: Regression with subscribing to characteristics with GATTTOOL (need to use
+  writes, not commands) (#234)
+* Improvement: Don't require sudo for removing bonding (#234)
+
 V4.0.1
 ------
 
