@@ -215,7 +215,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=False
+                    wait_for_response=True
                 )
                 log.info("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
@@ -243,7 +243,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=False
+                    wait_for_response=True
                 )
                 log.info("Unsubscribed from uuid=%s", uuid)
             else:
@@ -315,6 +315,6 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=False
+                    wait_for_response=True
                 )
                 log.info("Resubscribed to uuid=%s", uuid)

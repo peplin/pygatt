@@ -26,7 +26,7 @@ class GATTToolBackendTests(unittest.TestCase):
             time.sleep(0.001)
             # This is hacky, but we sort the event list in the GATTTool receiver
             # and hard code where we expect the "Connected" event to be.
-            return 3
+            return 4
 
         self.spawn.return_value.expect.side_effect = rate_limited_expect
 
@@ -132,7 +132,7 @@ class GATTToolBackendTests(unittest.TestCase):
         def rate_limited_expect_c(*args, **kwargs):
             time.sleep(0.001)
             # hard code the "Connected" event
-            return 3
+            return 4
 
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address, auto_reconnect=True)
