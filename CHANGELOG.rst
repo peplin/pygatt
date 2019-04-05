@@ -3,7 +3,7 @@
 Release History
 ================
 
-V4.0.2
+V4.0.3
 ------
 
 * Fix: Regression with receiving indications with GATTTOOL backend
