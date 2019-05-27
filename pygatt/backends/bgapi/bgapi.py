@@ -556,7 +556,8 @@ class BGAPIBackend(BLEBackend):
                         try:
                             dev_name = bytearray(field_value).decode("utf-8")
                         except:
-                            pass
+                            log.debug("Failed to decode data as UTF8, "
+                                      "returning verbatim")
                         else:
                             data_dict[field_name] = dev_name
                     elif (field_name ==
