@@ -553,8 +553,13 @@ class BGAPIBackend(BLEBackend):
                     # Field type specific formats
                     if (field_name == 'complete_local_name' or
                             field_name == 'shortened_local_name'):
-                        dev_name = bytearray(field_value).decode("utf-8")
-                        data_dict[field_name] = dev_name
+                        try:
+                            dev_name = bytearray(field_value).decode("utf-8")
+                        except:
+                            log.debug("Failed to decode data as UTF8, "
+                                      "returning verbatim")
+                        else:
+                            data_dict[field_name] = dev_name
                     elif (field_name ==
                           'complete_list_128-bit_service_class_uuids'):
                         if len(field_value) % 16 == 0:  # 16 bytes
