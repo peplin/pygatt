@@ -204,6 +204,7 @@ Authors
 - Jakub Hrabec
 - John Schoenberger
 - Georgi Boiko
+- Jose Phillips
 
 Releasing to PyPI
 -----------------

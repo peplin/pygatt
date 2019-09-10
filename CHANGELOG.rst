@@ -8,6 +8,7 @@ V4.0.4
 
 * Improvement: Remove Bluetooth specification PDFs, refer to bluetooth.com to
   avoid copyright issues.
+* Improvement: Add wait_for_response option to subscription methods
 
 V4.0.3
 ------
