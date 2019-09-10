@@ -59,7 +59,7 @@ Install the latest development version of ``pygatt`` with pip:
     $ pip install git+https://github.com/peplin/pygatt
 
 Documentation
-----------
+-------------
 
 The documentation for pygatt consists of:
 
