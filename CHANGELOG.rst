@@ -3,6 +3,11 @@
 Release History
 ================
 
+V4.0.5
+------
+
+Same as 4.0.4. Re-released to fix PyPi upload.
+
 V4.0.4
 ------
 
