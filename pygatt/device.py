@@ -186,7 +186,9 @@ class BLEDevice(object):
 
         return value_handle, characteristic_config_handle
 
-    def subscribe(self, uuid, callback=None, indication=False):
+    def subscribe(self, uuid, callback=None, indication=False,
+                  wait_for_response=True):
+
         """
         Enable notifications or indications for a characteristic and register a
         callback function to be called whenever a new value arrives.
@@ -196,6 +198,8 @@ class BLEDevice(object):
                     received on this characteristic.
         indication -- use indications (where each notificaiton is ACKd). This is
                       more reliable, but slower.
+        wait_for_response -- wait for response after subscription.
+
         """
 
         value_handle, characteristic_config_handle = (
@@ -215,7 +219,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=True
+                    wait_for_response=wait_for_response
                 )
                 log.info("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
@@ -223,7 +227,7 @@ class BLEDevice(object):
             else:
                 log.debug("Already subscribed to uuid=%s", uuid)
 
-    def unsubscribe(self, uuid):
+    def unsubscribe(self, uuid, wait_for_response=True):
         """
         Disable notification for a charecteristic and de-register the callback.
         """
@@ -243,7 +247,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=True
+                    wait_for_response=wait_for_response
                 )
                 log.info("Unsubscribed from uuid=%s", uuid)
             else:
