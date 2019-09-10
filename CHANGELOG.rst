@@ -3,6 +3,12 @@
 Release History
 ================
 
+V4.0.4
+------
+
+* Improvement: Remove Bluetooth specification PDFs, refer to bluetooth.com to
+  avoid copyright issues.
+
 V4.0.3
 ------
 
