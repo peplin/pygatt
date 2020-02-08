@@ -1,3 +1,5 @@
+[![Maintainers Wanted](https://img.shields.io/badge/maintainers-wanted-red.svg)](https://github.com/pickhardt/maintainers-wanted)
+
 pygatt - Python Module for Bluetooth LE Generic Attribute Profile (GATT).
 =========================================================================
 
