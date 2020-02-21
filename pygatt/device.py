@@ -229,7 +229,7 @@ class BLEDevice(object):
 
     def unsubscribe(self, uuid, wait_for_response=True):
         """
-        Disable notification for a charecteristic and de-register the callback.
+        Disable notification for a characteristic and de-register the callback.
         """
         value_handle, characteristic_config_handle = (
             self._notification_handles(uuid)
