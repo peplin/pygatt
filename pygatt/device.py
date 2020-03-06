@@ -254,7 +254,8 @@ class BLEDevice(object):
                 log.debug("Already unsubscribed from uuid=%s", uuid)
 
     def subscribe_handle(self, handle, callback=None, indication=False,
-                  wait_for_response=True):
+                         wait_for_response=True):
+
         """
         Like subscribe() but using handle instead of uuid.
 
@@ -306,7 +307,10 @@ class BLEDevice(object):
                 )
                 log.info("Unsubscribed from handle=0x%04x", value_handle)
             else:
-                log.debug("Already unsubscribed from handle=0x%04x", value_handle)
+                log.debug(
+                    "Already unsubscribed from handle=0x%04x",
+                    value_handle
+                )
 
     def get_handle(self, char_uuid):
         """
