@@ -126,7 +126,7 @@ class BLEDevice(object):
         Writes a value to a given characteristic handle. This can be used to
         write to the characteristic config handle for a primary characteristic.
 
-        hande -- the handle to write to.
+        handle -- the handle to write to.
         value -- a bytearray to write to the characteristic.
         wait_for_response -- wait for response after writing.
 
@@ -155,7 +155,7 @@ class BLEDevice(object):
         Writes a value to a given characteristic handle. This can be used to
         write to the characteristic config handle for a primary characteristic.
 
-        hande -- the handle to write to.
+        handle -- the handle to write to.
         value -- a bytearray to write to the characteristic.
         wait_for_response -- wait for response after writing.
 
@@ -252,6 +252,61 @@ class BLEDevice(object):
                 log.info("Unsubscribed from uuid=%s", uuid)
             else:
                 log.debug("Already unsubscribed from uuid=%s", uuid)
+
+    def subscribe_handle(self, handle, callback=None, indication=False,
+                  wait_for_response=True):
+        """
+        Like subscribe() but using handle instead of uuid.
+
+        handle -- handle as a integer of the characteristic to subscribe.
+        """
+        value_handle = handle
+        characteristic_config_handle = value_handle + 1
+
+        properties = bytearray([
+            0x2 if indication else 0x1,
+            0x0
+        ])
+
+        with self._lock:
+            if callback is not None:
+                self._callbacks[value_handle].add(callback)
+
+            if self._subscribed_handlers.get(value_handle, None) != properties:
+                self.char_write_handle(
+                    characteristic_config_handle,
+                    properties,
+                    wait_for_response=wait_for_response
+                )
+                log.info("Subscribed to handle=0x%04x", value_handle)
+                self._subscribed_handlers[value_handle] = properties
+            else:
+                log.debug("Already subscribed to handle=0x%04x", value_handle)
+
+    def unsubscribe_handle(self, handle, wait_for_response=True):
+        """
+        Like unsubscribe() but using handle instead of uuid.
+
+        handle -- handle as a integer of the characteristic to unsubscribe.
+        """
+        value_handle = handle
+        characteristic_config_handle = value_handle + 1
+
+        properties = bytearray([0x0, 0x0])
+
+        with self._lock:
+            if value_handle in self._callbacks:
+                del(self._callbacks[value_handle])
+            if value_handle in self._subscribed_handlers:
+                del(self._subscribed_handlers[value_handle])
+                self.char_write_handle(
+                    characteristic_config_handle,
+                    properties,
+                    wait_for_response=wait_for_response
+                )
+                log.info("Unsubscribed from handle=0x%04x", value_handle)
+            else:
+                log.debug("Already unsubscribed from handle=0x%04x", value_handle)
 
     def get_handle(self, char_uuid):
         """
