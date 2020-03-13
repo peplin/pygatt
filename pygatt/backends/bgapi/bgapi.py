@@ -17,7 +17,7 @@ from enum import Enum
 from collections import defaultdict
 
 from pygatt.exceptions import NotConnectedError
-from pygatt.backends import BLEBackend, Characteristic, BLEAddressType
+from pygatt.backends import BLEBackend, Characteristic, Service, BLEAddressType
 from pygatt.util import uuid16_to_uuid
 
 from . import bglib, constants
@@ -110,6 +110,7 @@ class BGAPIBackend(BLEBackend):
         }
         self._characteristics = defaultdict(dict)
         self._connections = {}
+        self._services = defaultdict(dict)
 
         self._current_characteristic = None  # used in char/descriptor discovery
         self._packet_handlers = {
@@ -125,6 +126,9 @@ class BGAPIBackend(BLEBackend):
                 self._ble_evt_connection_disconnected),
             EventPacketType.gap_scan_response: self._ble_evt_gap_scan_response,
             EventPacketType.sm_bond_status: self._ble_evt_sm_bond_status,
+
+            EventPacketType.attclient_group_found: (
+                self._ble_evt_attclient_group_found)
         }
 
         log.info("Initialized new BGAPI backend")
@@ -455,6 +459,30 @@ class BGAPIBackend(BLEBackend):
             exc.__cause__ = None
             raise exc
 
+    def discover_primary_services(self, connection_handle):
+        att_handle_start = 0x0001  # first valid handle
+        att_handle_end = 0xFFFF  # last valid handle
+        uuid = [0x00, 0x28] # primary services
+        log.info("Fetching primary services for connection %d",
+                 connection_handle)
+        self.send_command(
+            CommandBuilder.attclient_read_by_group_type(
+                connection_handle,
+                att_handle_start, att_handle_end, uuid))
+
+        self.expect(ResponsePacketType.attclient_read_by_group_type)
+        try:
+            self.expect(EventPacketType.attclient_procedure_completed,
+                        timeout=30)
+        except ExpectedResponseTimeout:
+            log.warn("Continuing even though discovery hasn't finished")
+
+        for serv_uuid_str, serv_obj in (
+                self._services[connection_handle].items()):
+            log.info("Service 0x%s: handle 0x%x - 0x%x",
+                     serv_uuid_str, serv_obj.handle_min, serv_obj.handle_max)
+        return self._services[connection_handle]
+
     def discover_characteristics(self, connection_handle):
         att_handle_start = 0x0001  # first valid handle
         att_handle_end = 0xFFFF  # last valid handle
@@ -668,6 +696,21 @@ class BGAPIBackend(BLEBackend):
         log.debug("attribute handle = %x", args['atthandle'])
         log.debug("attribute type = %x", args['type'])
         log.debug("attribute value = 0x%s", hexlify(bytearray(args['value'])))
+
+    def _ble_evt_attclient_group_found(self, args):
+        raw_uuid = bytearray(reversed(args['uuid']))
+
+        # Convert 4-byte UUID shorthand to a full, 16-byte UUID
+        uuid_type = self._get_uuid_type(raw_uuid)
+        if uuid_type != UUIDType.custom:
+            uuid = uuid16_to_uuid(int(
+                bgapi_address_to_hex(args['uuid']).replace(':', ''), 16))
+        else:
+            uuid = UUID(bytes=bytes(raw_uuid))
+
+        new_serv = Service(uuid, args['start'], args['end'])
+        self._services[
+            args['connection_handle']][uuid] = new_serv
 
     def _ble_evt_attclient_find_information_found(self, args):
         """

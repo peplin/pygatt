@@ -212,3 +212,8 @@ class BGAPIBLEDevice(BLEDevice):
         self._characteristics = self._backend.discover_characteristics(
             self._handle)
         return self._characteristics
+
+    @connection_required
+    def discover_primary_services(self):
+        self._services = self._backend.discover_primary_services(self._handle)
+        return self._services
