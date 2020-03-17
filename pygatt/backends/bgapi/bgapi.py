@@ -15,6 +15,7 @@ from binascii import hexlify, unhexlify
 from uuid import UUID
 from enum import Enum
 from collections import defaultdict
+import struct
 
 from pygatt.exceptions import NotConnectedError
 from pygatt.backends import BLEBackend, Characteristic, Service, BLEAddressType
@@ -507,6 +508,18 @@ class BGAPIBackend(BLEBackend):
                     char_obj.descriptors.items()):
                 log.info("Characteristic descriptor 0x%s is handle 0x%x",
                          desc_uuid_str, desc_handle)
+
+        self.send_command(
+            CommandBuilder.attclient_read_by_type(
+                connection_handle, att_handle_start, att_handle_end,[0x03, 0x28]))
+
+        self.expect(ResponsePacketType.attclient_read_by_type)
+        try:
+            self.expect(EventPacketType.attclient_procedure_completed,
+                        timeout=30)
+        except ExpectedResponseTimeout:
+            log.warn("Continuing even though discovery hasn't finished")
+
         return self._characteristics[connection_handle]
 
     @staticmethod
@@ -696,6 +709,13 @@ class BGAPIBackend(BLEBackend):
         log.debug("attribute handle = %x", args['atthandle'])
         log.debug("attribute type = %x", args['type'])
         log.debug("attribute value = 0x%s", hexlify(bytearray(args['value'])))
+
+        properties, value_handle = struct.unpack("<BH", bytearray(args['value'])[:3])
+
+        cs = self._characteristics[args['connection_handle']]
+        for uuid in cs:
+            if cs[uuid].handle == value_handle:
+                cs[uuid].properties = properties
 
     def _ble_evt_attclient_group_found(self, args):
         raw_uuid = bytearray(reversed(args['uuid']))

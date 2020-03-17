@@ -67,12 +67,13 @@ class Characteristic(object):
     Only valid for the lifespan of a BLE connection, since the handle values are
     dynamic.
     """
-    def __init__(self, uuid, handle):
+    def __init__(self, uuid, handle, properties = 0):
         """
         Sets the characteritic uuid and handle.
 
         handle - a bytearray
         """
+        self.properties = properties
         self.uuid = uuid
         self.handle = handle
         self.descriptors = {
