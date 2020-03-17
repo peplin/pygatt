@@ -710,12 +710,14 @@ class BGAPIBackend(BLEBackend):
         log.debug("attribute type = %x", args['type'])
         log.debug("attribute value = 0x%s", hexlify(bytearray(args['value'])))
 
-        properties, value_handle = struct.unpack("<BH", bytearray(args['value'])[:3])
-
-        cs = self._characteristics[args['connection_handle']]
-        for uuid in cs:
-            if cs[uuid].handle == value_handle:
-                cs[uuid].properties = properties
+        # we use read by type only for characteristic declaration, otherwise
+        # we would have to check for type uuid to be 0x2803
+        if args['type'] == 3:
+            properties, value_handle = struct.unpack("<BH", bytearray(args['value'])[:3])
+            cs = self._characteristics[args['connection_handle']]
+            for uuid in cs:
+                if cs[uuid].handle == value_handle:
+                    cs[uuid].properties = properties
 
     def _ble_evt_attclient_group_found(self, args):
         raw_uuid = bytearray(reversed(args['uuid']))
