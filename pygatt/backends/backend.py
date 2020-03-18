@@ -67,12 +67,13 @@ class Characteristic(object):
     Only valid for the lifespan of a BLE connection, since the handle values are
     dynamic.
     """
-    def __init__(self, uuid, handle):
+    def __init__(self, uuid, handle, properties = 0):
         """
         Sets the characteritic uuid and handle.
 
         handle - a bytearray
         """
+        self.properties = properties
         self.uuid = uuid
         self.handle = handle
         self.descriptors = {
@@ -88,3 +89,25 @@ class Characteristic(object):
     def __str__(self):
         return "<%s uuid=%s handle=%d>" % (self.__class__.__name__,
                                            self.uuid, self.handle)
+
+class Service(object):
+    """
+    A GATT service, including its max and min handle values.
+    Only valid for the lifespan of a BLE connection, since the handle values are
+    dynamic.
+    """
+
+    def __init__(self, uuid, handle_min, handle_max):
+        """
+        Sets the service uuid and handle range
+
+        handle_max, handle_min - bytearrays
+        """
+        self.uuid = uuid
+        self.handle_min = handle_min
+        self.handle_max = handle_max
+
+    def __str__(self):
+        return "<%s uuid=%s handle_min=%d handle_max=%d>" % (
+            self.__class__.__name__,
+            self.handle_min, self.handle_max)
