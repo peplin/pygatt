@@ -604,7 +604,7 @@ class GATTToolBackend(BLEBackend):
         :rtype: bytearray
         """
         with self._receiver.event("value/descriptor", timeout=timeout):
-            self.sendline('char-read-hnd %s' % handle)
+            self.sendline('char-read-hnd 0x{0:02x}'.format(handle))
         rval = self._receiver.last_value("value/descriptor", "after"
                                          ).split()[1:]
         return bytearray([int(x, 16) for x in rval])
