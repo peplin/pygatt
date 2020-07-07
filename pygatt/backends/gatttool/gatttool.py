@@ -336,7 +336,7 @@ class GATTToolBackend(BLEBackend):
             cmd = 'sudo %s' % cmd
 
         log.info("Starting BLE scan")
-        self._scan = scan = pexpect.spawn(cmd)
+        self._scan = scan = pexpect.spawn(cmd, timeout=timeout)
         # "lescan" doesn't exit, so we're forcing a timeout here:
         try:
             scan.expect('foooooo', timeout=timeout)
