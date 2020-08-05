@@ -397,7 +397,13 @@ class GATTToolBackend(BLEBackend):
         #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
         try:
             self._scan.kill(signal.SIGINT)
-            self._scan.wait()
+            while True:
+                try:
+                    self._scan.read_nonblocking()
+                except Exception:
+                    break
+            if self._scan.isalive():
+                self._scan.wait()
         except OSError:
             log.error("Unable to gracefully stop the scan - "
                       "BLE adapter may need to be reset.")
