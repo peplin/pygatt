@@ -336,10 +336,10 @@ class GATTToolBackend(BLEBackend):
             cmd = 'sudo %s' % cmd
 
         log.info("Starting BLE scan")
-        self._scan = scan = pexpect.spawn(cmd)
-        # "lescan" doesn't exit, so we're forcing a timeout here:
+        # "lescan" doesn't exit, so we're forcing a timeout
+        self._scan = scan = pexpect.spawn(cmd, timeout=timeout)
         try:
-            scan.expect('foooooo', timeout=timeout)
+            scan.expect('foooooo')
         except pexpect.EOF:
             before_eof = scan.before.decode('utf-8', 'replace')
             if "No such device" in before_eof:
@@ -397,11 +397,14 @@ class GATTToolBackend(BLEBackend):
         #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
         try:
             self._scan.kill(signal.SIGINT)
+
+            # Flush the read buffer before calling wait() to avoid blocking.
             while True:
                 try:
-                    self._scan.read_nonblocking()
-                except Exception:
+                    self._scan.read_nonblocking(size=100)
+                except (pexpect.TIMEOUT, pexpect.EOF):
                     break
+
             if self._scan.isalive():
                 self._scan.wait()
         except OSError:

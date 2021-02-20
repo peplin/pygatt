@@ -2,6 +2,8 @@ from __future__ import print_function
 
 from nose.tools import eq_, ok_
 from mock import patch, MagicMock
+
+import pexpect
 import time
 import unittest
 
@@ -15,6 +17,8 @@ class GATTToolBackendTests(unittest.TestCase):
             patch('pygatt.backends.gatttool.gatttool.pexpect.spawn'))
         self.spawn = self.patchers[0].start()
         self.spawn.return_value.isalive.return_value = False
+        self.spawn.return_value.read_nonblocking.side_effect = (
+            pexpect.EOF(value=None))
         self.patchers.append(
             patch('pygatt.backends.gatttool.gatttool.subprocess'))
         self.patchers[1].start()
