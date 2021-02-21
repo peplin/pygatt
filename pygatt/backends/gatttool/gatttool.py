@@ -85,7 +85,7 @@ class GATTToolReceiver(threading.Thread):
                 'patterns': [r'value: .*? \r']
             },
             'value/descriptor': {
-                'patterns': [r'value/descriptor: .*? \r']
+                'patterns': [r'value/descriptor: .*? ?\r']
             },
             'discover': {
                 'patterns': [
