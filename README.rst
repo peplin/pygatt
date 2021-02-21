@@ -156,7 +156,7 @@ While debugging software using pygatt, it is often useful to see what's
 happening inside the library. You can enable debugging logging and have
 it printed to your terminal with this code:
 
-::
+.. code:: python
 
     import pygatt
     import logging
@@ -174,13 +174,23 @@ Try changing the connection setup code to:
 .. code:: python
     device = adapter.connect('01:23:45:67:89:ab', address_type=pygatt.BLEAddressType.random)
 
+Unexplained Timeouts
+--------------------
+
+If you are experiencing unexplained timeouts with the gatttool backend, you may need to increase the
+supervisor timeouts:
+
+::
+
+    echo 1000 > /sys/kernel/debug/bluetooth/hci0/supervision_timeout
+
 Can't find BGAPI device in Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You may need to explicitly specify the COM port of your BGAPI-compatible
 device in windows, e.g.:
 
-::
+.. code:: python
 
     adapter = pygatt.BGAPIBackend(serial_port='COM9')
 
