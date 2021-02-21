@@ -248,7 +248,8 @@ class GATTToolBackend(BLEBackend):
 
         :param bool reset_on_start: Perhaps due to a bug in gatttol or pygatt,
             but if the bluez backend isn't restarted, it can sometimes lock up
-            the computer when trying to make a connection to HCI device.
+            the computer when trying to make a connection to HCI device. This
+            requires 'sudo'.
         :param int initialization_timeout: Seconds to wait for the gatttool
             prompt. This should appear almost instantly, but on some HCI devices
             it may take longer to start up.
@@ -395,6 +396,9 @@ class GATTToolBackend(BLEBackend):
         # scanning as a non-root user:
         #
         #    $ sudo setcap 'cap_net_raw,cap_net_admin+eip' `which hcitool`
+        #
+        # You must call start(reset_on_start=False) when trying to run without
+        # sudo as the reset workaround requires sudo.
         try:
             self._scan.kill(signal.SIGINT)
 
