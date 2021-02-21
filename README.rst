@@ -159,6 +159,16 @@ it printed to your terminal with this code:
     logging.basicConfig()
     logging.getLogger('pygatt').setLevel(logging.DEBUG)
 
+
+Random Addressing
+-----------------
+
+If you are having trouble connecting to a device, it may use random addressing.
+Try changing the connection setup code to:
+
+.. code:: python
+    device = adapter.connect('01:23:45:67:89:ab', address_type=pygatt.BLEAddressType.random)
+
 Can't find BGAPI device in Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
