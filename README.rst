@@ -114,6 +114,11 @@ except for the initialization of the backend:
     finally:
         adapter.stop()
 
+Long Characteristic Reads and Writes
+------------------------------------
+
+Long reads and writes are only supported by the BGAPI backend.
+
 Notifications Example
 ---------------------
 
