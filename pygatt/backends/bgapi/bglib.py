@@ -834,7 +834,7 @@ class BGLib(object):
                 'timestamp': timestamp, 'port': port, 'irq': irq,
                 'state': state
             }
-        elif packet_type == EventPacketType.hardware_io_soft_timer:
+        elif packet_type == EventPacketType.hardware_soft_timer:
             handle = unpack('<B', payload[:1])[0]
             response = {
                 'handle': handle
