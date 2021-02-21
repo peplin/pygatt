@@ -189,12 +189,14 @@ class BGAPIBackend(BLEBackend):
             raise NotConnectedError("Unable to reconnect with USB "
                                     "device after rebooting")
 
-    def start(self, reset=True):
+    def start(self, reset=True, delay_after_reset_s=1):
         """
         Connect to the USB adapter, reset its state and start a background
         receiver thread.
 
         reset - Reset the device if True.
+        delay_after_reset_s - If reset is true, delay this number of seconds
+            before attempting to open the device after a reset.
         """
         if self._running and self._running.is_set():
             self.stop()
@@ -215,9 +217,8 @@ class BGAPIBackend(BLEBackend):
             self.send_command(CommandBuilder.system_reset(0))
             self._ser.close()
 
-            # Wait before re-opening the port - required on at least Windows,
-            # possibly OS X.
-            time.sleep(0.5)
+            # The USB device does not re-appear instantly
+            time.sleep(delay_after_reset_s)
 
         self._open_serial_port()
         self._receiver = threading.Thread(target=self._receive)
