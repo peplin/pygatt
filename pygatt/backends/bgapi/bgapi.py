@@ -245,7 +245,11 @@ class BGAPIBackend(BLEBackend):
         self.expect(ResponsePacketType.system_address_get)
 
     def stop(self):
-        for device in self._connections.values():
+        # Stash the connected devices before iterating and disconnecting,
+        # because devices are removed from _connections when disconnection
+        # events are received from the adapter.
+        connected_devices = list(self._connections.values())
+        for device in connected_devices:
             try:
                 device.disconnect()
             except NotConnectedError:
