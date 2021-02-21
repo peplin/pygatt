@@ -70,6 +70,19 @@ The documentation for pygatt consists of:
 The ``BLEDevice`` and ``BLEBackend`` base classes are the primary interfaces for
 users of the library.
 
+Known Issues
+------------
+
+* Performance has not been profiled, and there have been reports that both
+  GATTTool and BGAPI backends struggled to handle high rate notifications (e.g.
+  > 100Hz).
+* There is no way for the user to be notified if a device disconnects
+  asynchronously (#306).
+* PIN-based authentication is not supported.
+* Duplicate characteristic names across different BLE service UUIDs are not
+  supported.
+* Long characteristic reads and writes are only supported by the BGAPI backend.
+
 Example Use
 -----------
 
@@ -113,11 +126,6 @@ except for the initialization of the backend:
         value = device.char_read("a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b")
     finally:
         adapter.stop()
-
-Long Characteristic Reads and Writes
-------------------------------------
-
-Long reads and writes are only supported by the BGAPI backend.
 
 Notifications Example
 ---------------------
