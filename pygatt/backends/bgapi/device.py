@@ -1,3 +1,4 @@
+import functools
 import logging
 import time
 
@@ -15,6 +16,7 @@ def connection_required(func):
     """Raise an exception if the device is not connected before calling the
     actual function.
     """
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         if self._handle is None:
             raise exceptions.NotConnectedError()
