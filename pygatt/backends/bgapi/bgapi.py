@@ -232,13 +232,11 @@ class BGAPIBackend(BLEBackend):
             self.send_command(CommandBuilder.gap_end_procedure())
             time.sleep(0.5)
             self._ser.reset_input_buffer()
-            self._ser.reset_output_buffer()
 
         self._receiver.start()
 
-        log.debug("Say hello")
-        self.send_command(CommandBuilder.system_hello())
-        self.expect(ResponsePacketType.system_hello)
+        self.disable_advertising()
+        self.set_bondable(False)
 
         # Stop any ongoing procedure
         log.debug("Stopping any outstanding GAP procedure")
@@ -248,9 +246,6 @@ class BGAPIBackend(BLEBackend):
         except BGAPIError:
             # Ignore any errors if there was no GAP procedure running
             pass
-
-        self.disable_advertising()
-        self.set_bondable(False)
 
     def get_mac(self):
         self.send_command(CommandBuilder.system_address_get())
