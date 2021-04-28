@@ -180,6 +180,7 @@ If you are having trouble connecting to a device, it may use random addressing.
 Try changing the connection setup code to:
 
 .. code:: python
+
     device = adapter.connect('01:23:45:67:89:ab', address_type=pygatt.BLEAddressType.random)
 
 Unexplained Timeouts
