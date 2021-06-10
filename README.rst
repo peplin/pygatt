@@ -33,7 +33,7 @@ Requirements
 
    -  Tested on 5.18, 5.21, 5.35 and 5.43
 
--  GATTToolBackend requires Linux (i.e. not Windows compatible)
+-  GATTToolBackend requires Linux and `sudo` (i.e. not Windows compatible)
 
 Installation
 ------------
