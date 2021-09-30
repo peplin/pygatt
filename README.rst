@@ -1,6 +1,8 @@
 pygatt - Python Module for Bluetooth LE Generic Attribute Profile (GATT).
 =========================================================================
 
+TEST
+
 This Module allows reading and writing to GATT descriptors on devices
 such as fitness trackers, sensors, and anything implementing standard
 GATT Descriptor behavior.
