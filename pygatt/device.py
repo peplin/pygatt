@@ -344,6 +344,9 @@ class BLEDevice(object):
 
         log.info('Received notification on handle=0x%x, value=0x%s',
                  handle, hexlify(value))
+        # TODO: Create a more robust way of not having this function lock up.
+        if self._lock.locked():
+            return
         with self._lock:
             if handle in self._callbacks:
                 for callback in self._callbacks[handle]:
