@@ -226,6 +226,13 @@ class BGAPIBackend(BLEBackend):
 
         self._running = threading.Event()
         self._running.set()
+
+        if not reset:
+            log.debug("Stop possible ongoing scan")
+            self.send_command(CommandBuilder.gap_end_procedure())
+            time.sleep(0.5)
+            self._ser.reset_input_buffer()
+
         self._receiver.start()
 
         self.disable_advertising()
