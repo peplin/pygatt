@@ -226,11 +226,12 @@ class GATTToolBackend(BLEBackend):
         self._address = None
         self._send_lock = threading.Lock()
         self._auto_reconnect = False
-        self._reconnecting = False
         self._search_window_size = search_window_size
         self._scan = None
         self._max_read = max_read
-
+        
+        self.reconnecting = False
+        
     def sendline(self, command):
         """
         send a raw command to gatttool
@@ -478,12 +479,14 @@ class GATTToolBackend(BLEBackend):
             log.info("Connecting to %s with timeout=%s", self._address,
                      timeout)
             try:
+                self.reconnecting = True
                 cmd = "connect"
                 with self._receiver.event("connect", timeout):
                     self.sendline(cmd)
                 # reenable all notifications
                 self._connected_device.resubscribe_all()
                 log.info("Connection to %s reestablished.")
+                self.reconnecting = False
                 break  # finished reconnecting
             except NotificationTimeout:
                 message = ("Timed out connecting to {0} after {1} seconds. "
@@ -496,6 +499,7 @@ class GATTToolBackend(BLEBackend):
     @at_most_one_device
     def disconnect(self, *args, **kwargs):
         self._auto_reconnect = False  # disables any running reconnection
+        self.reconnecting = False
         if not self._receiver.is_set("disconnected"):
             self.sendline('disconnect')
         self._connected_device = None
