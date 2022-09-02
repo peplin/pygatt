@@ -1,3 +1,6 @@
+.envrc
+.python-version
+.direnv/*
 *.py[co]
 *.egg-info/
 *.egg
