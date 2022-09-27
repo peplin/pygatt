@@ -342,7 +342,7 @@ class BLEDevice(object):
         to all registered callbacks.
         """
 
-        log.info('Received notification on handle=0x%x, value=0x%s',
+        log.debug('Received notification on handle=0x%x, value=0x%s',
                  handle, hexlify(value))
         with self._lock:
             if handle in self._callbacks:
