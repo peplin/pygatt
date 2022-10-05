@@ -649,7 +649,12 @@ class BGAPIBackend(BLEBackend):
         """
         log.info("Running receiver")
         while self._running.is_set():
-            packet = self._lib.parse_byte(self._ser.read())
+            try:
+                packet = self._lib.parse_byte(self._ser.read())
+            except serial.serialutil.SerialException:
+                log.warn("SerialException raised in BGAPIBackend._receive")
+                continue
+            
             if packet is not None:
                 try:
                     packet_type, args = self._lib.decode_packet(packet)
