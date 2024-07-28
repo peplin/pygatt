@@ -25,7 +25,7 @@ setup(
     long_description=readme + "\n\n" + changelog,
     url="https://github.com/peplin/pygatt",
     install_requires=["pyserial", "enum-compat"],
-    setup_requires=["coverage == 5.5", "nose == 1.3.7"],
+    setup_requires=["coverage == 5.5", "pytest"],
     extras_require={
         "GATTTOOL": ["pexpect"],
     },

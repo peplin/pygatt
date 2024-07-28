@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from nose.tools import eq_, ok_
 from mock import patch, MagicMock
 
 import pexpect
@@ -45,13 +44,13 @@ class GATTToolBackendTests(unittest.TestCase):
     def test_scan(self):
         # TODO mock a successful scan
         devices = self.backend.scan()
-        ok_(devices is not None)
-        eq_(0, len(devices))
+        assert devices is not None
+        assert 0 == len(devices)
 
     def test_connect(self):
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
-        ok_(device is not None)
+        assert device is not None
 
     def test_disconnect_callback(self):
         # Just keep saying we got the "Disconnected" response
@@ -64,23 +63,18 @@ class GATTToolBackendTests(unittest.TestCase):
         address = "11:22:33:44:55:66"
         device = self.backend.connect(address)
         device.register_disconnect_callback(mock_callback)
-        eq_(mock_callback in
-            device._backend._receiver._event_vector[
-                "disconnected"]["callback"],
-            True)
+        assert (mock_callback in device._backend._receiver._event_vector[
+            "disconnected"]["callback"])
 
         self.spawn.return_value.expect.side_effect = rate_limited_expect_d
         time.sleep(0.1)
-        ok_(mock_callback.called)
+        assert mock_callback.called
 
         device.remove_disconnect_callback(mock_callback)
-        eq_(mock_callback not in
-            device._backend._receiver._event_vector[
-                "disconnected"]["callback"],
-            True)
-        eq_(len(device._backend._receiver._event_vector[
-                "disconnected"]["callback"]) > 0,
-            True)
+        assert (mock_callback not in device._backend._receiver._event_vector[
+            "disconnected"]["callback"])
+        assert (len(device._backend._receiver._event_vector[
+            "disconnected"]["callback"]) > 0)
 
     def test_auto_reconnect_call(self):
         # Just keep saying we got the "Disconnected" response
@@ -94,7 +88,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device._backend.reconnect = MagicMock()
         self.spawn.return_value.expect.side_effect = rate_limited_expect_d
         time.sleep(0.1)
-        ok_(device._backend.reconnect.called)
+        assert device._backend.reconnect.called
 
     def test_no_reconnect_default(self):
         # Just keep saying we got the "Disconnected" response
@@ -108,7 +102,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device._backend.reconnect = MagicMock()
         self.spawn.return_value.expect.side_effect = rate_limited_expect_d
         time.sleep(0.1)
-        ok_(not device._backend.reconnect.called)
+        assert not device._backend.reconnect.called
 
     def test_no_reconnect_disconnect(self):
         # Just keep saying we got the "Disconnected" response
@@ -123,7 +117,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device.disconnect()
         self.spawn.return_value.expect.side_effect = rate_limited_expect_d
         time.sleep(0.1)
-        ok_(not device._backend.reconnect.called)
+        assert not device._backend.reconnect.called
 
     def test_auto_reconnect(self):
         # Just keep saying we got the "Disconnected" response
@@ -145,7 +139,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device.resubscribe_all = MagicMock()
         self.spawn.return_value.expect.side_effect = rate_limited_expect_c
         time.sleep(0.1)
-        ok_(device.resubscribe_all.called)
+        assert device.resubscribe_all.called
 
     def test_single_byte_notification(self):
         event = {
@@ -155,9 +149,9 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
-        ok_(device.receive_notification.called)
-        eq_(0x24, device.receive_notification.call_args[0][0])
-        eq_(bytearray([0x64]), device.receive_notification.call_args[0][1])
+        assert device.receive_notification.called
+        assert 0x24 == device.receive_notification.call_args[0][0]
+        assert bytearray([0x64]) == device.receive_notification.call_args[0][1]
 
     def test_multi_byte_notification(self):
         event = {
@@ -168,10 +162,10 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
-        ok_(device.receive_notification.called)
-        eq_(0x24, device.receive_notification.call_args[0][0])
-        eq_(bytearray([0x64, 0x46, 0x72]),
-            device.receive_notification.call_args[0][1])
+        assert device.receive_notification.called
+        assert 0x24 == device.receive_notification.call_args[0][0]
+        assert (bytearray([0x64, 0x46, 0x72])
+            == device.receive_notification.call_args[0][1])
 
     def test_empty_notification(self):
         event = {
@@ -181,7 +175,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
-        ok_(device.receive_notification.called)
+        assert device.receive_notification.called
 
     def test_malformed_notification(self):
         event = {
@@ -191,7 +185,7 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
-        ok_(not device.receive_notification.called)
+        assert not device.receive_notification.called
 
     def test_indication(self):
         event = {
@@ -201,6 +195,6 @@ class GATTToolBackendTests(unittest.TestCase):
         device = self.backend.connect(address)
         device.receive_notification = MagicMock()
         device._backend._handle_notification_string(event)
-        ok_(device.receive_notification.called)
-        eq_(0x24, device.receive_notification.call_args[0][0])
-        eq_(bytearray([0x64]), device.receive_notification.call_args[0][1])
+        assert device.receive_notification.called
+        assert 0x24 == device.receive_notification.call_args[0][0]
+        assert bytearray([0x64]) == device.receive_notification.call_args[0][1]

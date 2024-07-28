@@ -1,7 +1,7 @@
+import pytest
 import unittest
 import uuid
 from mock import MagicMock, patch
-from nose.tools import ok_, eq_, raises
 
 from pygatt.exceptions import NotConnectedError
 from pygatt.backends import Characteristic
@@ -23,8 +23,8 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
 
     def test_bond(self):
         self.device.bond()
-        ok_(self.backend.bond.called)
-        eq_(self.device, self.backend.bond.call_args[0][0])
+        assert self.backend.bond.called
+        assert self.device == self.backend.bond.call_args[0][0]
 
     def test_char_read(self):
         expected_value = bytearray(range(4))
@@ -33,11 +33,11 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
                           ) as get_handle:
             char_uuid = uuid.uuid4()
             value = self.device.char_read(char_uuid)
-            ok_(not get_handle.called)
-            ok_(self.backend.char_read.called)
-            eq_(self.device, self.backend.char_read.call_args[0][0])
-            eq_(char_uuid, self.backend.char_read.call_args[0][1])
-            eq_(expected_value, value)
+            assert not get_handle.called
+            assert self.backend.char_read.called
+            assert self.device == self.backend.char_read.call_args[0][0]
+            assert char_uuid == self.backend.char_read.call_args[0][1]
+            assert expected_value == value
 
     def test_char_write(self):
         with patch.object(self.device, 'get_handle', return_value=24
@@ -45,17 +45,17 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
             char_uuid = uuid.uuid4()
             value = bytearray(range(4))
             self.device.char_write(char_uuid, value)
-            ok_(get_handle.called)
-            eq_(char_uuid, get_handle.call_args[0][0])
-            ok_(self.backend.char_write_handle.called)
-            eq_(self.device, self.backend.char_write_handle.call_args[0][0])
-            eq_(24, self.backend.char_write_handle.call_args[0][1])
-            eq_(value, self.backend.char_write_handle.call_args[0][2])
+            assert get_handle.called
+            assert char_uuid == get_handle.call_args[0][0]
+            assert self.backend.char_write_handle.called
+            assert self.device == self.backend.char_write_handle.call_args[0][0]
+            assert 24 == self.backend.char_write_handle.call_args[0][1]
+            assert value == self.backend.char_write_handle.call_args[0][2]
 
     def test_disconnect(self):
         self.device.disconnect()
-        ok_(self.backend.disconnect.called)
-        eq_(self.device, self.backend.disconnect.call_args[0][0])
+        assert self.backend.disconnect.called
+        assert self.device == self.backend.disconnect.call_args[0][0]
 
     def test_additional_disconnect_callback(self):
         mock_callback = MagicMock()
@@ -66,20 +66,20 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
         self.backend._receiver.remove_callback.assert_called_with(
             "disconnected", mock_callback)
 
-    @raises(NotConnectedError)
     def test_write_after_disconnect(self):
-        self.device.disconnect()
-        self.device.char_read(uuid.uuid4())
+        with pytest.raises(NotConnectedError):
+            self.device.disconnect()
+            self.device.char_read(uuid.uuid4())
 
     def test_get_handle(self):
         handle = self.device.get_handle(self.char_uuid)
-        ok_(self.backend.discover_characteristics.called)
-        eq_(self.device, self.backend.discover_characteristics.call_args[0][0])
-        eq_(self.expected_handle, handle)
+        assert self.backend.discover_characteristics.called
+        assert self.device == self.backend.discover_characteristics.call_args[0][0]
+        assert self.expected_handle == handle
 
     def test_get_cached_handle(self):
         handle = self.device.get_handle(self.char_uuid)
         with patch.object(self.backend, 'discover_characteristics') as discover:
             next_handle = self.device.get_handle(self.char_uuid)
-            eq_(handle, next_handle)
-            ok_(not discover.called)
+            assert handle == next_handle
+            assert not discover.called

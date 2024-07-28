@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from nose.tools import eq_, ok_
 import mock
 import unittest
 
@@ -60,7 +59,7 @@ class BGAPIBackendTests(unittest.TestCase):
     def test_connect_already_connected(self):
         device = self._connect()
         another_device = self.backend.connect(self.address_string)
-        eq_(device, another_device)
+        assert device == another_device
 
     def test_serial_port_connection_failure(self):
         self.mock_device.mocked_serial.read = mock.MagicMock()
@@ -80,7 +79,7 @@ class BGAPIBackendTests(unittest.TestCase):
             serial.serialutil.SerialException] * MAX_CONNECTION_ATTEMPTS
         with self.assertRaises(NotConnectedError):
             self.backend.start()
-        self.assertEquals(MAX_CONNECTION_ATTEMPTS + 1,
+        self.assertEqual(MAX_CONNECTION_ATTEMPTS + 1,
                           self.mock_device.mocked_serial.read.call_count)
         self.assertTrue(self.mock_device.mocked_serial.write.called)
 
@@ -99,8 +98,8 @@ class BGAPIBackendTests(unittest.TestCase):
         })
         self.mock_device.stage_scan_packets(scan_responses=scan_responses)
         devs = self.backend.scan(timeout=.5)
-        eq_('Hello!', devs[0]['name'])
-        eq_(-80, devs[0]['rssi'])
+        assert 'Hello!' == devs[0]['name']
+        assert -80 == devs[0]['rssi']
 
     def test_clear_bonds(self):
         # Test delete stored bonds
@@ -120,34 +119,34 @@ class UsbInfoStringParsingTests(unittest.TestCase):
 
     def test_weird_platform(self):
         vid, pid = extract_vid_pid("USB VID_2458 PID_0001")
-        eq_(0x2458, vid)
-        eq_(1, pid)
+        assert 0x2458 == vid
+        assert 1 == pid
 
     def test_linux(self):
         vid, pid = extract_vid_pid("USB VID:PID=2458:0001 SNR=1")
-        eq_(0x2458, vid)
-        eq_(1, pid)
+        assert 0x2458 == vid
+        assert 1 == pid
 
     def test_mac(self):
         vid, pid = extract_vid_pid("USB VID:PID=2458:1 SNR=1")
-        eq_(0x2458, vid)
-        eq_(1, pid)
+        assert 0x2458 == vid
+        assert 1 == pid
 
     def test_invalid(self):
-        eq_(None, extract_vid_pid("2458:1"))
+        assert extract_vid_pid("2458:1") is None
 
 
 class ReturnCodeTests(unittest.TestCase):
 
     def test_unrecognized_return_code(self):
-        ok_(get_return_message(123123123123123) is not None)
+        assert get_return_message(123123123123123) is not None
 
 
 class BGAPIAddressToHexTests(unittest.TestCase):
 
     def test_convert(self):
         bgapi_address = bytearray([21, 19, 11, 210, 2, 97])
-        eq_("61:02:D2:0B:13:15", bgapi_address_to_hex(bgapi_address))
+        assert "61:02:D2:0B:13:15" == bgapi_address_to_hex(bgapi_address)
 
 
 class DecodePacketTests(unittest.TestCase):
@@ -161,8 +160,8 @@ class DecodePacketTests(unittest.TestCase):
                 135, 0, 76, 200, 60, 78]
 
         packet_type, packet = self.lib.decode_packet(data)
-        eq_(bglib.EventPacketType.gap_scan_response, packet_type)
-        eq_(bytearray([21, 19, 11, 210, 2, 97]), packet['sender'])
+        assert bglib.EventPacketType.gap_scan_response == packet_type
+        assert bytearray([21, 19, 11, 210, 2, 97]) == packet['sender']
 
     def test_decode_invalid(self):
         with self.assertRaises(bglib.UnknownMessageType):
