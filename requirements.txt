@@ -10,3 +10,5 @@ flake8==7.1.0
 pylint==3.2.6
 pytest==8.3.2
 coverage==7.6.0
+mock==3.0.5
+#funcsigs==1.0.2
