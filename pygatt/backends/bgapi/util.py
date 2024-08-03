@@ -9,22 +9,30 @@ class USBSerialDeviceInfo(object):
     """
     Contains the information about a usb device in an easy to use way.
     """
+
     device_name = None  # Name of the usb device
-    port_name = None    # Name of serial port to which the device is connected
-    vendor_id = None    # USB vendor id
-    product_id = None   # USB product id
+    port_name = None  # Name of serial port to which the device is connected
+    vendor_id = None  # USB vendor id
+    product_id = None  # USB product id
 
     def __str__(self):
         if self.vendor_id is None:
             vendor_id = str(self.vendor_id)
         else:
-            vendor_id = '0x{:04x}'.format(self.vendor_id)
+            vendor_id = "0x{:04x}".format(self.vendor_id)
         if self.product_id is None:
             product_id = str(self.product_id)
         else:
-            product_id = '0x{:04x}'.format(self.product_id)
-        return (self.device_name + ' VID=' + vendor_id + ' PID=' + product_id +
-                ' on ' + self.port_name)
+            product_id = "0x{:04x}".format(self.product_id)
+        return (
+            self.device_name
+            + " VID="
+            + vendor_id
+            + " PID="
+            + product_id
+            + " on "
+            + self.port_name
+        )
 
 
 def extract_vid_pid(info_string):
@@ -44,10 +52,9 @@ def extract_vid_pid(info_string):
 
     DEVICE_STRING_PATTERNS = [
         # '...VID:PID=XXXX:XXXX...'
-        re.compile('.*VID:PID=([0-9A-Fa-f]{0,4}):([0-9A-Fa-f]{0,4}).*'),
-
+        re.compile(".*VID:PID=([0-9A-Fa-f]{0,4}):([0-9A-Fa-f]{0,4}).*"),
         # '...VID_XXXX...PID_XXXX...'
-        re.compile('.*VID_([0-9A-Fa-f]{0,4}).*PID_([0-9A-Fa-f]{0,4}).*')
+        re.compile(".*VID_([0-9A-Fa-f]{0,4}).*PID_([0-9A-Fa-f]{0,4}).*"),
     ]
 
     for p in DEVICE_STRING_PATTERNS:

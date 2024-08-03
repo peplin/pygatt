@@ -11,9 +11,7 @@ class MockBLEDevice(BLEDevice):
     EXPECTED_HANDLE = 99
 
     def discover_characteristics(self):
-        return {
-            self.CHAR_UUID: Characteristic(self.CHAR_UUID, self.EXPECTED_HANDLE)
-        }
+        return {self.CHAR_UUID: Characteristic(self.CHAR_UUID, self.EXPECTED_HANDLE)}
 
 
 class BLEDeviceTest(unittest.TestCase):
@@ -25,7 +23,7 @@ class BLEDeviceTest(unittest.TestCase):
 
     def _subscribe(self):
         callback = MagicMock()
-        with patch.object(self.device, 'char_write_handle') as char_write:
+        with patch.object(self.device, "char_write_handle") as char_write:
             self.device.subscribe(self.device.CHAR_UUID, callback=callback)
             assert char_write.called
             assert self.device.EXPECTED_HANDLE + 1 == char_write.call_args[0][0]
@@ -34,7 +32,7 @@ class BLEDeviceTest(unittest.TestCase):
 
     def _unsubscribe(self):
         callback = MagicMock()
-        with patch.object(self.device, 'char_write_handle') as char_write:
+        with patch.object(self.device, "char_write_handle") as char_write:
             self.device.unsubscribe(self.device.CHAR_UUID)
             assert self.device.EXPECTED_HANDLE + 1 == char_write.call_args[0][0]
             assert bytearray([0, 0]) == char_write.call_args[0][1]
@@ -50,9 +48,8 @@ class BLEDeviceTest(unittest.TestCase):
     def test_subscribe_another_callback(self):
         self._subscribe()
         another_callback = MagicMock()
-        with patch.object(self.device, 'char_write_handle') as char_write:
-            self.device.subscribe(self.device.CHAR_UUID,
-                                  callback=another_callback)
+        with patch.object(self.device, "char_write_handle") as char_write:
+            self.device.subscribe(self.device.CHAR_UUID, callback=another_callback)
             assert not char_write.called
 
     def test_receive_notification(self):
@@ -66,8 +63,7 @@ class BLEDeviceTest(unittest.TestCase):
     def test_ignore_notification_for_another_handle(self):
         callback = self._subscribe()
         value = bytearray([24])
-        self.device.receive_notification(
-            MockBLEDevice.EXPECTED_HANDLE + 1, value)
+        self.device.receive_notification(MockBLEDevice.EXPECTED_HANDLE + 1, value)
         assert not callback.called
 
     def test_unicode_get_handle(self):

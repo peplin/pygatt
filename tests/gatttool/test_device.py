@@ -29,8 +29,7 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
     def test_char_read(self):
         expected_value = bytearray(range(4))
         self.backend.char_read.return_value = expected_value
-        with patch.object(self.backend, 'get_handle', return_value=24
-                          ) as get_handle:
+        with patch.object(self.backend, "get_handle", return_value=24) as get_handle:
             char_uuid = uuid.uuid4()
             value = self.device.char_read(char_uuid)
             assert not get_handle.called
@@ -40,8 +39,7 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
             assert expected_value == value
 
     def test_char_write(self):
-        with patch.object(self.device, 'get_handle', return_value=24
-                          ) as get_handle:
+        with patch.object(self.device, "get_handle", return_value=24) as get_handle:
             char_uuid = uuid.uuid4()
             value = bytearray(range(4))
             self.device.char_write(char_uuid, value)
@@ -61,10 +59,12 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
         mock_callback = MagicMock()
         self.device.register_disconnect_callback(mock_callback)
         self.backend._receiver.register_callback.assert_called_with(
-            "disconnected", mock_callback)
+            "disconnected", mock_callback
+        )
         self.device.remove_disconnect_callback(mock_callback)
         self.backend._receiver.remove_callback.assert_called_with(
-            "disconnected", mock_callback)
+            "disconnected", mock_callback
+        )
 
     def test_write_after_disconnect(self):
         with pytest.raises(NotConnectedError):
@@ -74,14 +74,12 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
     def test_get_handle(self):
         handle = self.device.get_handle(self.char_uuid)
         assert self.backend.discover_characteristics.called
-        assert (
-            self.device == self.backend.discover_characteristics.call_args[0][0]
-        )
+        assert self.device == self.backend.discover_characteristics.call_args[0][0]
         assert self.expected_handle == handle
 
     def test_get_cached_handle(self):
         handle = self.device.get_handle(self.char_uuid)
-        with patch.object(self.backend, 'discover_characteristics') as discover:
+        with patch.object(self.backend, "discover_characteristics") as discover:
             next_handle = self.device.get_handle(self.char_uuid)
             assert handle == next_handle
             assert not discover.called

@@ -22,6 +22,7 @@ class BLEDevice(object):
     implementations. This class is not meant to be instantiated directly - use
     BLEBackend.connect() to create one.
     """
+
     def __init__(self, address):
         """
         Initialize.
@@ -118,8 +119,9 @@ class BLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        return self.char_write_handle(self.get_handle(uuid), value,
-                                      wait_for_response=wait_for_response)
+        return self.char_write_handle(
+            self.get_handle(uuid), value, wait_for_response=wait_for_response
+        )
 
     def char_write_handle(self, handle, value, wait_for_response=True):
         """
@@ -147,8 +149,9 @@ class BLEDevice(object):
             my_ble_device.char_write('a1e8f5b1-696b-4e4c-87c6-69dfe0b0093b',
                                      bytearray([0x00, 0xFF]))
         """
-        return self.char_write_long_handle(self.get_handle(uuid), value,
-                                           wait_for_response=wait_for_response)
+        return self.char_write_long_handle(
+            self.get_handle(uuid), value, wait_for_response=wait_for_response
+        )
 
     def char_write_long_handle(self, handle, value, wait_for_response=False):
         """
@@ -186,9 +189,7 @@ class BLEDevice(object):
 
         return value_handle, characteristic_config_handle
 
-    def subscribe(self, uuid, callback=None, indication=False,
-                  wait_for_response=True):
-
+    def subscribe(self, uuid, callback=None, indication=False, wait_for_response=True):
         """
         Enable notifications or indications for a characteristic and register a
         callback function to be called whenever a new value arrives.
@@ -202,14 +203,9 @@ class BLEDevice(object):
 
         """
 
-        value_handle, characteristic_config_handle = (
-            self._notification_handles(uuid)
-        )
+        value_handle, characteristic_config_handle = self._notification_handles(uuid)
 
-        properties = bytearray([
-            0x2 if indication else 0x1,
-            0x0
-        ])
+        properties = bytearray([0x2 if indication else 0x1, 0x0])
 
         with self._lock:
             if callback is not None:
@@ -219,7 +215,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=wait_for_response
+                    wait_for_response=wait_for_response,
                 )
                 log.info("Subscribed to uuid=%s", uuid)
                 self._subscribed_handlers[value_handle] = properties
@@ -231,31 +227,29 @@ class BLEDevice(object):
         """
         Disable notification for a characteristic and de-register the callback.
         """
-        value_handle, characteristic_config_handle = (
-            self._notification_handles(uuid)
-        )
+        value_handle, characteristic_config_handle = self._notification_handles(uuid)
 
         properties = bytearray([0x0, 0x0])
 
         with self._lock:
             if uuid in self._subscribed_uuids:
-                del(self._subscribed_uuids[uuid])
+                del self._subscribed_uuids[uuid]
             if value_handle in self._callbacks:
-                del(self._callbacks[value_handle])
+                del self._callbacks[value_handle]
             if value_handle in self._subscribed_handlers:
-                del(self._subscribed_handlers[value_handle])
+                del self._subscribed_handlers[value_handle]
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=wait_for_response
+                    wait_for_response=wait_for_response,
                 )
                 log.info("Unsubscribed from uuid=%s", uuid)
             else:
                 log.debug("Already unsubscribed from uuid=%s", uuid)
 
-    def subscribe_handle(self, handle, callback=None, indication=False,
-                         wait_for_response=True):
-
+    def subscribe_handle(
+        self, handle, callback=None, indication=False, wait_for_response=True
+    ):
         """
         Like subscribe() but using handle instead of uuid.
 
@@ -264,10 +258,7 @@ class BLEDevice(object):
         value_handle = handle
         characteristic_config_handle = value_handle + 1
 
-        properties = bytearray([
-            0x2 if indication else 0x1,
-            0x0
-        ])
+        properties = bytearray([0x2 if indication else 0x1, 0x0])
 
         with self._lock:
             if callback is not None:
@@ -277,7 +268,7 @@ class BLEDevice(object):
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=wait_for_response
+                    wait_for_response=wait_for_response,
                 )
                 log.info("Subscribed to handle=0x%04x", value_handle)
                 self._subscribed_handlers[value_handle] = properties
@@ -297,20 +288,17 @@ class BLEDevice(object):
 
         with self._lock:
             if value_handle in self._callbacks:
-                del(self._callbacks[value_handle])
+                del self._callbacks[value_handle]
             if value_handle in self._subscribed_handlers:
-                del(self._subscribed_handlers[value_handle])
+                del self._subscribed_handlers[value_handle]
                 self.char_write_handle(
                     characteristic_config_handle,
                     properties,
-                    wait_for_response=wait_for_response
+                    wait_for_response=wait_for_response,
                 )
                 log.info("Unsubscribed from handle=0x%04x", value_handle)
             else:
-                log.debug(
-                    "Already unsubscribed from handle=0x%04x",
-                    value_handle
-                )
+                log.debug("Already unsubscribed from handle=0x%04x", value_handle)
 
     def get_handle(self, char_uuid):
         """
@@ -342,8 +330,9 @@ class BLEDevice(object):
         to all registered callbacks.
         """
 
-        log.info('Received notification on handle=0x%x, value=0x%s',
-                 handle, hexlify(value))
+        log.info(
+            "Received notification on handle=0x%x, value=0x%s", handle, hexlify(value)
+        )
         with self._lock:
             if handle in self._callbacks:
                 for callback in self._callbacks[handle]:
@@ -365,19 +354,14 @@ class BLEDevice(object):
         """
 
         for uuid in self._subscribed_uuids:
-            value_handle, characteristic_config_handle = (
-                self._notification_handles(uuid)
+            value_handle, characteristic_config_handle = self._notification_handles(
+                uuid
             )
 
-            properties = bytearray([
-                0x2 if self._subscribed_uuids[uuid] else 0x1,
-                0x0
-            ])
+            properties = bytearray([0x2 if self._subscribed_uuids[uuid] else 0x1, 0x0])
 
             with self._lock:
                 self.char_write_handle(
-                    characteristic_config_handle,
-                    properties,
-                    wait_for_response=True
+                    characteristic_config_handle, properties, wait_for_response=True
                 )
                 log.info("Resubscribed to uuid=%s", uuid)
