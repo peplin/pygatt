@@ -5,7 +5,6 @@ cover/
 .coverage
 output.xml
 flake8.log
-nosetests.xml
 pylint.log
 .idea/
 dist/

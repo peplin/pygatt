@@ -26,7 +26,7 @@ uninstall:
 
 clean:
 	@rm -rf *.egg* build dist *.py[oc] */*.py[co] cover doctest_pypi.cfg \
-		nosetests.xml pylint.log output.xml flake8.log tests.log \
+		pylint.log output.xml flake8.log tests.log \
 		test-result.xml htmlcov fab.log .coverage
 
 publish:
