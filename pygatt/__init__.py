@@ -5,6 +5,7 @@ class NullHandler(logging.Handler):
     def emit(self, record):
         pass
 
+
 # Initialize a null handler for logging to avoid printing spurious "No handlers
 # could be found for logger" messages.
 logging.getLogger(__name__).addHandler(NullHandler())

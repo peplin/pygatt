@@ -28,7 +28,8 @@ def _hex_value_parser(x):
 
 
 def is_windows():
-    return platform.system() == 'Windows'
+    return platform.system() == "Windows"
+
 
 try:
     import pexpect
@@ -43,11 +44,13 @@ def at_most_one_device(func):
     exception if that device is not what the backend thinks is the currently
     connected device.
     """
+
     @functools.wraps(func)
     def wrapper(self, connected_device, *args, **kwargs):
         if connected_device != self._connected_device:
             raise NotConnectedError()
         return func(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -63,47 +66,37 @@ class GATTToolReceiver(threading.Thread):
         self._connection = connection
         self._parent_aliveness = parent_aliveness
         self._event_vector = {
-            'notification': {
-                'patterns': [r'Notification handle = .*? \r'],
+            "notification": {
+                "patterns": [r"Notification handle = .*? \r"],
             },
-            'indication': {
-                'patterns': [r'Indication   handle = .*? \r'],
+            "indication": {
+                "patterns": [r"Indication   handle = .*? \r"],
             },
-            'disconnected': {
-                'patterns': [
-                    r'.*Disconnected',
-                    r'.*Invalid file descriptor',
+            "disconnected": {
+                "patterns": [
+                    r".*Disconnected",
+                    r".*Invalid file descriptor",
                 ]
             },
-            'char_written': {
-                'patterns': [
-                    r'Characteristic value (was )?written successfully',
-                    r'Characteristic Write Request failed: A timeout occured',
+            "char_written": {
+                "patterns": [
+                    r"Characteristic value (was )?written successfully",
+                    r"Characteristic Write Request failed: A timeout occured",
                 ]
             },
-            'value': {
-                'patterns': [r'value: .*? \r']
-            },
-            'value/descriptor': {
-                'patterns': [r'value/descriptor: .*? ?\r']
-            },
-            'discover': {
-                'patterns': [
-                    r'handle: 0x([a-fA-F0-9]{4}), '
-                    'char properties: 0x[a-fA-F0-9]{2}, '
-                    'char value handle: 0x([a-fA-F0-9]{4}), '
-                    'uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]'
-                    '{4}-[0-9a-f]{12})\r\n',  # noqa
+            "value": {"patterns": [r"value: .*? \r"]},
+            "value/descriptor": {"patterns": [r"value/descriptor: .*? ?\r"]},
+            "discover": {
+                "patterns": [
+                    r"handle: 0x([a-fA-F0-9]{4}), "
+                    "char properties: 0x[a-fA-F0-9]{2}, "
+                    "char value handle: 0x([a-fA-F0-9]{4}), "
+                    "uuid: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]"
+                    "{4}-[0-9a-f]{12})\r\n",  # noqa
                 ]
             },
-            'connect': {
-                'patterns': [r'Connection successful.*\[LE\]>']
-            },
-            'mtu': {
-                'patterns': [
-                    r'MTU was exchanged successfully: (\d+)'
-                ]
-            }
+            "connect": {"patterns": [r"Connection successful.*\[LE\]>"]},
+            "mtu": {"patterns": [r"MTU was exchanged successfully: (\d+)"]},
         }
 
         for event in self._event_vector.values():
@@ -114,18 +107,21 @@ class GATTToolReceiver(threading.Thread):
             event["callback"] = []
 
     def run(self):
-        items = sorted(itertools.chain.from_iterable(
-            [[(pattern, event)
-              for pattern in event["patterns"]]
-             for event in self._event_vector.values()])
+        items = sorted(
+            itertools.chain.from_iterable(
+                [
+                    [(pattern, event) for pattern in event["patterns"]]
+                    for event in self._event_vector.values()
+                ]
+            )
         )
         patterns = [item[0] for item in items]
         events = [item[1] for item in items]
 
-        log.info('Running...')
+        log.info("Running...")
         while self._parent_aliveness.is_set():
             try:
-                event_index = self._connection.expect(patterns, timeout=.5)
+                event_index = self._connection.expect(patterns, timeout=0.5)
             except pexpect.TIMEOUT:
                 continue
             except (NotConnectedError, pexpect.EOF):
@@ -196,8 +192,14 @@ class GATTToolBackend(BLEBackend):
     Backend to pygatt that uses BlueZ's interactive gatttool CLI prompt.
     """
 
-    def __init__(self, hci_device='hci0', gatttool_logfile=None,
-                 cli_options=None, search_window_size=None, max_read=None):
+    def __init__(
+        self,
+        hci_device="hci0",
+        gatttool_logfile=None,
+        cli_options=None,
+        search_window_size=None,
+        max_read=None,
+    ):
         """
         Initialize.
 
@@ -212,8 +214,10 @@ class GATTToolBackend(BLEBackend):
         """
 
         if is_windows():
-            raise BLEError("The GATTToolBackend requires BlueZ, "
-                           "which is not available in Windows")
+            raise BLEError(
+                "The GATTToolBackend requires BlueZ, "
+                "which is not available in Windows"
+            )
 
         self._hci_device = hci_device
         self._cli_options = cli_options
@@ -265,39 +269,32 @@ class GATTToolBackend(BLEBackend):
             self.reset()
 
         # Start gatttool interactive session for device
-        args = [
-            'gatttool',
-            self._cli_options,
-            '-i',
-            self._hci_device,
-            '-I'
-        ]
-        gatttool_cmd = ' '.join([arg for arg in args if arg])
-        log.debug('gatttool_cmd=%s', gatttool_cmd)
+        args = ["gatttool", self._cli_options, "-i", self._hci_device, "-I"]
+        gatttool_cmd = " ".join([arg for arg in args if arg])
+        log.debug("gatttool_cmd=%s", gatttool_cmd)
         if self._max_read:
             self._con = pexpect.spawn(
-                gatttool_cmd, logfile=self._gatttool_logfile,
+                gatttool_cmd,
+                logfile=self._gatttool_logfile,
                 searchwindowsize=self._search_window_size,
-                maxread=self._max_read
+                maxread=self._max_read,
             )
         else:
             self._con = pexpect.spawn(
-                gatttool_cmd, logfile=self._gatttool_logfile,
+                gatttool_cmd,
+                logfile=self._gatttool_logfile,
                 searchwindowsize=self._search_window_size,
             )
 
         # Wait for the interactive prompt
-        self._con.expect(r'\[LE\]>', timeout=initialization_timeout)
+        self._con.expect(r"\[LE\]>", timeout=initialization_timeout)
 
         # Start the notification receiving thread
         self._receiver = GATTToolReceiver(self._con, self._running)
         self._receiver.daemon = True
         self._receiver.register_callback("disconnected", self._disconnect)
         for event in ["notification", "indication"]:
-            self._receiver.register_callback(
-                event,
-                self._handle_notification_string
-            )
+            self._receiver.register_callback(event, self._handle_notification_string)
         self._receiver.start()
 
     def stop(self):
@@ -308,14 +305,14 @@ class GATTToolBackend(BLEBackend):
         """
         self.disconnect(self._connected_device)
         if self._running.is_set():
-            log.info('Stopping')
+            log.info("Stopping")
         self._running.clear()
 
         if self._con and self._con.isalive():
             while True:
                 if not self._con.isalive():
                     break
-                self.sendline('exit')
+                self.sendline("exit")
                 time.sleep(0.1)
             self._con.close()
             self._con = None
@@ -332,34 +329,36 @@ class GATTToolBackend(BLEBackend):
         terminate cleanly, and may leave your Bluetooth adapter in a bad state.
         """
 
-        cmd = 'hcitool -i %s lescan' % self._hci_device
+        cmd = "hcitool -i %s lescan" % self._hci_device
         if run_as_root:
-            cmd = 'sudo %s' % cmd
+            cmd = "sudo %s" % cmd
 
         log.info("Starting BLE scan")
         # "lescan" doesn't exit, so we're forcing a timeout
         self._scan = scan = pexpect.spawn(cmd, timeout=timeout)
         try:
-            scan.expect('foooooo')
+            scan.expect("foooooo")
         except pexpect.EOF:
-            before_eof = scan.before.decode('utf-8', 'replace')
+            before_eof = scan.before.decode("utf-8", "replace")
             if "No such device" in before_eof:
                 message = "No BLE adapter found"
             elif "Set scan parameters failed: Input/output error" in before_eof:
-                message = ("BLE adapter requires reset after a scan as root"
-                           "- call adapter.reset()")
+                message = (
+                    "BLE adapter requires reset after a scan as root"
+                    "- call adapter.reset()"
+                )
             else:
                 message = "Unexpected error when scanning: %s" % before_eof
             log.error(message)
             raise BLEError(message)
         except pexpect.TIMEOUT:
             devices = {}
-            for line in scan.before.decode('utf-8', 'replace').split('\r\n'):
-                if 'sudo' in line:
-                    raise BLEError("Enable passwordless sudo for 'hcitool' "
-                                   "before scanning")
-                match = re.match(
-                    r'(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?.+\)?)', line)
+            for line in scan.before.decode("utf-8", "replace").split("\r\n"):
+                if "sudo" in line:
+                    raise BLEError(
+                        "Enable passwordless sudo for 'hcitool' " "before scanning"
+                    )
+                match = re.match(r"(([0-9A-Fa-f][0-9A-Fa-f]:?){6}) (\(?.+\)?)", line)
 
                 if match is not None:
                     address = match.group(1)
@@ -368,17 +367,12 @@ class GATTToolBackend(BLEBackend):
                         name = None
 
                     if address in devices:
-                        if (devices[address]['name'] is None) and (name is not
-                                                                   None):
-                            log.info("Discovered name of %s as %s",
-                                     address, name)
-                            devices[address]['name'] = name
+                        if (devices[address]["name"] is None) and (name is not None):
+                            log.info("Discovered name of %s as %s", address, name)
+                            devices[address]["name"] = name
                     else:
                         log.info("Discovered %s (%s)", address, name)
-                        devices[address] = {
-                            'address': address,
-                            'name': name
-                        }
+                        devices[address] = {"address": address, "name": name}
             log.info("Found %d BLE devices", len(devices))
             return [device for device in devices.values()]
         finally:
@@ -412,18 +406,25 @@ class GATTToolBackend(BLEBackend):
             if self._scan.isalive():
                 self._scan.wait()
         except OSError:
-            log.error("Unable to gracefully stop the scan - "
-                      "BLE adapter may need to be reset.")
+            log.error(
+                "Unable to gracefully stop the scan - "
+                "BLE adapter may need to be reset."
+            )
 
-    def connect(self, address, timeout=DEFAULT_CONNECT_TIMEOUT_S,
-                address_type=BLEAddressType.public, auto_reconnect=False):
-        log.info('Connecting to %s with timeout=%s', address, timeout)
-        self.sendline('sec-level low')
+    def connect(
+        self,
+        address,
+        timeout=DEFAULT_CONNECT_TIMEOUT_S,
+        address_type=BLEAddressType.public,
+        auto_reconnect=False,
+    ):
+        log.info("Connecting to %s with timeout=%s", address, timeout)
+        self.sendline("sec-level low")
         self._address = address
         self._auto_reconnect = auto_reconnect
 
         try:
-            cmd = 'connect {0} {1}'.format(self._address, address_type.name)
+            cmd = "connect {0} {1}".format(self._address, address_type.name)
             with self._receiver.event("connect", timeout):
                 self.sendline(cmd)
         except NotificationTimeout:
@@ -437,34 +438,29 @@ class GATTToolBackend(BLEBackend):
         return self._connected_device
 
     def clear_bond(self, address=None):
-        """Use the 'bluetoothctl' program to erase a stored BLE bond.
-        """
-        con = pexpect.spawn('bluetoothctl')
+        """Use the 'bluetoothctl' program to erase a stored BLE bond."""
+        con = pexpect.spawn("bluetoothctl")
 
         try:
             con.expect("bluetooth", timeout=1)
             log.info("Clearing bond for %s", address)
             con.sendline("remove " + address.upper())
-            con.expect(
-                ["Device has been removed", "# "],
-                timeout=.5
-            )
+            con.expect(["Device has been removed", "# "], timeout=0.5)
         except pexpect.TIMEOUT:
-            log.error("Unable to remove bonds for %s: %s",
-                      address, con.before)
+            log.error("Unable to remove bonds for %s: %s", address, con.before)
         finally:
             con.close(True)
         log.info("Removed bonds for %s", address)
 
     def _disconnect(self, event):
         if self._connected_device is not None and self._auto_reconnect:
-
             # this is called as a callback from the pexpect thread
             # the reconnection process has to be started in parallel, otherwise
             # the call is never finished
             log.info("Connection to %s lost. Reconnecting...", self._address)
-            reconnect_thread = threading.Thread(target=self.reconnect,
-                                                args=(self._connected_device, ))
+            reconnect_thread = threading.Thread(
+                target=self.reconnect, args=(self._connected_device,)
+            )
             reconnect_thread.start()
         else:
             try:
@@ -475,8 +471,7 @@ class GATTToolBackend(BLEBackend):
     @at_most_one_device
     def reconnect(self, timeout=DEFAULT_CONNECT_TIMEOUT_S):
         while self._auto_reconnect:
-            log.info("Connecting to %s with timeout=%s", self._address,
-                     timeout)
+            log.info("Connecting to %s with timeout=%s", self._address, timeout)
             try:
                 cmd = "connect"
                 with self._receiver.event("connect", timeout):
@@ -486,10 +481,12 @@ class GATTToolBackend(BLEBackend):
                 log.info("Connection to %s reestablished.")
                 break  # finished reconnecting
             except NotificationTimeout:
-                message = ("Timed out connecting to {0} after {1} seconds. "
-                           "Retrying in {2} seconds".format(
-                                self._address, timeout,
-                                DEFAULT_RECONNECT_DELAY))
+                message = (
+                    "Timed out connecting to {0} after {1} seconds. "
+                    "Retrying in {2} seconds".format(
+                        self._address, timeout, DEFAULT_RECONNECT_DELAY
+                    )
+                )
                 log.info(message)
                 time.sleep(DEFAULT_RECONNECT_DELAY)
 
@@ -497,28 +494,26 @@ class GATTToolBackend(BLEBackend):
     def disconnect(self, *args, **kwargs):
         self._auto_reconnect = False  # disables any running reconnection
         if not self._receiver.is_set("disconnected"):
-            self.sendline('disconnect')
+            self.sendline("disconnect")
         self._connected_device = None
         # TODO maybe call a disconnected callback on the device instance, so the
         # device knows if it was asynchronously disconnected?
 
     @at_most_one_device
     def bond(self, *args, **kwargs):
-        log.info('Bonding')
-        self.sendline('sec-level medium')
+        log.info("Bonding")
+        self.sendline("sec-level medium")
 
     def _save_charecteristic_callback(self, event):
         match = event["match"]
         try:
             value_handle = int(match.group(2), 16)
-            char_uuid = match.group(3).strip().decode('ascii')
+            char_uuid = match.group(3).strip().decode("ascii")
             self._characteristics[UUID(char_uuid)] = Characteristic(
                 char_uuid, value_handle
             )
             log.debug(
-                "Found characteristic %s, value handle: 0x%x",
-                char_uuid,
-                value_handle
+                "Found characteristic %s, value handle: 0x%x", char_uuid, value_handle
             )
         except AttributeError:
             pass
@@ -530,11 +525,11 @@ class GATTToolBackend(BLEBackend):
             "discover",
             self._save_charecteristic_callback,
         )
-        self.sendline('characteristics')
+        self.sendline("characteristics")
 
         max_time = time.time() + timeout
         while not self._characteristics and time.time() < max_time:
-            time.sleep(.5)
+            time.sleep(0.5)
 
         # Sleep one extra second in case we caught characteristic
         # in the middle
@@ -548,13 +543,14 @@ class GATTToolBackend(BLEBackend):
     def _handle_notification_string(self, event):
         msg = event["after"]
         if not msg:
-            log.warn("Blank message received in notification, ignored")
+            log.warning("Blank message received in notification, ignored")
             return
 
-        match_obj = re.match(r'.* handle = (0x[0-9a-f]+) value:(.*)',
-                             msg.decode('utf-8'))
+        match_obj = re.match(
+            r".* handle = (0x[0-9a-f]+) value:(.*)", msg.decode("utf-8")
+        )
         if match_obj is None:
-            log.warn("Unable to parse notification string, ignoring: %s", msg)
+            log.warning("Unable to parse notification string, ignoring: %s", msg)
             return
 
         handle = int(match_obj.group(1), 16)
@@ -563,8 +559,7 @@ class GATTToolBackend(BLEBackend):
             self._connected_device.receive_notification(handle, values)
 
     @at_most_one_device
-    def char_write_handle(self, handle, value, wait_for_response=True,
-                          timeout=30):
+    def char_write_handle(self, handle, value, wait_for_response=True, timeout=30):
         """
         Writes a value to a given characteristic handle.
 
@@ -574,13 +569,13 @@ class GATTToolBackend(BLEBackend):
             false, sends a command and expects no acknowledgement from the
             device.
         """
-        cmd = 'char-write-{0} 0x{1:02x} {2}'.format(
-            'req' if wait_for_response else 'cmd',
+        cmd = "char-write-{0} 0x{1:02x} {2}".format(
+            "req" if wait_for_response else "cmd",
             handle,
-            ''.join("{0:02x}".format(byte) for byte in value),
+            "".join("{0:02x}".format(byte) for byte in value),
         )
 
-        log.debug('Sending cmd=%s', cmd)
+        log.debug("Sending cmd=%s", cmd)
         if wait_for_response:
             try:
                 with self._receiver.event("char_written", timeout=timeout):
@@ -591,7 +586,7 @@ class GATTToolBackend(BLEBackend):
         else:
             self.sendline(cmd)
 
-        log.info('Sent cmd=%s', cmd)
+        log.info("Sent cmd=%s", cmd)
 
     @at_most_one_device
     def char_read(self, uuid, timeout=1):
@@ -603,7 +598,7 @@ class GATTToolBackend(BLEBackend):
         :rtype: bytearray
         """
         with self._receiver.event("value", timeout=timeout):
-            self.sendline('char-read-uuid %s' % uuid)
+            self.sendline("char-read-uuid %s" % uuid)
         rval = self._receiver.last_value("value", "after").split()[1:]
         return bytearray([int(x, 16) for x in rval])
 
@@ -617,18 +612,17 @@ class GATTToolBackend(BLEBackend):
         :rtype: bytearray
         """
         with self._receiver.event("value/descriptor", timeout=timeout):
-            self.sendline('char-read-hnd 0x{0:02x}'.format(handle))
-        rval = self._receiver.last_value("value/descriptor", "after"
-                                         ).split()[1:]
+            self.sendline("char-read-hnd 0x{0:02x}".format(handle))
+        rval = self._receiver.last_value("value/descriptor", "after").split()[1:]
         return bytearray([int(x, 16) for x in rval])
 
     @at_most_one_device
     def exchange_mtu(self, mtu, timeout=1):
-        cmd = 'mtu {}'.format(mtu)
+        cmd = "mtu {}".format(mtu)
 
-        log.debug('Requesting MTU: {}'.format(mtu))
+        log.debug("Requesting MTU: {}".format(mtu))
 
-        with self._receiver.event('mtu', timeout=timeout):
+        with self._receiver.event("mtu", timeout=timeout):
             self.sendline(cmd)
         try:
             rval = self._receiver.last_value("mtu", "after").split()[-1]
@@ -636,11 +630,10 @@ class GATTToolBackend(BLEBackend):
             log.error('MTU exchange failed: "{}"'.format(rval))
             raise
 
-        log.debug('MTU exhange successful: {}'.format(rval))
+        log.debug("MTU exhange successful: {}".format(rval))
 
         return rval
 
     def reset(self):
         subprocess.Popen(["sudo", "systemctl", "restart", "bluetooth"]).wait()
-        subprocess.Popen([
-            "sudo", "hciconfig", self._hci_device, "reset"]).wait()
+        subprocess.Popen(["sudo", "hciconfig", self._hci_device, "reset"]).wait()

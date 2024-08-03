@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_CONNECT_TIMEOUT_S = 5.0
 
-BLEAddressType = Enum('BLEAddressType', 'public random')
+BLEAddressType = Enum("BLEAddressType", "public random")
 
 
 class BLEBackend(object):
@@ -21,8 +21,7 @@ class BLEBackend(object):
         raise NotImplementedError()
 
     def stop(self):
-        """Stop and free any resources required while the backend is running.
-        """
+        """Stop and free any resources required while the backend is running."""
         raise NotImplementedError()
 
     def supports_unbonded(self):
@@ -54,8 +53,7 @@ class BLEBackend(object):
         Returns a list of BLE devices found.
         """
         devices = self.scan(*args, **kwargs)
-        return [device for device in devices
-                if name_filter in (device['name'] or '')]
+        return [device for device in devices if name_filter in (device["name"] or "")]
 
     def clear_bond(self, address=None):
         raise NotImplementedError()
@@ -67,6 +65,7 @@ class Characteristic(object):
     Only valid for the lifespan of a BLE connection, since the handle values are
     dynamic.
     """
+
     def __init__(self, uuid, handle):
         """
         Sets the characteritic uuid and handle.
@@ -86,5 +85,8 @@ class Characteristic(object):
         self.descriptors[uuid] = handle
 
     def __str__(self):
-        return "<%s uuid=%s handle=%d>" % (self.__class__.__name__,
-                                           self.uuid, self.handle)
+        return "<%s uuid=%s handle=%d>" % (
+            self.__class__.__name__,
+            self.uuid,
+            self.handle,
+        )

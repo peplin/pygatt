@@ -25,7 +25,7 @@ setup(
     long_description=readme + "\n\n" + changelog,
     url="https://github.com/peplin/pygatt",
     install_requires=["pyserial", "enum-compat"],
-    setup_requires=["coverage == 5.5", "nose == 1.3.7"],
+    setup_requires=["coverage == 5.5", "pytest == 8.3.2"],
     extras_require={
         "GATTTOOL": ["pexpect"],
     },
@@ -37,7 +37,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ),
 )

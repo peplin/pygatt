@@ -23,10 +23,7 @@ leaves something to be desired and only works in Linux.
 Requirements
 ------------
 
--  Python 2.7.5 or greater, or Python 3.5 or greater
-
-   -  Python 2.7.3's ``struct`` library has a bug that will break PyGATT - 2.7.5
-         or greater is recommended.
+-  Python 3.9 or greater
 
 -  BlueZ 5.18 or greater (with gatttool) - required for the gatttool
    backend only.

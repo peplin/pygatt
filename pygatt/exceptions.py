@@ -5,6 +5,7 @@ Exceptions for pygatt Module.
 
 class BLEError(Exception):
     """Exception class for pygatt."""
+
     pass
 
 

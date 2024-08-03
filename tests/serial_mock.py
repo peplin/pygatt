@@ -11,6 +11,7 @@ class SerialMock(object):
     """
     Spoof a serial.Serial object.
     """
+
     def __init__(self, port, timeout):
         self._isOpen = True
         self._port = port

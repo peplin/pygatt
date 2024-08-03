@@ -3,6 +3,11 @@
 Release History
 ================
 
+V5.0.0
+------
+
+* Drop support for Python 2
+
 V4.0.5
 ------
 
