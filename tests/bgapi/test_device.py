@@ -157,5 +157,5 @@ class BGAPIDeviceTests(unittest.TestCase):
             uuid_desc, handle_desc])
         characteristics = device.discover_characteristics()
         assert characteristics[uuid_char].handle == handle_char
-        assert (characteristics[uuid_char].descriptors[uuid16_to_uuid(0x2902)]
-            == handle_desc)
+        assert characteristics[uuid_char].descriptors[uuid16_to_uuid(0x2902)] \
+            == handle_desc

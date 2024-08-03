@@ -164,8 +164,8 @@ class GATTToolBackendTests(unittest.TestCase):
         device._backend._handle_notification_string(event)
         assert device.receive_notification.called
         assert 0x24 == device.receive_notification.call_args[0][0]
-        assert (bytearray([0x64, 0x46, 0x72])
-            == device.receive_notification.call_args[0][1])
+        assert bytearray([0x64, 0x46, 0x72]) == \
+            device.receive_notification.call_args[0][1]
 
     def test_empty_notification(self):
         event = {

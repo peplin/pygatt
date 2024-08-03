@@ -74,7 +74,9 @@ class GATTToolBLEDeviceTests(unittest.TestCase):
     def test_get_handle(self):
         handle = self.device.get_handle(self.char_uuid)
         assert self.backend.discover_characteristics.called
-        assert self.device == self.backend.discover_characteristics.call_args[0][0]
+        assert (
+            self.device == self.backend.discover_characteristics.call_args[0][0]
+        )
         assert self.expected_handle == handle
 
     def test_get_cached_handle(self):

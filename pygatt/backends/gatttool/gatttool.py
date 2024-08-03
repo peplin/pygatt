@@ -548,13 +548,14 @@ class GATTToolBackend(BLEBackend):
     def _handle_notification_string(self, event):
         msg = event["after"]
         if not msg:
-            log.warn("Blank message received in notification, ignored")
+            log.warning("Blank message received in notification, ignored")
             return
 
         match_obj = re.match(r'.* handle = (0x[0-9a-f]+) value:(.*)',
                              msg.decode('utf-8'))
         if match_obj is None:
-            log.warn("Unable to parse notification string, ignoring: %s", msg)
+            log.warning(
+                "Unable to parse notification string, ignoring: %s", msg)
             return
 
         handle = int(match_obj.group(1), 16)

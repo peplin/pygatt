@@ -80,7 +80,7 @@ class BGAPIBackendTests(unittest.TestCase):
         with self.assertRaises(NotConnectedError):
             self.backend.start()
         self.assertEqual(MAX_CONNECTION_ATTEMPTS + 1,
-                          self.mock_device.mocked_serial.read.call_count)
+                         self.mock_device.mocked_serial.read.call_count)
         self.assertTrue(self.mock_device.mocked_serial.write.called)
 
     def test_scan_and_get_devices_discovered(self):

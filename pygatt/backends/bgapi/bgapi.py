@@ -519,7 +519,7 @@ class BGAPIBackend(BLEBackend):
         if uuid in constants.gatt_characteristic_type_uuid.values():
             return UUIDType.characteristic
 
-        log.warn("Unrecognized 4 byte UUID %s", hexlify(uuid))
+        log.warning("Unrecognized 4 byte UUID %s", hexlify(uuid))
         return UUIDType.nonstandard
 
     def _scan_rsp_data(self, data):

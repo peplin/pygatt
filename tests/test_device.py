@@ -6,7 +6,7 @@ from pygatt import BLEDevice
 from pygatt.backends import Characteristic
 
 
-class TestBLEDevice(BLEDevice):
+class MockBLEDevice(BLEDevice):
     CHAR_UUID = uuid.uuid4()
     EXPECTED_HANDLE = 99
 
@@ -21,7 +21,7 @@ class BLEDeviceTest(unittest.TestCase):
         super(BLEDeviceTest, self).setUp()
         self.address = "11:22:33:44:55:66"
         self.backend = MagicMock()
-        self.device = TestBLEDevice(self.address)
+        self.device = MockBLEDevice(self.address)
 
     def _subscribe(self):
         callback = MagicMock()
@@ -58,16 +58,16 @@ class BLEDeviceTest(unittest.TestCase):
     def test_receive_notification(self):
         callback = self._subscribe()
         value = bytearray([24])
-        self.device.receive_notification(TestBLEDevice.EXPECTED_HANDLE, value)
+        self.device.receive_notification(MockBLEDevice.EXPECTED_HANDLE, value)
         assert callback.called
-        assert TestBLEDevice.EXPECTED_HANDLE == callback.call_args[0][0]
+        assert MockBLEDevice.EXPECTED_HANDLE == callback.call_args[0][0]
         assert value == callback.call_args[0][1]
 
     def test_ignore_notification_for_another_handle(self):
         callback = self._subscribe()
         value = bytearray([24])
         self.device.receive_notification(
-            TestBLEDevice.EXPECTED_HANDLE + 1, value)
+            MockBLEDevice.EXPECTED_HANDLE + 1, value)
         assert not callback.called
 
     def test_unicode_get_handle(self):
